@@ -190,6 +190,7 @@ static inline void cmx2xx_init_leds(void) {}
 #define MTYPE_CRT800x600	3
 #define MTYPE_TFT320x240	6
 #define MTYPE_STN640x480	7
+#define MTYPE_TFT640x480_SHARP	8
 
 static struct pxafb_mode_info generic_stn_320x240_mode = {
 	.pixclock	= 76923,
@@ -335,6 +336,28 @@ static struct pxafb_mach_info generic_stn_640x480 = {
 	.cmap_static	= 0,
 };
 
+static struct pxafb_mode_info sharp_vga_tft_mode = {
+	.pixclock		= 38461,
+	.bpp			= 16,
+	.xres			= 640,
+	.yres			= 480,
+	.hsync_len		= 60,
+	.vsync_len		= 2,
+	.left_margin		= 72,
+	.upper_margin		= 32,
+	.right_margin		= 72,
+	.lower_margin		= 10,
+	.sync			= 0,
+};
+
+static struct pxafb_mach_info sharp_vga_tft = {
+	.modes 			= &sharp_vga_tft_mode,
+	.num_modes		= 1,
+	.lccr0			= (LCCR0_PAS),
+	.lccr3			= (LCCR3_PixClkDiv(0x01) |
+			           LCCR3_Acb(0xff)),
+};
+
 static struct pxafb_mach_info *cmx2xx_display = &generic_crt_640x480;
 
 static int __init cmx2xx_set_display(char *str)
@@ -355,6 +378,9 @@ static int __init cmx2xx_set_display(char *str)
 		break;
 	case MTYPE_TFT320x240:
 		cmx2xx_display = &generic_tft_320x240;
+		break;
+	case MTYPE_TFT640x480_SHARP:
+		cmx2xx_display = &sharp_vga_tft;
 		break;
 	case MTYPE_STN640x480:
 		cmx2xx_display = &generic_stn_640x480;
