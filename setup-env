@@ -1,0 +1,8 @@
+# script that can be sourced to setup up the compiler
+# env for cross-compiling u-boot
+
+CROSS_COMPILER_PATH=`cd /build/oe/oe-stable/build/angstrom-2008.1/tmp/cross/armv5te/bin; pwd`
+export PATH=$CROSS_COMPILER_PATH:$PATH
+export ARCH=arm
+export CROSS_COMPILE=arm-angstrom-linux-gnueabi-
+
