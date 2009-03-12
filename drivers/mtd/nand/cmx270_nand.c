@@ -199,6 +199,8 @@ static int cmx270_init(void)
 	cmx270_nand_mtd->owner = THIS_MODULE;
 	cmx270_nand_mtd->priv = this;
 
+	cmx270_nand_mtd->name = "cm-x270-nand";
+
 	/* insert callbacks */
 	this->IO_ADDR_R = cmx270_nand_io;
 	this->IO_ADDR_W = cmx270_nand_io;
