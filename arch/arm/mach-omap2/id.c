@@ -177,6 +177,17 @@ void __init omap3_check_features(void)
 	OMAP3_CHECK_FEATURE(status, ISP);
 
 	/*
+	 * Does it support 720MHz?
+	 */
+	status = ((OMAP3_SKUID_MASK & read_tap_reg(OMAP3_PRODID))
+			& OMAP3_SKUID_720MHZ) ? 1 : 0 ;
+	if (status)
+		omap3_features |= OMAP3_HAS_720M;
+
+	if (cpu_is_omap3630())
+		omap3_features |= OMAP3_HAS_192MHZ_CLK;
+
+	/*
 	 * TODO: Get additional info (where applicable)
 	 *       e.g. Size of L2 cache.
 	 */
@@ -287,7 +298,7 @@ void __init omap3_cpuinfo(void)
 	 * and CPU class bits.
 	 */
 	if (cpu_is_omap3630()) {
-		strcpy(cpu_name, "OMAP3630");
+		strcpy(cpu_name, "OMAP3630/DM3730");
 	} else if (cpu_is_omap3505()) {
 		/*
 		 * AM35xx devices
@@ -341,6 +352,8 @@ void __init omap3_cpuinfo(void)
 	OMAP3_SHOW_FEATURE(sgx);
 	OMAP3_SHOW_FEATURE(neon);
 	OMAP3_SHOW_FEATURE(isp);
+	OMAP3_SHOW_FEATURE(720m);
+	OMAP3_SHOW_FEATURE(192mhz_clk);
 
 	printk(")\n");
 }
@@ -379,19 +392,18 @@ void __init omap2_check_revision(void)
 		omap_chip.oc |= CHIP_IS_OMAP2420;
 	} else if (cpu_is_omap3505() || cpu_is_omap3517()) {
 		omap_chip.oc = CHIP_IS_OMAP3430 | CHIP_IS_OMAP3430ES3_1;
+	} else if (cpu_is_omap3630()) {
+		omap_chip.oc = CHIP_IS_OMAP3430 | CHIP_IS_OMAP3630ES1;
 	} else if (cpu_is_omap343x()) {
 		omap_chip.oc = CHIP_IS_OMAP3430;
-		if (omap_rev() == OMAP3430_REV_ES1_0)
+		if (omap_rev_is_1_0())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES1;
-		else if (omap_rev() >= OMAP3430_REV_ES2_0 &&
-			 omap_rev() <= OMAP3430_REV_ES2_1)
+		else if (omap_rev_is_2_0() || omap_rev_is_2_1())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES2;
-		else if (omap_rev() == OMAP3430_REV_ES3_0)
+		else if (omap_rev_is_3_0())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_0;
-		else if (omap_rev() == OMAP3430_REV_ES3_1)
+		else if (omap_rev_is_3_1())
 			omap_chip.oc |= CHIP_IS_OMAP3430ES3_1;
-		else if (omap_rev() == OMAP3630_REV_ES1_0)
-			omap_chip.oc |= CHIP_IS_OMAP3630ES1;
 	} else {
 		pr_err("Uninitialized omap_chip, please fix!\n");
 	}

@@ -116,3 +116,11 @@ config SND_OMAP_SOC_IGEP0020
 	select SND_SOC_TWL4030
 	help
 	  Say Y if you want to add support for Soc audio on IGEP v2 board.
+
+config SND_OMAP_SOC_CM_T3517
+	tristate "SoC Audio support for CM-T3517"
+	depends on SND_OMAP_SOC && MACH_CM_T3517 && I2C
+	select SND_OMAP_SOC_MCBSP
+	select SND_SOC_TLV320AIC23
+	help
+	  Say Y if you want to add support for SoC audio on the CM-T3517.

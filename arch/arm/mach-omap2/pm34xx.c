@@ -27,7 +27,9 @@
 #include <linux/gpio.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/usb/musb.h>
 
+#include <plat/cpu.h>
 #include <plat/sram.h>
 #include <plat/clockdomain.h>
 #include <plat/powerdomain.h>
@@ -48,6 +50,7 @@
 #include "cm-regbits-34xx.h"
 #include "prm-regbits-34xx.h"
 
+#include "omap3-opp.h"
 #include "smartreflex.h"
 #include "prm.h"
 #include "pm.h"
@@ -111,6 +114,86 @@ static struct prm_setup_vc prm_setup = {
 	.vdd1_off = 0x00,	/* 0.6v */
 };
 
+/*
+ * OPP tables for OMAP35x
+ */
+struct omap_opp omap35x_mpu_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{S125M, VDD1_OPP1, 0x1E},
+	/*OPP2*/
+	{S250M, VDD1_OPP2, 0x26},
+	/*OPP3*/
+	{S500M, VDD1_OPP3, 0x30},
+	/*OPP4*/
+	{S550M, VDD1_OPP4, 0x36},
+	/*OPP5*/
+	{S600M, VDD1_OPP5, 0x3C},
+	/*OPP6*/
+	{S720M, VDD1_OPP6, 0x3C},
+};
+
+struct omap_opp omap35x_dsp_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{S90M, VDD1_OPP1, 0x1E},
+	/*OPP2*/
+	{S180M, VDD1_OPP2, 0x26},
+	/*OPP3*/
+	{S360M, VDD1_OPP3, 0x30},
+	/*OPP4*/
+	{S400M, VDD1_OPP4, 0x36},
+	/*OPP5*/
+	{S430M, VDD1_OPP5, 0x3C},
+	/*OPP5*/
+	{S520M, VDD1_OPP6, 0x3C},
+};
+
+struct omap_opp omap35x_l3_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1*/
+	{0, VDD2_OPP1, 0x1E},
+	/*OPP2*/
+	{S83M, VDD2_OPP2, 0x24},
+	/*OPP3*/
+	{S166M, VDD2_OPP3, 0x2C},
+};
+
+/*
+ * OPP tables for OMAP37x
+ */
+struct omap_opp omap37x_mpu_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1 (OPP50)*/
+	{S300M, VDD1_OPP1, 0x1B},
+	/*OPP2 (OPP100)*/
+	{S600M, VDD1_OPP2, 0x28},
+	/*OPP3 (OPP120)*/
+	{S800M, VDD1_OPP3, 0x35},
+	/*OPP4 (OPPTM)*/
+	{S1000M, VDD1_OPP4, 0x39},
+};
+
+struct omap_opp omap37x_dsp_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1 (OPP50) */
+	{S260M, VDD1_OPP1, 0x1B},
+	/*OPP2 (OPP100) */
+	{S520M, VDD1_OPP2, 0x28},
+	/*OPP3 (OPP120) */
+	{S660M, VDD1_OPP3, 0x35},
+	/*OPP4 (OPPTM) */
+	{S875M, VDD1_OPP4, 0x39},
+};
+
+struct omap_opp omap37x_l3_rate_table[] = {
+	{0, 0, 0},
+	/*OPP1 (OPP50)  */
+	{S100M, VDD2_OPP1, 0x1B},
+	/*OPP2 (OPP100) */
+	{S200M, VDD2_OPP2, 0x2B},
+};
+
 static inline void omap3_per_save_context(void)
 {
 	omap_gpio_save_context();
@@ -125,7 +208,9 @@ static void omap3_enable_io_chain(void)
 {
 	int timeout = 0;
 
-	if (omap_rev() >= OMAP3430_REV_ES3_1) {
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_ge_3_1())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) {
 		prm_set_mod_reg_bits(OMAP3430_EN_IO_CHAIN, WKUP_MOD, PM_WKEN);
 		/* Do a readback to assure write has been done */
 		prm_read_mod_reg(WKUP_MOD, PM_WKEN);
@@ -146,7 +231,9 @@ static void omap3_enable_io_chain(void)
 
 static void omap3_disable_io_chain(void)
 {
-	if (omap_rev() >= OMAP3430_REV_ES3_1)
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_ge_3_1())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630())
 		prm_clear_mod_reg_bits(OMAP3430_EN_IO_CHAIN, WKUP_MOD, PM_WKEN);
 }
 
@@ -177,6 +264,10 @@ static void omap3_core_save_context(void)
 	/* Save the system control module context, padconf already save above*/
 	omap3_control_save_context();
 	omap_dma_global_context_save();
+#ifndef CONFIG_USB_MUSB_HDRC_MODULE
+	/* Save the MUSB context */
+	musb_save_context();
+#endif
 }
 
 static void omap3_core_restore_context(void)
@@ -188,6 +279,10 @@ static void omap3_core_restore_context(void)
 	/* Restore the interrupt controller context */
 	omap_intc_restore_context();
 	omap_dma_global_context_restore();
+#ifndef CONFIG_USB_MUSB_HDRC_MODULE
+	/* Restore the MUSB context */
+	musb_restore_context();
+#endif
 }
 
 /*
@@ -273,7 +368,10 @@ static int _prcm_int_handle_wakeup(void)
 	c = prcm_clear_mod_irqs(WKUP_MOD, 1);
 	c += prcm_clear_mod_irqs(CORE_MOD, 1);
 	c += prcm_clear_mod_irqs(OMAP3430_PER_MOD, 1);
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_gt_1_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) {
 		c += prcm_clear_mod_irqs(CORE_MOD, 3);
 		c += prcm_clear_mod_irqs(OMAP3430ES2_USBHOST_MOD, 1);
 	}
@@ -464,7 +562,9 @@ void omap_sram_idle(void)
 	* of AUTO_CNT = 1 enabled. This takes care of errata 1.142.
 	* Hence store/restore the SDRC_POWER register here.
 	*/
-	if (omap_rev() >= OMAP3430_REV_ES3_0 &&
+	if (((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_ge_3_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) &&
 	    omap_type() != OMAP2_DEVICE_TYPE_GP &&
 	    core_next_state == PWRDM_POWER_OFF)
 		sdrc_pwr = sdrc_read_reg(SDRC_POWER);
@@ -484,7 +584,9 @@ void omap_sram_idle(void)
 		pm_dbg_regset_save(2);
 
 	/* Restore normal SDRC POWER settings */
-	if (omap_rev() >= OMAP3430_REV_ES3_0 &&
+	if (((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_ge_3_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) &&
 	    omap_type() != OMAP2_DEVICE_TYPE_GP &&
 	    core_next_state == PWRDM_POWER_OFF)
 		sdrc_write_reg(sdrc_pwr, SDRC_POWER);
@@ -568,6 +670,8 @@ void omap_sram_idle(void)
 
 int omap3_can_sleep(void)
 {
+	if (cpu_is_omap3505() || cpu_is_omap3517())
+		return 0;
 	if (!sleep_while_idle)
 		return 0;
 	if (!omap_uart_can_sleep())
@@ -834,7 +938,10 @@ static void __init prcm_setup_regs(void)
 	prm_write_mod_reg(0, OMAP3430_NEON_MOD, PM_WKDEP);
 	prm_write_mod_reg(0, OMAP3430_CAM_MOD, PM_WKDEP);
 	prm_write_mod_reg(0, OMAP3430_PER_MOD, PM_WKDEP);
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_gt_1_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) {
 		prm_write_mod_reg(0, OMAP3430ES2_SGX_MOD, PM_WKDEP);
 		prm_write_mod_reg(0, OMAP3430ES2_USBHOST_MOD, PM_WKDEP);
 	} else
@@ -885,7 +992,9 @@ static void __init prcm_setup_regs(void)
 		OMAP3430_AUTO_DES1,
 		CORE_MOD, CM_AUTOIDLE2);
 
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_gt_1_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) {
 		cm_write_mod_reg(
 			OMAP3430_AUTO_MAD2D |
 			OMAP3430ES2_AUTO_USBTLL,
@@ -933,14 +1042,20 @@ static void __init prcm_setup_regs(void)
 		OMAP3430_PER_MOD,
 		CM_AUTOIDLE);
 
-	if (omap_rev() > OMAP3430_REV_ES1_0) {
+	if ((!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_gt_1_0())
+		|| cpu_is_omap3505() || cpu_is_omap3517()
+		|| cpu_is_omap3630()) {
 		cm_write_mod_reg(
 			OMAP3430ES2_AUTO_USBHOST,
 			OMAP3430ES2_USBHOST_MOD,
 			CM_AUTOIDLE);
 	}
 
-	omap_ctrl_writel(OMAP3430_AUTOIDLE, OMAP2_CONTROL_SYSCONFIG);
+	/*
+	 * This causes MUSB failure on AM3517 so disable it.
+	 */
+	if (!cpu_is_omap3517() && !cpu_is_omap3505())
+		omap_ctrl_writel(OMAP3430_AUTOIDLE, OMAP2_CONTROL_SYSCONFIG);
 
 	/*
 	 * Set all plls to autoidle. This is needed until autoidle is
@@ -1028,6 +1143,10 @@ void omap3_pm_off_mode_enable(int enable)
 		state = PWRDM_POWER_OFF;
 	else
 		state = PWRDM_POWER_RET;
+
+#ifdef CONFIG_CPU_IDLE
+	omap3_cpuidle_update_states();
+#endif
 
 #ifdef CONFIG_OMAP_PM_SRF
 	resource_lock_opp(VDD1_OPP);

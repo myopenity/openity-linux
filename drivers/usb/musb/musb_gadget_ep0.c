@@ -770,6 +770,9 @@ setup:
 				printk(KERN_NOTICE "%s: peripheral reset "
 						"irq lost!\n",
 						musb_driver_name);
+#if defined(CONFIG_MACH_OMAP3517EVM) || defined(CONFIG_MACH_CM_T3517)
+				musb->read_mask &= ~AM3517_READ_ISSUE_POWER;
+#endif
 				power = musb_readb(mbase, MUSB_POWER);
 				musb->g.speed = (power & MUSB_POWER_HSMODE)
 					? USB_SPEED_HIGH : USB_SPEED_FULL;

@@ -46,6 +46,7 @@
 #include "prm-regbits-34xx.h"
 #include "cm.h"
 #include "cm-regbits-34xx.h"
+#include "omap3-opp.h"
 
 #define CYCLES_PER_MHZ			1000000
 
@@ -147,6 +148,60 @@ const struct clkops clkops_omap3430es2_hsotgusb_wait = {
 	.find_companion = omap2_clk_dflt_find_companion,
 };
 
+/** omap3_pwrdn_clk_enable_with_hsdiv_restore - enable clocks suffering
+ *         from HSDivider problem.
+ * @clk: DPLL output struct clk
+ *
+ * 3630 only: dpll3_m3_ck, dpll4_m2_ck, dpll4_m3_ck, dpll4_m4_ck, dpll4_m5_ck
+ * & dpll4_m6_ck dividers get lost after their respective PWRDN bits are set.
+ * Any write to the corresponding CM_CLKSEL register will refresh the
+ * dividers.  Only x2 clocks are affected, so it is safe to trust the parent
+ * clock information to refresh the CM_CLKSEL registers.
+ */
+int omap3_pwrdn_clk_enable_with_hsdiv_restore(struct clk *clk)
+{
+	u32 orig_v, v, c, clksel_shift, max_div;
+	int ret;
+
+	/* enable the clock */
+	ret = omap2_dflt_clk_enable(clk);
+
+	/* Restore the dividers */
+	if (!ret) {
+		v = __raw_readl(clk->parent->clksel_reg);
+		orig_v = v;
+
+		clksel_shift = __ffs(clk->parent->clksel_mask);
+
+		max_div = clk->parent->clksel_mask >> clksel_shift;
+
+		/* Isolate the current divider */
+		c = v & clk->parent->clksel_mask;
+		c >>= clksel_shift;
+
+		/* Prevent excessively high clock rates if divider would wrap */
+		c += (c == max_div) ? -1 : 1;
+
+		/* Write the temporarily altered divider back */
+		c <<= clksel_shift;
+		v &= ~c;
+		v |= c;
+		__raw_writel(v, clk->parent->clksel_reg);
+
+		/* Write the original divider */
+		__raw_writel(orig_v, clk->parent->clksel_reg);
+	}
+
+	return ret;
+}
+
+const struct clkops clkops_omap3_pwrdn_with_hsdiv_wait_restore = {
+	.enable		= omap3_pwrdn_clk_enable_with_hsdiv_restore,
+	.disable	= omap2_dflt_clk_disable,
+	.find_companion	= omap2_clk_dflt_find_companion,
+	.find_idlest	= omap2_clk_dflt_find_idlest,
+};
+
 const struct clkops clkops_noncore_dpll_ops = {
 	.enable		= omap3_noncore_dpll_enable,
 	.disable	= omap3_noncore_dpll_disable,
@@ -159,7 +214,7 @@ int omap3_dpll4_set_rate(struct clk *clk, unsigned long rate)
 	 * on 3430ES1 prevents us from changing DPLL multipliers or dividers
 	 * on DPLL4.
 	 */
-	if (omap_rev() == OMAP3430_REV_ES1_0) {
+	if (!cpu_is_omap3630() && cpu_is_omap34xx() && omap_rev_is_1_0()) {
 		printk(KERN_ERR "clock: DPLL4 cannot change rate due to "
 		       "silicon 'Limitation 2.5' on 3430ES1.\n");
 		return -EINVAL;
@@ -274,7 +329,7 @@ void omap2_clk_init_cpufreq_table(struct cpufreq_frequency_table **table)
 	if (!mpu_opps)
 		return;
 
-	prcm = mpu_opps + MAX_VDD1_OPP;
+	prcm = mpu_opps + get_max_vdd1();;
 	for (; prcm->rate; prcm--) {
 		freq_table[i].index = i;
 		freq_table[i].frequency = prcm->rate / 1000;
@@ -355,20 +410,111 @@ void omap3_clk_lock_dpll5(void)
 static int __init omap2_clk_arch_init(void)
 {
 	struct clk *osc_sys_ck, *dpll1_ck, *arm_fck, *core_ck;
+	struct clk *dpll2_ck, *iva2_ck, *dpll3_m2_ck;
 	unsigned long osc_sys_rate;
+	unsigned long dsprate, l3rate;
+	struct omap_opp *opp_table;
+	short opp=0, valid=0, i;
+	short err = 0 ;
+	int l3div;
 
 	if (!mpurate)
 		return -EINVAL;
 
-	/* XXX test these for success */
 	dpll1_ck = clk_get(NULL, "dpll1_ck");
-	arm_fck = clk_get(NULL, "arm_fck");
-	core_ck = clk_get(NULL, "core_ck");
-	osc_sys_ck = clk_get(NULL, "osc_sys_ck");
+	if (WARN(IS_ERR(dpll1_ck), "Failed to get dpll1_ck.\n"))
+		err = 1;
 
-	/* REVISIT: not yet ready for 343x */
+	arm_fck = clk_get(NULL, "arm_fck");
+	if (WARN(IS_ERR(arm_fck), "Failed to get arm_fck.\n"))
+		err = 1;
+
+	core_ck = clk_get(NULL, "core_ck");
+	if (WARN(IS_ERR(core_ck), "Failed to get core_ck.\n"))
+		err = 1;
+
+	osc_sys_ck = clk_get(NULL, "osc_sys_ck");
+	if (WARN(IS_ERR(osc_sys_ck), "Failed to get osc_sys_ck.\n"))
+		err = 1;
+
+	dpll2_ck = clk_get(NULL, "dpll2_ck");
+	if (WARN(IS_ERR("dpll2_ck"), "Failed to get dpll2_ck.\n"))
+		err = 1;
+
+	iva2_ck = clk_get(NULL, "iva2_ck");
+	if (WARN(IS_ERR("iva2_ck"), "Failed to get iva2_ck.\n"))
+		err = 1;
+
+	dpll3_m2_ck = clk_get(NULL, "dpll3_m2_ck");
+	if (dpll3_m2_ck == NULL) {
+		err = 1;
+		pr_err("*** Failed to get dpll3_m2_ck.\n");
+	}
+
+	if (err)
+		return -ENOENT;
+
+	if (!cpu_is_omap3630() && (mpurate == S720M) && !omap3_has_720m()) {
+		/*
+		 * Silicon doesn't support this rate.
+		 * Use the next highest.
+		 */
+		mpurate = S600M;
+		pr_err("*** This silicon doesn't support 720MHz\n");
+	}
+
+	/* Check if mpurate is valid */
+	if (mpu_opps) {
+		opp_table = mpu_opps;
+
+		for (i = 1; opp_table[i].opp_id <= get_max_vdd1(); i++) {
+			if (opp_table[i].rate == mpurate) {
+				valid = 1;
+				break;
+			}
+		}
+
+		if (valid) {
+			opp = opp_table[i].opp_id;
+		} else {
+			pr_err("*** Invalid MPU rate (%u)\n", mpurate);
+			return 1;
+		}
+	}
+
 	if (clk_set_rate(dpll1_ck, mpurate))
 		printk(KERN_ERR "*** Unable to set MPU rate\n");
+
+	/* Select VDD2_OPP2, if VDD1_OPP1 is chosen */
+	if (!cpu_is_omap3630() && (opp == VDD1_OPP1)) {
+		l3div = cm_read_mod_reg(CORE_MOD, CM_CLKSEL) &
+			OMAP3430_CLKSEL_L3_MASK;
+
+		l3rate = l3_opps[VDD2_OPP2].rate * l3div;
+		if (clk_set_rate(dpll3_m2_ck, l3rate))
+			pr_err("*** Unable to set L3 rate(%lu)\n", l3rate);
+		else
+			pr_info("Switching to L3 rate: %lu\n", l3rate);
+	}
+
+	/* Get dsprate corresponding to the opp */
+	if ((cpu_is_omap3430()
+			|| cpu_is_omap3530()
+			|| cpu_is_omap3525()
+			|| cpu_is_omap3630())
+		&& (dsp_opps)
+		&& (opp >= get_min_vdd1()) && (opp <= get_max_vdd1())) {
+		opp_table = dsp_opps;
+
+		for (i=0;  opp_table[i].opp_id <= get_max_vdd1(); i++)
+			if (opp_table[i].opp_id == opp)
+				break;
+
+		dsprate = opp_table[i].rate;
+
+		if (clk_set_rate(dpll2_ck, dsprate))
+			pr_err("*** Unable to set IVA2 rate\n");
+	}
 
 	recalculate_root_clocks();
 
@@ -380,6 +526,8 @@ static int __init omap2_clk_arch_init(void)
 		((osc_sys_rate / 100000) % 10),
 		(clk_get_rate(core_ck) / 1000000),
 		(clk_get_rate(arm_fck) / 1000000));
+	pr_info("IVA2 clocking rate: %ld MHz\n",
+	       (clk_get_rate(iva2_ck) / 1000000)) ;
 
 	calibrate_delay();
 

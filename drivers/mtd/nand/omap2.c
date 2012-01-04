@@ -505,7 +505,7 @@ static void omap_write_buf_dma_pref(struct mtd_info *mtd,
 		omap_write_buf_pref(mtd, buf, len);
 	else
 		/* start transfer in DMA mode */
-		omap_nand_dma_transfer(mtd, buf, len, 0x1);
+		omap_nand_dma_transfer(mtd, (void *)buf, len, 0x1);
 }
 
 /**
@@ -830,9 +830,9 @@ static int omap_wait(struct mtd_info *mtd, struct nand_chip *chip)
 	int status = NAND_STATUS_FAIL, state = this->state;
 
 	if (state == FL_ERASING)
-		timeo += (HZ * 400) / 1000;
+		timeo += (HZ * 500) / 1000;
 	else
-		timeo += (HZ * 20) / 1000;
+		timeo += (HZ * 200) / 1000;
 
 	this->IO_ADDR_W = (void *) info->gpmc_cs_baseaddr +
 						GPMC_CS_NAND_COMMAND;

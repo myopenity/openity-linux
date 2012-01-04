@@ -347,7 +347,7 @@ static void txstate(struct musb *musb, struct musb_request *req)
 			}
 		}
 
-#elif defined(CONFIG_USB_TI_CPPI_DMA)
+#elif defined(CONFIG_USB_TI_CPPI_DMA) || defined(CONFIG_USB_TI_CPPI41_DMA)
 		/* program endpoint CSR first, then setup DMA */
 		csr &= ~(MUSB_TXCSR_P_UNDERRUN | MUSB_TXCSR_TXPKTRDY);
 		csr |= MUSB_TXCSR_DMAENAB | MUSB_TXCSR_DMAMODE |
@@ -515,12 +515,12 @@ void musb_g_tx(struct musb *musb, u8 epnum)
 			if (csr & MUSB_TXCSR_FIFONOTEMPTY)
 				return;
 
-			if (!musb_ep->desc) {
+			request = musb_ep->desc ? next_request(musb_ep) : NULL;
+			if (!request) {
 				DBG(4, "%s idle now\n",
 					musb_ep->end_point.name);
 				return;
-			} else
-				request = next_request(musb_ep);
+			}
 		}
 
 		txstate(musb, to_musb_request(request));
@@ -585,7 +585,7 @@ static void rxstate(struct musb *musb, struct musb_request *req)
 		return;
 	}
 
-	if (is_cppi_enabled() && musb_ep->dma) {
+	if ((is_cppi_enabled() || is_cppi41_enabled()) && musb_ep->dma) {
 		struct dma_controller	*c = musb->dma_controller;
 		struct dma_channel	*channel = musb_ep->dma;
 
@@ -1959,11 +1959,9 @@ void musb_g_disconnect(struct musb *musb)
 		DBG(2, "Unhandled disconnect %s, setting a_idle\n",
 			otg_state_string(musb));
 		musb->xceiv->state = OTG_STATE_A_IDLE;
-		MUSB_HST_MODE(musb);
 		break;
 	case OTG_STATE_A_PERIPHERAL:
-		musb->xceiv->state = OTG_STATE_A_WAIT_BCON;
-		MUSB_HST_MODE(musb);
+		musb->xceiv->state = OTG_STATE_A_WAIT_VFALL;
 		break;
 	case OTG_STATE_B_WAIT_ACON:
 	case OTG_STATE_B_HOST:
@@ -2006,6 +2004,9 @@ __acquires(musb->lock)
 
 
 	/* what speed did we negotiate? */
+#if defined(CONFIG_MACH_OMAP3517EVM) || defined(CONFIG_MACH_CM_T3517)
+	musb->read_mask &= ~AM3517_READ_ISSUE_POWER;
+#endif
 	power = musb_readb(mbase, MUSB_POWER);
 	musb->g.speed = (power & MUSB_POWER_HSMODE)
 			? USB_SPEED_HIGH : USB_SPEED_FULL;

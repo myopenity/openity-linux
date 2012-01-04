@@ -655,6 +655,14 @@ static inline void omap2_mmc_mux(struct omap_mmc_platform_data *mmc_controller,
 				omap_mux_init_signal("sdmmc2_dat7.sdmmc2_dat7",
 					OMAP_PIN_INPUT_PULLUP);
 			}
+
+			/* FIXME: add a cpu_is_omap3517 check? */
+			if (mmc_controller->slots[0].internal_clock) {
+				u32 v;
+				v = omap_ctrl_readl(OMAP343X_CONTROL_DEVCONF1);
+				v |= OMAP2_MMCSDIO2ADPCLKISEL;
+				omap_ctrl_writel(v, OMAP343X_CONTROL_DEVCONF1);
+			}
 		}
 
 		/*
