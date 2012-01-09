@@ -33,6 +33,7 @@
 #include <linux/mtd/nand.h>
 #include <linux/mtd/partitions.h>
 #include <linux/can/platform/ti_hecc.h>
+#include <linux/mmc/host.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -49,6 +50,35 @@
 #include "mux.h"
 #include "control.h"
 #include "common-board-devices.h"
+#include "hsmmc.h"
+
+#if defined(CONFIG_MMC) || defined(CONFIG_MMC_MODULE)
+static struct omap2_hsmmc_info cm_t3517_mmc[] = {
+       {
+               .mmc            = 1,
+               .caps           = MMC_CAP_4_BIT_DATA,
+               .gpio_cd        = 144,
+               .gpio_wp        = 59,
+
+       },
+       {
+               .mmc            = 2,
+               .caps           = MMC_CAP_4_BIT_DATA,
+               .gpio_cd        = -EINVAL,
+               .gpio_wp        = -EINVAL,
+       },
+       {}      /* Terminator */
+};
+
+static void __init cm_t3517_mmc_init(void)
+{
+       /* MMC init function */
+       omap2_hsmmc_init(cm_t3517_mmc);
+}
+#else
+static void __init cm_t3517_mmc_init(void) {}
+#endif
+
 
 #if defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)
 static struct gpio_led cm_t3517_leds[] = {
@@ -291,6 +321,7 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_rtc();
 	cm_t3517_init_usbh();
 	cm_t3517_init_hecc();
+	cm_t3517_mmc_init();
 }
 
 MACHINE_START(CM_T3517, "Compulab CM-T3517")
