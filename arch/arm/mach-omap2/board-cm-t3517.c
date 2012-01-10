@@ -34,6 +34,8 @@
 #include <linux/mtd/partitions.h>
 #include <linux/can/platform/ti_hecc.h>
 #include <linux/mmc/host.h>
+#include <linux/regulator/machine.h>
+#include <linux/regulator/fixed.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -53,6 +55,39 @@
 #include "hsmmc.h"
 
 #if defined(CONFIG_MMC) || defined(CONFIG_MMC_MODULE)
+static struct regulator_consumer_supply cm_t3517_vmmc_supplies[] = {
+	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.0"),
+	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.1")
+};
+
+/* static 3.3V regulator */
+static struct regulator_init_data cm_t3517_v33 = {
+	.constraints = {
+		.min_uV			= 3300000,
+		.max_uV			= 3300000,
+		.valid_modes_mask	= REGULATOR_MODE_NORMAL,
+		.valid_ops_mask		= REGULATOR_CHANGE_STATUS,
+	},
+	.num_consumer_supplies	= 1,
+	.consumer_supplies	= cm_t3517_vmmc_supplies,
+};
+
+static struct fixed_voltage_config cm_t3517_v33_pdata = {
+	.supply_name	= "board-3V3",
+	.microvolts	= 3300000,
+	.gpio		= -EINVAL,
+	.init_data	= &cm_t3517_v33,
+};
+
+static struct platform_device cm_t3517_v33_platform_device = {
+	.name		= "reg-fixed-voltage",
+	.id		= -1,
+	.num_resources	= 0,
+	.dev		= {
+		.platform_data	= &cm_t3517_v33_pdata,
+	},
+};
+
 static struct omap2_hsmmc_info cm_t3517_mmc[] = {
        {
                .mmc            = 1,
@@ -74,6 +109,7 @@ static void __init cm_t3517_mmc_init(void)
 {
        /* MMC init function */
        omap2_hsmmc_init(cm_t3517_mmc);
+       platform_device_register(&cm_t3517_v33_platform_device);
 }
 #else
 static void __init cm_t3517_mmc_init(void) {}
