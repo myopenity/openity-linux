@@ -34,8 +34,6 @@
 #include <linux/mtd/partitions.h>
 #include <linux/can/platform/ti_hecc.h>
 #include <linux/mmc/host.h>
-#include <linux/regulator/machine.h>
-#include <linux/i2c/twl.h>
 
 #include <asm/mach-types.h>
 #include <asm/mach/arch.h>
@@ -54,6 +52,7 @@
 #include "common-board-devices.h"
 #include "hsmmc.h"
 
+#if defined(CONFIG_MMC) || defined(CONFIG_MMC_MODULE)
 static struct omap2_hsmmc_info cm_t3517_mmc[] = {
        {
                .mmc            = 1,
@@ -71,60 +70,15 @@ static struct omap2_hsmmc_info cm_t3517_mmc[] = {
        {}      /* Terminator */
 };
 
-static struct regulator_consumer_supply cm_t3517_vmmc1_supply[] = {
-	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.0"),
-};
-
-static struct regulator_init_data cm_t3517_vmmc1 = {
-	.constraints = {
-		.min_uV			= 1850000,
-		.max_uV			= 3150000,
-		.valid_modes_mask	= REGULATOR_MODE_NORMAL
-					| REGULATOR_MODE_STANDBY,
-		.valid_ops_mask		= REGULATOR_CHANGE_VOLTAGE
-					| REGULATOR_CHANGE_MODE
-					| REGULATOR_CHANGE_STATUS,
-	},
-	.num_consumer_supplies	= ARRAY_SIZE(cm_t3517_vmmc1_supply),
-	.consumer_supplies	= cm_t3517_vmmc1_supply,
-};
-
-static struct twl4030_platform_data cm_t3517_twldata = {
-	.vmmc1		= &cm_t3517_vmmc1,
-};
-
-
-static int cm_t3517_twl_gpio_setup(struct device *dev,
-		unsigned gpio, unsigned ngpio)
+static void __init cm_t3517_mmc_init(void)
 {
-	omap2_hsmmc_init(cm_t3517_mmc);
-
-#if defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)
-	/* TWL4030_GPIO_MAX + 1 == ledB, PMU_STAT (out, active low LED) */
-	gpio_leds[2].gpio = gpio + TWL4030_GPIO_MAX + 1;
+       /* MMC init function */
+       omap2_hsmmc_init(cm_t3517_mmc);
+}
+#else
+static void __init cm_t3517_mmc_init(void) {}
 #endif
 
-	return 0;
-}
-
-static struct twl4030_gpio_platform_data cm_t3517_gpio_data = {
-	.gpio_base	= OMAP_MAX_GPIO_LINES,
-	.irq_base	= TWL4030_GPIO_IRQ_BASE,
-	.irq_end	= TWL4030_GPIO_IRQ_END,
-	.use_leds	= true,
-	.setup		= cm_t3517_twl_gpio_setup,
-};
-
-
-static int __init cm_t3517_i2c_init(void)
-{
-	omap3_pmic_get_config(&cm_t3517_twldata,
-			TWL_COMMON_PDATA_USB,
-			TWL_COMMON_REGULATOR_VDAC | TWL_COMMON_REGULATOR_VPLL2);
-
-	omap3_pmic_init("tps65950", &cm_t3517_twldata);
-	return 0;
-}
 
 #if defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)
 static struct gpio_led cm_t3517_leds[] = {
@@ -358,7 +312,6 @@ static struct omap_board_mux board_mux[] __initdata = {
 static void __init cm_t3517_init(void)
 {
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
-	cm_t3517_i2c_init();
 	omap_serial_init();
 	omap_sdrc_init(NULL, NULL);
 	omap_board_config = cm_t3517_config;
@@ -368,6 +321,7 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_rtc();
 	cm_t3517_init_usbh();
 	cm_t3517_init_hecc();
+	cm_t3517_mmc_init();
 }
 
 MACHINE_START(CM_T3517, "Compulab CM-T3517")
