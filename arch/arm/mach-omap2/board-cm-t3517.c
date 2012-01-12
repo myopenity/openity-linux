@@ -60,56 +60,79 @@
 #include "hsmmc.h"
 
 /*******************************************************
- * SMSC911X Ethernet
+ * SMSC 911X Ethernet
  *******************************************************/
-#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+
+#if 0 && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 #include <linux/smsc911x.h>
 
-#define SB_T35_SMSC911X_CS		(4)
-#define SB_T35_SMSC911X_IRQ_GPIO	(65)
+#define CM_T35_SMSC911X_CS	5
+#define CM_T35_SMSC911X_GPIO	163
+#define SB_T35_SMSC911X_CS		4
+#define SB_T35_SMSC911X_GPIO	65
+#define SB_T35_SMSC911X_RESET_GPIO	164
 
-static struct smsc911x_platform_config sb_t3517_smsc911x_config = {
+static struct smsc911x_platform_config cm_t3517_smsc911x_config = {
 	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
 	.irq_type	= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-	.flags		= SMSC911X_USE_16BIT,
+	.flags		= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
-// .flags		= SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
-static struct resource sb_t3517_smsc911x_resources[] = {
+static struct resource cm_t3517_smsc911x_resources[] = {
 	{
-		.name	= "smsc911x-memory",
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_IRQ_GPIO),
-		.end	= 0,
+		.start	= OMAP_GPIO_IRQ(CM_T35_SMSC911X_GPIO),
+		.end	= OMAP_GPIO_IRQ(CM_T35_SMSC911X_GPIO),
 		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
 	},
 };
-// .end	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_IRQ_GPIO),
+
+static struct platform_device cm_t3517_smsc911x_device = {
+	.name		= "smsc911x",
+	.id		= 0,
+	.num_resources	= ARRAY_SIZE(cm_t3517_smsc911x_resources),
+	.resource	= cm_t3517_smsc911x_resources,
+	.dev		= {
+		.platform_data = &cm_t3517_smsc911x_config,
+	},
+};
+
+static struct resource sb_t35_smsc911x_resources[] = {
+	{
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_GPIO),
+		.end	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_GPIO),
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
+	},
+};
+
 static struct platform_device sb_t35_smsc911x_device = {
 	.name		= "smsc911x",
-	.id		= -1,
-	.num_resources	= ARRAY_SIZE(sb_t3517_smsc911x_resources),
-	.resource	= sb_t3517_smsc911x_resources,
+	.id		= 1,
+	.num_resources	= ARRAY_SIZE(sb_t35_smsc911x_resources),
+	.resource	= sb_t35_smsc911x_resources,
 	.dev		= {
-		.platform_data = &sb_t3517_smsc911x_config,
+		.platform_data = &cm_t3517_smsc911x_config,
 	},
 };
 
 static void __init cm_t3517_init_smsc911x(struct platform_device *dev,
-					  int cs, int irq_gpio)
+					int cs, int irq_gpio)
 {
 	unsigned long cs_mem_base;
 
-	if (gpmc_cs_request(cs, SZ_16K, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(cs, SZ_16M, &cs_mem_base) < 0) {
 		printk(KERN_ERR "Failed request for GPMC mem for smsc911x\n");
 		return;
 	}
 
 	dev->resource[0].start = cs_mem_base + 0x0;
-	dev->resource[0].end   = cs_mem_base + SZ_16K; /* 0xFF; */
+	dev->resource[0].end   = cs_mem_base + 0xff;
 
 	if ((gpio_request(irq_gpio, "SMSC911X IRQ") == 0) &&
 	    (gpio_direction_input(irq_gpio) == 0)) {
@@ -120,13 +143,14 @@ static void __init cm_t3517_init_smsc911x(struct platform_device *dev,
 	}
 
 	platform_device_register(dev);
-
 }
 
 static void __init cm_t3517_init_ethernet(void)
 {
+	cm_t3517_init_smsc911x(&cm_t3517_smsc911x_device,
+			     CM_T35_SMSC911X_CS, CM_T35_SMSC911X_GPIO);
 	cm_t3517_init_smsc911x(&sb_t35_smsc911x_device,
-			       SB_T35_SMSC911X_CS, SB_T35_SMSC911X_IRQ_GPIO);
+			     SB_T35_SMSC911X_CS, SB_T35_SMSC911X_GPIO);
 }
 #else
 static inline void __init cm_t3517_init_ethernet(void) { return; }
@@ -136,10 +160,10 @@ static inline void __init cm_t3517_init_ethernet(void) { return; }
  * DaVinci EMAC Ethernet
  *******************************************************/
 
-#define AM35XX_EVM_MDIO_FREQUENCY	(1000000)
+#define AM35XX_MDIO_FREQUENCY	(1000000)
 
 static struct mdio_platform_data cm_t3517_mdio_pdata = {
-	.bus_freq	= AM35XX_EVM_MDIO_FREQUENCY,
+	.bus_freq	= AM35XX_MDIO_FREQUENCY,
 };
 
 static struct resource cm_t3517_mdio_resources[] = {
@@ -168,23 +192,19 @@ static struct resource cm_t3517_emac_resources[] = {
 		.start  = AM35XX_IPSS_EMAC_BASE,
 		.end    = AM35XX_IPSS_EMAC_BASE + 0x2FFFF,
 		.flags  = IORESOURCE_MEM,
-	},
-	{
+	}, {
 		.start  = INT_35XX_EMAC_C0_RXTHRESH_IRQ,
 		.end    = INT_35XX_EMAC_C0_RXTHRESH_IRQ,
 		.flags  = IORESOURCE_IRQ,
-	},
-	{
+	}, {
 		.start  = INT_35XX_EMAC_C0_RX_PULSE_IRQ,
 		.end    = INT_35XX_EMAC_C0_RX_PULSE_IRQ,
 		.flags  = IORESOURCE_IRQ,
-	},
-	{
+	}, {
 		.start  = INT_35XX_EMAC_C0_TX_PULSE_IRQ,
 		.end    = INT_35XX_EMAC_C0_TX_PULSE_IRQ,
 		.flags  = IORESOURCE_IRQ,
-	},
-	{
+	}, {
 		.start  = INT_35XX_EMAC_C0_MISC_PULSE_IRQ,
 		.end    = INT_35XX_EMAC_C0_MISC_PULSE_IRQ,
 		.flags  = IORESOURCE_IRQ,
@@ -252,8 +272,6 @@ static void cm_t3517_init_emac(struct emac_platform_data *pdata)
 	regval = regval & (~(AM35XX_CPGMACSS_SW_RST));
 	omap_ctrl_writel(regval, AM35XX_CONTROL_IP_SW_RESET);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
-
-	return ;
 }
 
 /*******************************************************
@@ -540,45 +558,7 @@ static void __init cm_t3517_init_nand(void)
 static inline void cm_t3517_init_nand(void) {}
 #endif
 
-/*******************************************************
- * i2c
- *******************************************************/
-#if 0
-static struct i2c_board_info __initdata cm_t3517_i2c1_boardinfo[] = {
-	{
-		I2C_BOARD_INFO("tlv320aic23", 0x1a),
-	},
-};
 
-static void __init cm_t3517_init_i2c(void)
-{
-	omap_register_i2c_bus(1, 400, cm_t3517_i2c1_boardinfo,
-			      ARRAY_SIZE(cm_t3517_i2c1_boardinfo));
-}
-
-
-/*******************************************************
- * misc
- *******************************************************/
-#define CM_T3517_WLAN_RST_GPIO		145
- 
-static void __init cm_t3517_init_wifi(void)
-{
-	int err;
-
-	err = gpio_request(CM_T3517_WLAN_RST_GPIO, "WLAN RST");
-	if (err) {
-		pr_err("CM-T3517: failed to request wlan rst gpio: %d\n", err);
-		return;
-	}
-
-	gpio_export(CM_T3517_WLAN_RST_GPIO, 1);
-	gpio_direction_output(CM_T3517_WLAN_RST_GPIO, 0);
-	msleep(10);
-	gpio_set_value(CM_T3517_WLAN_RST_GPIO, 1);
-	msleep(10);
-}
-#endif
 
 static struct omap_board_config_kernel cm_t3517_config[] __initdata = {
 };
@@ -639,6 +619,7 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_leds();
 	cm_t3517_init_nand();
 	cm_t3517_init_rtc();
+
 	/*Ethernet*/
 	cm_t3517_init_emac(&cm_t3517_emac_pdata);
 	/* SB-T35 Ethernet */
@@ -647,7 +628,6 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_usbh();
 	cm_t3517_init_hecc();
 	cm_t3517_mmc_init();
-//	cm_t3517_init_wifi();
 }
 
 MACHINE_START(CM_T3517, "Compulab CM-T3517")
