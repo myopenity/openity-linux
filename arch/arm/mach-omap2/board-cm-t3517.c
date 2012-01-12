@@ -375,6 +375,9 @@ static void __init cm_t3517_init_leds(void)
 static inline void cm_t3517_init_leds(void) {}
 #endif
 
+
+
+
 /****************************************************************************
  * HECC (High-End CAN Controller, for CAN-bus)
  ****************************************************************************/
@@ -509,6 +512,41 @@ static inline int cm_t3517_init_usbh(void)
 }
 #endif
 
+
+/****************************************************************************
+ * MUSB
+ ****************************************************************************/
+
+static struct omap_musb_board_data musb_board_data = {
+	.interface_type         = MUSB_INTERFACE_ULPI,
+	.mode                   = MUSB_OTG,
+	.power                  = 500,
+	.set_phy_power		= am35x_musb_phy_power,
+	.clear_irq		= am35x_musb_clear_irq,
+	.set_mode		= am35x_set_mode,
+	.reset			= am35x_musb_reset,
+};
+
+static __init void cm_t3517_init_musb(void)
+{
+	u32 devconf2;
+
+	/*
+	 * Set up USB clock/mode in the DEVCONF2 register.
+	 */
+	devconf2 = omap_ctrl_readl(AM35XX_CONTROL_DEVCONF2);
+
+	/* USB2.0 PHY reference clock is 13 MHz */
+	devconf2 &= ~(CONF2_REFFREQ | CONF2_OTGMODE | CONF2_PHY_GPIOMODE);
+	devconf2 |=  CONF2_REFFREQ_13MHZ | CONF2_SESENDEN | CONF2_VBDTCTEN
+			| CONF2_DATPOL;
+
+	omap_ctrl_writel(devconf2, AM35XX_CONTROL_DEVCONF2);
+
+	usb_musb_init(&musb_board_data);
+}
+
+
 /*******************************************************
  * MTD NAND
  *******************************************************/
@@ -594,9 +632,21 @@ static struct omap_board_mux board_mux[] __initdata = {
 	/* CM-T3517 USB HUB nRESET */
 	OMAP3_MUX(MCBSP4_CLKX, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 
-
-	/* WLAN nRESET */
-	OMAP3_MUX(UART2_RTS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
+	/* mUSB */
+/*	
+	OMAP3_MUX(HSUSB0_CLK, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_STP, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(HSUSB0_DIR, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_NXT, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA0, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA1, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA2, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA3, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA4, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA5, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA6, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(HSUSB0_DATA7, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+*/
 
 	/* McBSP 2 */
 	OMAP3_MUX(MCBSP2_FSX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
@@ -624,6 +674,9 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_emac(&cm_t3517_emac_pdata);
 	/* SB-T35 Ethernet */
 	cm_t3517_init_ethernet();
+
+	/* MUSB */
+	cm_t3517_init_musb();	
 
 	cm_t3517_init_usbh();
 	cm_t3517_init_hecc();
