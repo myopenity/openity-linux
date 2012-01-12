@@ -53,19 +53,96 @@
 #include <plat/nand.h>
 #include <plat/gpmc.h>
 
-//#include <mach/am35xx.h>  // redundant
 
 #include "mux.h"
 #include "control.h"
 #include "common-board-devices.h"
 #include "hsmmc.h"
+
+/*******************************************************
+ * SMSC911X Ethernet
+ *******************************************************/
+#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+#include <linux/smsc911x.h>
+
+#define SB_T35_SMSC911X_CS		(4)
+#define SB_T35_SMSC911X_IRQ_GPIO	(65)
+
+static struct smsc911x_platform_config sb_t3517_smsc911x_config = {
+	.irq_polarity	= SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+	.irq_type	= SMSC911X_IRQ_TYPE_OPEN_DRAIN,
+	.flags		= SMSC911X_USE_16BIT,
+	.phy_interface	= PHY_INTERFACE_MODE_MII,
+};
+
+// .flags		= SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+static struct resource sb_t3517_smsc911x_resources[] = {
+	{
+		.name	= "smsc911x-memory",
+		.flags	= IORESOURCE_MEM,
+	},
+	{
+		.start	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_IRQ_GPIO),
+		.end	= 0,
+		.flags	= IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL,
+	},
+};
+// .end	= OMAP_GPIO_IRQ(SB_T35_SMSC911X_IRQ_GPIO),
+static struct platform_device sb_t35_smsc911x_device = {
+	.name		= "smsc911x",
+	.id		= -1,
+	.num_resources	= ARRAY_SIZE(sb_t3517_smsc911x_resources),
+	.resource	= sb_t3517_smsc911x_resources,
+	.dev		= {
+		.platform_data = &sb_t3517_smsc911x_config,
+	},
+};
+
+static void __init cm_t3517_init_smsc911x(struct platform_device *dev,
+					  int cs, int irq_gpio)
+{
+	unsigned long cs_mem_base;
+
+	if (gpmc_cs_request(cs, SZ_16K, &cs_mem_base) < 0) {
+		printk(KERN_ERR "Failed request for GPMC mem for smsc911x\n");
+		return;
+	}
+
+	dev->resource[0].start = cs_mem_base + 0x0;
+	dev->resource[0].end   = cs_mem_base + SZ_16K; /* 0xFF; */
+
+	if ((gpio_request(irq_gpio, "SMSC911X IRQ") == 0) &&
+	    (gpio_direction_input(irq_gpio) == 0)) {
+		gpio_export(irq_gpio, 0);
+	} else {
+		printk(KERN_ERR "could not obtain gpio for SMSC911X IRQ\n");
+		return;
+	}
+
+	platform_device_register(dev);
+
+}
+
+static void __init cm_t3517_init_ethernet(void)
+{
+	cm_t3517_init_smsc911x(&sb_t35_smsc911x_device,
+			       SB_T35_SMSC911X_CS, SB_T35_SMSC911X_IRQ_GPIO);
+}
+#else
+static inline void __init cm_t3517_init_ethernet(void) { return; }
+#endif
+
+/*******************************************************
+ * DaVinci EMAC Ethernet
+ *******************************************************/
+
 #define AM35XX_EVM_MDIO_FREQUENCY	(1000000)
 
 static struct mdio_platform_data cm_t3517_mdio_pdata = {
 	.bus_freq	= AM35XX_EVM_MDIO_FREQUENCY,
 };
 
-static struct resource am3517_mdio_resources[] = {
+static struct resource cm_t3517_mdio_resources[] = {
 	{
 		.start  = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET,
 		.end    = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET +
@@ -74,11 +151,11 @@ static struct resource am3517_mdio_resources[] = {
 	},
 };
 
-static struct platform_device am3517_mdio_device = {
+static struct platform_device cm_t3517_mdio_device = {
 	.name		= "davinci_mdio",
 	.id		= 0,
-	.num_resources	= ARRAY_SIZE(am3517_mdio_resources),
-	.resource	= am3517_mdio_resources,
+	.num_resources	= ARRAY_SIZE(cm_t3517_mdio_resources),
+	.resource	= cm_t3517_mdio_resources,
 	.dev.platform_data = &cm_t3517_mdio_pdata,
 };
 
@@ -86,7 +163,7 @@ static struct emac_platform_data cm_t3517_emac_pdata = {
 	.rmii_en	= 1,
 };
 
-static struct resource am3517_emac_resources[] = {
+static struct resource cm_t3517_emac_resources[] = {
 	{
 		.start  = AM35XX_IPSS_EMAC_BASE,
 		.end    = AM35XX_IPSS_EMAC_BASE + 0x2FFFF,
@@ -114,54 +191,62 @@ static struct resource am3517_emac_resources[] = {
 	},
 };
 
-static struct platform_device am3517_emac_device = {
+static struct platform_device cm_t3517_emac_device = {
 	.name		= "davinci_emac",
 	.id		= -1,
-	.num_resources	= ARRAY_SIZE(am3517_emac_resources),
-	.resource	= am3517_emac_resources,
+	.num_resources	= ARRAY_SIZE(cm_t3517_emac_resources),
+	.resource	= cm_t3517_emac_resources,
 };
 
-static void am3517_enable_ethernet_int(void)
+static void cm_t3517_enable_ethernet_int(void)
 {
 	u32 regval;
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = (regval | AM35XX_CPGMAC_C0_RX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_TX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_MISC_PULSE_CLR |
-		AM35XX_CPGMAC_C0_RX_THRESH_CLR);
+		  AM35XX_CPGMAC_C0_TX_PULSE_CLR |
+		  AM35XX_CPGMAC_C0_MISC_PULSE_CLR |
+		  AM35XX_CPGMAC_C0_RX_THRESH_CLR);
 	omap_ctrl_writel(regval, AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 }
 
-static void am3517_disable_ethernet_int(void)
+static void cm_t3517_disable_ethernet_int(void)
 {
 	u32 regval;
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = (regval | AM35XX_CPGMAC_C0_RX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_TX_PULSE_CLR);
+		  AM35XX_CPGMAC_C0_TX_PULSE_CLR);
 	omap_ctrl_writel(regval, AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 }
 
-static void cm_t3517_ethernet_init(struct emac_platform_data *pdata)
+static void cm_t3517_init_emac(struct emac_platform_data *pdata)
 {
-	unsigned int regval;
+    u32 regval, mac_lo, mac_hi;
+	mac_lo = omap_ctrl_readl(AM35XX_CONTROL_FUSE_EMAC_LSB);
+	mac_hi = omap_ctrl_readl(AM35XX_CONTROL_FUSE_EMAC_MSB);
 
+	pdata->mac_addr[0] = (u_int8_t)((mac_hi & 0xFF0000) >> 16);
+	pdata->mac_addr[1] = (u_int8_t)((mac_hi & 0xFF00) >> 8);
+	pdata->mac_addr[2] = (u_int8_t)((mac_hi & 0xFF) >> 0);
+	pdata->mac_addr[3] = (u_int8_t)((mac_lo & 0xFF0000) >> 16);
+	pdata->mac_addr[4] = (u_int8_t)((mac_lo & 0xFF00) >> 8);
+	pdata->mac_addr[5] = (u_int8_t)((mac_lo & 0xFF) >> 0);
 	pdata->ctrl_reg_offset		= AM35XX_EMAC_CNTRL_OFFSET;
 	pdata->ctrl_mod_reg_offset	= AM35XX_EMAC_CNTRL_MOD_OFFSET;
 	pdata->ctrl_ram_offset		= AM35XX_EMAC_CNTRL_RAM_OFFSET;
 	pdata->ctrl_ram_size		= AM35XX_EMAC_CNTRL_RAM_SIZE;
 	pdata->version			= EMAC_VERSION_2;
 	pdata->hw_ram_addr		= AM35XX_EMAC_HW_RAM_ADDR;
-	pdata->interrupt_enable		= am3517_enable_ethernet_int;
-	pdata->interrupt_disable	= am3517_disable_ethernet_int;
-	am3517_emac_device.dev.platform_data	= pdata;
-	platform_device_register(&am3517_emac_device);
-	platform_device_register(&am3517_mdio_device);
-	clk_add_alias(NULL, dev_name(&am3517_mdio_device.dev),
-		      NULL, &am3517_emac_device.dev);
+	pdata->interrupt_enable		= cm_t3517_enable_ethernet_int;
+	pdata->interrupt_disable	= cm_t3517_disable_ethernet_int;
+	cm_t3517_emac_device.dev.platform_data	= pdata;
+	platform_device_register(&cm_t3517_emac_device);
+	platform_device_register(&cm_t3517_mdio_device);
+	clk_add_alias(NULL, dev_name(&cm_t3517_mdio_device.dev),
+		      NULL, &cm_t3517_emac_device.dev);
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
 	regval = regval & (~(AM35XX_CPGMACSS_SW_RST));
@@ -171,6 +256,9 @@ static void cm_t3517_ethernet_init(struct emac_platform_data *pdata)
 	return ;
 }
 
+/*******************************************************
+ * MMC0
+ *******************************************************/
 
 #if defined(CONFIG_MMC) || defined(CONFIG_MMC_MODULE)
 static struct regulator_consumer_supply cm_t3517_vmmc_supplies[] = {
@@ -234,6 +322,10 @@ static void __init cm_t3517_mmc_init(void) {}
 #endif
 
 
+/*******************************************************
+ * LEDS GPIO
+ *******************************************************/
+ 
 #if defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)
 static struct gpio_led cm_t3517_leds[] = {
 	[0] = {
@@ -264,6 +356,10 @@ static void __init cm_t3517_init_leds(void)
 #else
 static inline void cm_t3517_init_leds(void) {}
 #endif
+
+/****************************************************************************
+ * HECC (High-End CAN Controller, for CAN-bus)
+ ****************************************************************************/
 
 #if defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE)
 static struct resource cm_t3517_hecc_resources[] = {
@@ -306,6 +402,10 @@ static void cm_t3517_init_hecc(void)
 static inline void cm_t3517_init_hecc(void) {}
 #endif
 
+/*******************************************************
+ * RTC
+ *******************************************************/
+ 
 #if defined(CONFIG_RTC_DRV_V3020) || defined(CONFIG_RTC_DRV_V3020_MODULE)
 #define RTC_IO_GPIO		(153)
 #define RTC_WR_GPIO		(154)
@@ -346,6 +446,10 @@ static void __init cm_t3517_init_rtc(void)
 static inline void cm_t3517_init_rtc(void) {}
 #endif
 
+/*******************************************************
+ * USB EHCI
+ *******************************************************/
+ 
 #if defined(CONFIG_USB_EHCI_HCD) || defined(CONFIG_USB_EHCI_HCD_MODULE)
 #define HSUSB1_RESET_GPIO	(146)
 #define HSUSB2_RESET_GPIO	(147)
@@ -387,6 +491,10 @@ static inline int cm_t3517_init_usbh(void)
 }
 #endif
 
+/*******************************************************
+ * MTD NAND
+ *******************************************************/
+ 
 #if defined(CONFIG_MTD_NAND_OMAP2) || defined(CONFIG_MTD_NAND_OMAP2_MODULE)
 static struct mtd_partition cm_t3517_nand_partitions[] = {
 	{
@@ -432,14 +540,51 @@ static void __init cm_t3517_init_nand(void)
 static inline void cm_t3517_init_nand(void) {}
 #endif
 
+/*******************************************************
+ * i2c
+ *******************************************************/
+#if 0
+static struct i2c_board_info __initdata cm_t3517_i2c1_boardinfo[] = {
+	{
+		I2C_BOARD_INFO("tlv320aic23", 0x1a),
+	},
+};
+
+static void __init cm_t3517_init_i2c(void)
+{
+	omap_register_i2c_bus(1, 400, cm_t3517_i2c1_boardinfo,
+			      ARRAY_SIZE(cm_t3517_i2c1_boardinfo));
+}
+
+
+/*******************************************************
+ * misc
+ *******************************************************/
+#define CM_T3517_WLAN_RST_GPIO		145
+ 
+static void __init cm_t3517_init_wifi(void)
+{
+	int err;
+
+	err = gpio_request(CM_T3517_WLAN_RST_GPIO, "WLAN RST");
+	if (err) {
+		pr_err("CM-T3517: failed to request wlan rst gpio: %d\n", err);
+		return;
+	}
+
+	gpio_export(CM_T3517_WLAN_RST_GPIO, 1);
+	gpio_direction_output(CM_T3517_WLAN_RST_GPIO, 0);
+	msleep(10);
+	gpio_set_value(CM_T3517_WLAN_RST_GPIO, 1);
+	msleep(10);
+}
+#endif
+
 static struct omap_board_config_kernel cm_t3517_config[] __initdata = {
 };
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
-	/* GPIO186 - Green LED */
-	OMAP3_MUX(SYS_CLKOUT2, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
-
 	/* RTC GPIOs: */
 	/* IO - GPIO153 */
 	OMAP3_MUX(MCBSP4_DR, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
@@ -447,10 +592,20 @@ static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(MCBSP4_DX, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
 	/* RD# - GPIO53 */
 	OMAP3_MUX(GPMC_NCS2, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
+	/* CS# EN - GPIO160 */
+	OMAP3_MUX(MCBSP_CLKS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
 	/* CS# - GPIO163 */
 	OMAP3_MUX(UART3_CTS_RCTX, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
-	/* CS EN - GPIO160 */
-	OMAP3_MUX(MCBSP_CLKS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT),
+	
+	/* nCS, IRQ and nRESET for SB-T35 ethernet */
+	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE0),
+	OMAP3_MUX(GPMC_WAIT3, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),
+	OMAP3_MUX(UART3_RTS_SD, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+
+	/* GPIO186 - Green LED */
+	OMAP3_MUX(SYS_CLKOUT2, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+
+
 
 	/* HSUSB1 RESET */
 	OMAP3_MUX(UART2_TX, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
@@ -458,6 +613,17 @@ static struct omap_board_mux board_mux[] __initdata = {
 	OMAP3_MUX(UART2_RX, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 	/* CM-T3517 USB HUB nRESET */
 	OMAP3_MUX(MCBSP4_CLKX, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
+
+
+	/* WLAN nRESET */
+	OMAP3_MUX(UART2_RTS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
+
+	/* McBSP 2 */
+	OMAP3_MUX(MCBSP2_FSX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_CLKX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_DR, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_DX, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(GPMC_NBE1, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT),
 
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
@@ -474,10 +640,14 @@ static void __init cm_t3517_init(void)
 	cm_t3517_init_nand();
 	cm_t3517_init_rtc();
 	/*Ethernet*/
-	cm_t3517_ethernet_init(&cm_t3517_emac_pdata);
+	cm_t3517_init_emac(&cm_t3517_emac_pdata);
+	/* SB-T35 Ethernet */
+	cm_t3517_init_ethernet();
+
 	cm_t3517_init_usbh();
 	cm_t3517_init_hecc();
 	cm_t3517_mmc_init();
+//	cm_t3517_init_wifi();
 }
 
 MACHINE_START(CM_T3517, "Compulab CM-T3517")
