@@ -50,6 +50,10 @@
 #include "control.h"
 #include "hsmmc.h"
 
+/* custom settings */
+#define USE_ALT__SMSC	0
+#define USE_ALT__EMAC	0
+
 
 /****************************************************************************
  *
@@ -177,7 +181,6 @@ static struct omap_nand_platform_data tam3517_nand_data = {
         .cs = GPMC_CS_NUM+1,
         .parts = tam3517_nand_partitions,
         .nr_parts = ARRAY_SIZE(tam3517_nand_partitions),
-
         .xfer_type = NAND_OMAP_PREFETCH_DMA,
         .ecc_opt = OMAP_ECC_HAMMING_CODE_DEFAULT,
         .devsize = NAND_BUSWIDTH_16,
@@ -232,17 +235,16 @@ static struct omap2_hsmmc_info mmc[] = {
  *
  ****************************************************************************/
 
-#if (defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE))
+#if 0 // (defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE))
 
 #include <linux/smsc911x.h>
+#include <plat/gpmc-smsc911x.h>
 
 #define SMSC911X_GPIO_IRQ 153
 #define SMSC911X_GPIO_RESET 142
 #define SMSC911X_GPIO_CS 5
 
-#if 0 // TRY 3.2 OMAP-style
-
-#include <plat/gpmc-smsc911x.h>
+#if USE_ALT__SMSC // TRY 3.2 OMAP-style?
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.cs             = SMSC911X_GPIO_CS,
@@ -265,17 +267,17 @@ static struct resource tam3517_smsc911x_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-                .start  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
-                .end    = 0,
+//        .start  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
+//        .end    = 0,
 		.flags	=  (IORESOURCE_IRQ | IRQF_TRIGGER_LOW),
 	},
 };
 
 static struct smsc911x_platform_config smsc911x_config = {
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
-        .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-        .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-        .flags          = SMSC911X_USE_16BIT,
+    .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+    .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
+    .flags          = SMSC911X_USE_16BIT,
 };
 
 static struct platform_device tam3517_smsc911x_device = {
@@ -292,15 +294,15 @@ static inline void __init tam3517_init_smsc911x(void)
 {
 	unsigned long cs_mem_base;
 
-	if (gpmc_cs_request(SMSC911X_GPIO_CS, SZ_16K, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(SMSC911X_GPIO_CS, SZ_16M, &cs_mem_base) < 0) {
 		printk(KERN_ERR "Failed request for GPMC mem for smsc911x\n");
 		return;
 	}
 
 	tam3517_smsc911x_resources[0].start = cs_mem_base + 0x0;
-	tam3517_smsc911x_resources[0].end   = cs_mem_base + SZ_16K; /* 0xFF; */
+	tam3517_smsc911x_resources[0].end   = cs_mem_base + 0xFF;
 
-	if ((gpio_request(SMSC911X_GPIO_IRQ, "SMSC911X IRQ") == 0) &&
+	if ((gpio_request(SMSC911X_GPIO_IRQ, "smsc911x irq") == 0) &&
 	    (gpio_direction_input(SMSC911X_GPIO_IRQ) == 0)) {
 		gpio_export(SMSC911X_GPIO_IRQ, 0);
 	} else {
@@ -326,7 +328,7 @@ static inline void __init tam3517_init_smsc911x(void)
 
 }
 
-#endif // OMAP-style vs AM-style
+#endif // USE_ALT__SMSC
 
 #else
 static inline void __init tam3517_init_smsc911x(void) { return; }
@@ -340,6 +342,14 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
 
 #include <linux/davinci_emac.h>
 
+#define AM35XX_EVM_MDIO_FREQUENCY	(1000000)
+
+#if USE_ALT__EMAC // Use new standalone EMAC code for generic AM35xx?
+
+#include "am35xx-emac.h"
+
+#else // Use original Davinci EMAC code
+
 static struct resource tam3517_mdio_resources[] = {
 	{
 		.start  = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET,
@@ -351,7 +361,7 @@ static struct resource tam3517_mdio_resources[] = {
 
 
 static struct mdio_platform_data tam3517_mdio_pdata = {
-	.bus_freq	= 1000000,
+	.bus_freq	= AM35XX_EVM_MDIO_FREQUENCY,
 };
 
 static struct platform_device tam3517_mdio_device = {
@@ -457,6 +467,8 @@ static void tam3517_emac_ethernet_init(void) {
 
 	return ;
 }
+
+#endif  // USE_ALT__EMAC
 
 /****************************************************************************
  *
@@ -589,7 +601,7 @@ static struct regulator_init_data tam3517_regulators[] = {
  *
  ****************************************************************************/
 
-#if defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE)
+#if 0 // defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE)
 /*
  * HECC information
  */
@@ -751,7 +763,7 @@ static __init void tam3517_usb_init(void) {
  *
  ****************************************************************************/
 
-#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#if 0 // defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 #include <linux/gpio_keys.h>
 
 static struct gpio_keys_button tam3517_gpio_buttons[] = { 
@@ -825,19 +837,18 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 /* --------------------------------------------------------- */
 
 static struct platform_device *tam3517_devices[] __initdata = {
-#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+#if 0 // defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
 	&tam3517_smsc911x_device,
 #endif
-#if defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE)
+#if 0 // defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE)
 	&tam3517_hecc_device,
 #endif
 	&tam3517_dss_device,
+#if !(USE_ALT__EMAC)
     &tam3517_mdio_device,
 	&tam3517_emac_device,
-#if defined(CONFIG_SERIAL_8520_XR16L2751)
-	&tam3517_xr16l2751_device,
 #endif
-#if defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
+#if 0 // defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE)
 	&tam3517_keys_gpio,
 #endif
 };
@@ -857,8 +868,16 @@ static void __init tam3517_init(void) {
         
 	tam3517_usb_init();        
 	tam3517_nand_init();
-	tam3517_init_smsc911x();
+
+	/*Ethernet:  SMSC911x */
+//	tam3517_init_smsc911x();
+
+	/*Ethernet:  DaVinci EMAC */
+#if USE_ALT__EMAC
+	am35xx_ethernet_init(AM35XX_EVM_MDIO_FREQUENCY, 1);
+#else
 	tam3517_emac_ethernet_init();
+#endif // USE_ALT__EMAC
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")

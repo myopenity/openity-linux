@@ -116,7 +116,7 @@ void __init omap3xxx_voltagedomains_init(void)
 		omap3_voltdm_core.volt_data = omap34xx_vddcore_volt_data;
 	}
 
-	if (cpu_is_omap3517() || cpu_is_omap3505())
+	if (cpu_is_am35xx())
 		voltdms = voltagedomains_am35xx;
 	else
 		voltdms = voltagedomains_omap3;
