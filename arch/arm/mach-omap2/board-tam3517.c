@@ -54,7 +54,7 @@
 #define USE_ALT__SMSC	0
 #define USE_ALT__EMAC	0
 
-#define ENABLE_SMSC	1
+#define ENABLE_SMSC	0 // this messes with the EMAC right now
 
 /****************************************************************************
  *
