@@ -422,6 +422,7 @@ static void usbhs_omap_tll_init(struct device *dev, u8 tll_channel_count)
 	}
 }
 
+#ifdef CONFIG_PM_RUNTIME
 static int usbhs_runtime_resume(struct device *dev)
 {
 	struct usbhs_hcd_omap		*omap = dev_get_drvdata(dev);
@@ -489,6 +490,7 @@ static int usbhs_runtime_suspend(struct device *dev)
 
 	return 0;
 }
+#endif
 
 static void omap_usbhs_init(struct device *dev)
 {
@@ -887,8 +889,8 @@ static int __devexit usbhs_omap_remove(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops usbhsomap_dev_pm_ops = {
-	.runtime_suspend	= usbhs_runtime_suspend,
-	.runtime_resume		= usbhs_runtime_resume,
+	SET_RUNTIME_PM_OPS(usbhs_runtime_suspend,
+				usbhs_runtime_resume, NULL)
 };
 
 static struct platform_driver usbhs_omap_driver = {

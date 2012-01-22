@@ -245,9 +245,10 @@ static struct omap2_hsmmc_info mmc[] = {
 #define SMSC911X_GPIO_RESET 142
 #define SMSC911X_GPIO_CS 5
 
-#if USE_ALT__SMSC // TRY 3.2 OMAP-style?
+#if USE_ALT__SMSC // TRY OMAP-style (like Overo and others)?
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
+	.id		= 0,
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
@@ -269,7 +270,7 @@ static struct resource tam3517_smsc911x_resources[] = {
 	},
 	{
 		.start  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
-		.end    = 0,
+		.end    = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
 		.flags	=  (IORESOURCE_IRQ | IRQF_TRIGGER_LOW),
 	},
 };
@@ -278,7 +279,7 @@ static struct smsc911x_platform_config smsc911x_config = {
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
     .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
     .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-    .flags          = SMSC911X_USE_16BIT,
+    .flags          = SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static struct platform_device tam3517_smsc911x_device = {
@@ -291,17 +292,17 @@ static struct platform_device tam3517_smsc911x_device = {
 	},
 };
 
-static inline void __init tam3517_init_smsc911x(void)
+static void __init tam3517_init_smsc911x(void)
 {
 	unsigned long cs_mem_base;
 
-	if (gpmc_cs_request(SMSC911X_GPIO_CS, SZ_16K, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(SMSC911X_GPIO_CS, SZ_16M, &cs_mem_base) < 0) {
 		printk(KERN_ERR "Failed request for GPMC mem for smsc911x\n");
 		return;
 	}
 
 	tam3517_smsc911x_resources[0].start = cs_mem_base + 0x0;
-	tam3517_smsc911x_resources[0].end   = cs_mem_base + SZ_16K; /* 0xFF; */
+	tam3517_smsc911x_resources[0].end   = cs_mem_base + 0xFF;
 
 	if ((gpio_request(SMSC911X_GPIO_IRQ, "smsc911x irq") == 0) &&
 	    (gpio_direction_input(SMSC911X_GPIO_IRQ) == 0)) {
@@ -311,21 +312,23 @@ static inline void __init tam3517_init_smsc911x(void)
 		return;
 	}
 
-	omap_mux_init_gpio(SMSC911X_GPIO_IRQ, OMAP_PIN_INPUT_PULLUP|OMAP_MUX_MODE4);
-        gpio_direction_input(SMSC911X_GPIO_IRQ);
+	omap_mux_init_gpio(SMSC911X_GPIO_IRQ, OMAP_PIN_INPUT_PULLUP | OMAP_MUX_MODE4);
+	gpio_direction_input(SMSC911X_GPIO_IRQ);
 
+	// next 2 lines redundant?
 	tam3517_smsc911x_resources[1].start = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
 	tam3517_smsc911x_resources[1].end  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
 	omap_mux_init_gpio(SMSC911X_GPIO_RESET, OMAP_PIN_INPUT_PULLUP|OMAP_MUX_MODE4);
 
-	if (gpio_request(SMSC911X_GPIO_RESET, "smsc911x reset") < 0){
-                printk(KERN_ERR "can't get smsc911x reset GPIO\n");
-                return;
-        }
-
-        gpio_direction_output(SMSC911X_GPIO_RESET, 0);
-        mdelay(1);
-        gpio_direction_output(SMSC911X_GPIO_RESET, 1);
+	if (gpio_request(SMSC911X_GPIO_RESET, "smsc911x reset") < 0)
+	{
+		printk(KERN_ERR "can't get smsc911x reset GPIO\n");
+		return;
+	}
+	
+	gpio_direction_output(SMSC911X_GPIO_RESET, 0);
+	mdelay(1);
+	gpio_direction_output(SMSC911X_GPIO_RESET, 1);
 
 }
 
@@ -359,7 +362,6 @@ static struct resource tam3517_mdio_resources[] = {
 		.flags  = IORESOURCE_MEM,
 	},
 };
-
 
 static struct mdio_platform_data tam3517_mdio_pdata = {
 	.bus_freq	= AM35XX_EVM_MDIO_FREQUENCY,
@@ -454,7 +456,7 @@ static void tam3517_emac_ethernet_init(void) {
 	tam3517_emac_pdata.interrupt_enable		= tam3517_enable_emac_int;
 	tam3517_emac_pdata.interrupt_disable		= tam3517_disable_emac_int;
 	tam3517_emac_device.dev.platform_data		= &tam3517_emac_pdata;
-/* these kill off the emac...
+/* taken care of with platform_add_devices() below
 	platform_device_register(&tam3517_emac_device);
 	platform_device_register(&tam3517_mdio_device);
 */
@@ -465,8 +467,6 @@ static void tam3517_emac_ethernet_init(void) {
 	regval = regval & (~(AM35XX_CPGMACSS_SW_RST));
 	omap_ctrl_writel(regval, AM35XX_CONTROL_IP_SW_RESET);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
-
-	return ;
 }
 
 #endif  // USE_ALT__EMAC
@@ -832,11 +832,12 @@ struct platform_device tam3517_keys_gpio = {
         },
 };
 #endif
-static struct omap_board_config_kernel tam3517_config[] = {};
-
 
 /* --------------------------------------------------------- */
 
+static struct omap_board_config_kernel tam3517_config[] = {};
+
+/* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
 #if ENABLE_SMSC && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) ) && !(USE_ALT__SMSC)
 	&tam3517_smsc911x_device,
@@ -846,7 +847,7 @@ static struct platform_device *tam3517_devices[] __initdata = {
 #endif
 	&tam3517_dss_device,
 #if !(USE_ALT__EMAC)
-    	&tam3517_mdio_device,
+	&tam3517_mdio_device,
 	&tam3517_emac_device,
 #endif
 #if 0 && ( defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE) )
@@ -858,14 +859,13 @@ static struct platform_device *tam3517_devices[] __initdata = {
 
 static void __init tam3517_init(void) {
 	platform_add_devices(tam3517_devices, ARRAY_SIZE(tam3517_devices));
-	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBC);
-	omap_serial_init();
 	omap_board_config = tam3517_config;
 	omap_board_config_size = ARRAY_SIZE(tam3517_config);
-
+	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBC);
+	omap_serial_init();
 	tam3517_i2c_init();
         
-	omap2_hsmmc_init(mmc);        
+	omap2_hsmmc_init(mmc);
         
 	tam3517_usb_init();        
 	tam3517_nand_init();
@@ -885,7 +885,7 @@ static void __init tam3517_init(void) {
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
 	.atag_offset	= 0x100,
-	.reserve        = omap_reserve,
+	.reserve	= omap_reserve,
 	.map_io		= omap3_map_io,
 	.init_early	= am35xx_init_early,
 	.init_irq	= omap3_init_irq,
