@@ -493,7 +493,7 @@ static struct regulator_consumer_supply tam3517_vdcdc2_supplies[] = {
 	REGULATOR_SUPPLY("vdds_dsi", "omapdss_dsi1"),
 };
 
-/* VDCDC2 |-> VDDS
+/* VDCDC3 |-> VDDS
 	   |-> VDDS_SRAM_CORE_BG
 	   |-> VDDS_SRAM_MPU */
 static struct regulator_consumer_supply tam3517_vdcdc3_supplies[] = {
@@ -558,8 +558,8 @@ static struct regulator_init_data tam3517_regulators[] = {
 	/* DCDC3 */
 	{
 		.constraints = {
-			.min_uV = 3300000,
-			.max_uV = 3300000,
+			.min_uV = 1800000,
+			.max_uV = 1800000,
 			.valid_modes_mask = REGULATOR_MODE_NORMAL,
 			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 			.always_on = true,
