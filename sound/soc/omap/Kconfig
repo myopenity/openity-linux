@@ -3,7 +3,7 @@ config SND_OMAP_SOC
 	depends on ARCH_OMAP
 
 config SND_OMAP_SOC_MCBSP
-	tristate
+	tristate "SoC MCBSP Audio driver"
 	select OMAP_MCBSP
 
 config SND_OMAP_SOC_MCPDM
