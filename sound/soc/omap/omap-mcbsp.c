@@ -392,6 +392,18 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	mcbsp_data->wlen = wlen;
 	mcbsp_data->configured = 1;
 
+/** KILL THIS LATER!!! **/
+printk(KERN_INFO "omap_mcbsp_dai_HW_PARAMS()");
+printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
+printk(KERN_INFO " - regs->xcr2 = 0x%08x", regs->xcr2);
+printk(KERN_INFO " - regs->rcr1 = 0x%08x", regs->rcr1);
+printk(KERN_INFO " - regs->xcr1 = 0x%08x", regs->xcr1);
+printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
+printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
+printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
+printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+/** KILL THIS LATER!!! **/
+	
 	return 0;
 }
 
@@ -498,6 +510,18 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	if (inv_fs == true)
 		regs->pcr0 ^= FSXP | FSRP;
 
+/** KILL THIS LATER!!! **/
+printk(KERN_INFO "omap_mcbsp_dai_SET_DAI_FMT()");
+printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
+printk(KERN_INFO " - regs->xcr2 = 0x%08x", regs->xcr2);
+printk(KERN_INFO " - regs->rcr1 = 0x%08x", regs->rcr1);
+printk(KERN_INFO " - regs->xcr1 = 0x%08x", regs->xcr1);
+printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
+printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
+printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
+printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+/** KILL THIS LATER!!! **/
+	
 	return 0;
 }
 
@@ -513,6 +537,18 @@ static int omap_mcbsp_dai_set_clkdiv(struct snd_soc_dai *cpu_dai,
 	mcbsp_data->clk_div = div;
 	regs->srgr1	&= ~CLKGDV(0xff);
 	regs->srgr1	|= CLKGDV(div - 1);
+	
+/** KILL THIS LATER!!! **/
+printk(KERN_INFO "omap_mcbsp_dai_SET_CLKDIV()");
+printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
+printk(KERN_INFO " - regs->xcr2 = 0x%08x", regs->xcr2);
+printk(KERN_INFO " - regs->rcr1 = 0x%08x", regs->rcr1);
+printk(KERN_INFO " - regs->xcr1 = 0x%08x", regs->xcr1);
+printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
+printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
+printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
+printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+/** KILL THIS LATER!!! **/
 
 	return 0;
 }
