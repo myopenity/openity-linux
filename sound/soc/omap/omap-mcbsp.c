@@ -255,7 +255,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 		return -EINVAL;
 	}
 	
-	// setup 16-bit data format
+	/* setup 16-bit data format */
 	dma_data->data_type = OMAP_DMA_DATA_TYPE_S16;
 	wlen = 16;
 
@@ -319,34 +319,35 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	regs->rcr2	&= ~(RPHASE | RFRLEN2(0x7f) | RWDLEN2(7));
-	regs->xcr2	&= ~(RPHASE | XFRLEN2(0x7f) | XWDLEN2(7));
+	regs->xcr2	&= ~(XPHASE | XFRLEN2(0x7f) | XWDLEN2(7));
 	regs->rcr1	&= ~(RFRLEN1(0x7f) | RWDLEN1(7));
 	regs->xcr1	&= ~(XFRLEN1(0x7f) | XWDLEN1(7));
 
-	/* Use dual-phase frames always*/
-	regs->rcr2	|= RPHASE;
-	regs->xcr2	|= XPHASE;
+	/* leave as single-phase frames */
 
-	/* Set 1 word per (McBSP) frame for phase1 and phase2 */
-	regs->rcr2	|= RFRLEN2(0);
-	regs->xcr2	|= XFRLEN2(0);
-
+	/* set 1 words/frame [0+1 = 1 in this case] */
+	regs->rcr2	|= RFRLEN2(0);  /* don't care in single-phase */
+	regs->xcr2	|= XFRLEN2(0);  /* don't care in single-phase */
 	regs->rcr1	|= RFRLEN1(0);
 	regs->xcr1	|= XFRLEN1(0);
 
-	/* Set word lengths */
+	/* Set word lengths (16-bit) */
 	regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_16);
 	regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_16);
 	regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_16);
 	regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_16);
 
-	/* MC55 framesize is fixed at 32 bits (2nd phase is "don't care") */
+	/* MC55 framesize is fixed at 32 bits, force it. (last 16-bits = "don't care") */
 	framesize = wlen * 2;
 
 	/* Set FS period and length in terms of bit clock periods */
 	regs->srgr2	&= ~FPER(0xfff);
 	regs->srgr1	&= ~FWID(0xff);
+	
+	/* set frame period (FPER) to 32 bits [31+1 = 32] */
 	regs->srgr2	|= FPER(framesize - 1);
+	
+	/* set frame width (FWID) to 16 bits [15+1 = 16] */
 	regs->srgr1	|= FWID((framesize >> 1) - 1);
 
 	omap_mcbsp_config(bus_id, &mcbsp_data->regs);
@@ -363,6 +364,8 @@ printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
 printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
 printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
 printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+printk(KERN_INFO " - regs->xccr = 0x%08x", regs->xccr);
+printk(KERN_INFO " - regs->rccr = 0x%08x", regs->rccr);
 /** KILL THIS LATER!!! **/
 	
 	return 0;
@@ -396,6 +399,10 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		regs->xccr = DXENDLY(1) | XDMAEN | XDISABLE;
 		regs->rccr = RFULL_CYCLE | RDMAEN | RDISABLE;
 	}
+
+	/* set digital loop back to tie CLKR_int to CLKX_int */
+	// NOT SURE ABOUT THIS ONE!
+	//regs->xccr |= DLB;
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_LEFT_J:
@@ -452,6 +459,7 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	if (inv_fs == true)
 		regs->pcr0 ^= FSXP | FSRP;
 
+#if 0
 /** KILL THIS LATER!!! **/
 printk(KERN_INFO "omap_mcbsp_dai_SET_DAI_FMT()");
 printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
@@ -462,8 +470,10 @@ printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
 printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
 printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
 printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+printk(KERN_INFO " - regs->xccr = 0x%08x", regs->xccr);
+printk(KERN_INFO " - regs->rccr = 0x%08x", regs->rccr);
 /** KILL THIS LATER!!! **/
-	
+#endif
 	return 0;
 }
 
@@ -480,6 +490,7 @@ static int omap_mcbsp_dai_set_clkdiv(struct snd_soc_dai *cpu_dai,
 	regs->srgr1	&= ~CLKGDV(0xff);
 	regs->srgr1	|= CLKGDV(div - 1);
 	
+#if 0
 /** KILL THIS LATER!!! **/
 printk(KERN_INFO "omap_mcbsp_dai_SET_CLKDIV()");
 printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
@@ -490,8 +501,10 @@ printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
 printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
 printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
 printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+printk(KERN_INFO " - regs->xccr = 0x%08x", regs->xccr);
+printk(KERN_INFO " - regs->rccr = 0x%08x", regs->rccr);
 /** KILL THIS LATER!!! **/
-
+#endif
 	return 0;
 }
 
@@ -574,6 +587,7 @@ static int omap_mcbsp_dai_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		err = -ENODEV;
 	}
 
+#if 0
 /** KILL THIS LATER!!! **/
 printk(KERN_INFO "omap_mcbsp_dai_SET_DAI_SYSCLK()");
 printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
@@ -584,8 +598,10 @@ printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
 printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
 printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
 printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+printk(KERN_INFO " - regs->xccr = 0x%08x", regs->xccr);
+printk(KERN_INFO " - regs->rccr = 0x%08x", regs->rccr);
 /** KILL THIS LATER!!! **/
-	
+#endif
 	return err;
 }
 
