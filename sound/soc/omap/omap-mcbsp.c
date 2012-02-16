@@ -1,6 +1,8 @@
 /*
- * omap-mcbsp.c  --  OMAP ALSA SoC DAI driver using McBSP port
+ * smartcell-omap-mcbsp.c  --  OMAP ALSA SoC DAI driver using McBSP port
+ *		SMARTCELL VERSION
  *
+ * BASED HEAVILY ON:
  * Copyright (C) 2008 Nokia Corporation
  *
  * Contact: Jarkko Nikula <jarkko.nikula@bitmer.com>
@@ -36,15 +38,7 @@
 #include "omap-mcbsp.h"
 #include "omap-pcm.h"
 
-#define OMAP_MCBSP_RATES	(SNDRV_PCM_RATE_8000_96000)
-
-#define OMAP_MCBSP_SOC_SINGLE_S16_EXT(xname, xmin, xmax, \
-	xhandler_get, xhandler_put) \
-{	.iface = SNDRV_CTL_ELEM_IFACE_MIXER, .name = xname, \
-	.info = omap_mcbsp_st_info_volsw, \
-	.get = xhandler_get, .put = xhandler_put, \
-	.private_value = (unsigned long) &(struct soc_mixer_control) \
-	{.min = xmin, .max = xmax} }
+#define OMAP_MCBSP_RATES	(SNDRV_PCM_RATE_8000)
 
 struct omap_mcbsp_data {
 	unsigned int			bus_id;
@@ -236,28 +230,35 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	struct omap_mcbsp_reg_cfg *regs = &mcbsp_data->regs;
 	struct omap_pcm_dma_data *dma_data;
 	int dma, bus_id = mcbsp_data->bus_id;
-	int wlen, channels, wpf, sync_mode = OMAP_DMA_SYNC_ELEMENT;
+	int wlen, channels, sync_mode = OMAP_DMA_SYNC_ELEMENT;
 	int pkt_size = 0;
 	unsigned long port;
-	unsigned int format, div, framesize, master;
+	unsigned int format, framesize;
 
 	dma_data = &omap_mcbsp_dai_dma_params[cpu_dai->id][substream->stream];
 
 	dma = omap_mcbsp_dma_ch_params(bus_id, substream->stream);
 	port = omap_mcbsp_dma_reg_params(bus_id, substream->stream);
 
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		dma_data->data_type = OMAP_DMA_DATA_TYPE_S16;
-		wlen = 16;
-		break;
-	case SNDRV_PCM_FORMAT_S32_LE:
-		dma_data->data_type = OMAP_DMA_DATA_TYPE_S32;
-		wlen = 32;
-		break;
-	default:
+	/*** set this up for the _ONLY_ mode the Cinterion MC55 can do ***/
+
+	format = mcbsp_data->fmt & SND_SOC_DAIFMT_FORMAT_MASK;
+	channels = params_channels(params);
+
+	if ( !( (channels == 1) && 
+			(format == SND_SOC_DAIFMT_LEFT_J) &&
+			(params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
+	      )
+		)
+	{
+		printk(KERN_INFO "requested mode not supported");
 		return -EINVAL;
 	}
+	
+	// setup 16-bit data format
+	dma_data->data_type = OMAP_DMA_DATA_TYPE_S16;
+	wlen = 16;
+
 	if (cpu_is_omap34xx()) {
 		dma_data->set_threshold = omap_mcbsp_set_threshold;
 		/* TODO: Currently, MODE_ELEMENT == MODE_FRAME */
@@ -321,72 +322,32 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	regs->xcr2	&= ~(RPHASE | XFRLEN2(0x7f) | XWDLEN2(7));
 	regs->rcr1	&= ~(RFRLEN1(0x7f) | RWDLEN1(7));
 	regs->xcr1	&= ~(XFRLEN1(0x7f) | XWDLEN1(7));
-	format = mcbsp_data->fmt & SND_SOC_DAIFMT_FORMAT_MASK;
-	wpf = channels = params_channels(params);
-	if (channels == 2 && (format == SND_SOC_DAIFMT_I2S ||
-			      format == SND_SOC_DAIFMT_LEFT_J)) {
-		/* Use dual-phase frames */
-		regs->rcr2	|= RPHASE;
-		regs->xcr2	|= XPHASE;
-		/* Set 1 word per (McBSP) frame for phase1 and phase2 */
-		wpf--;
-		regs->rcr2	|= RFRLEN2(wpf - 1);
-		regs->xcr2	|= XFRLEN2(wpf - 1);
-	}
 
-	regs->rcr1	|= RFRLEN1(wpf - 1);
-	regs->xcr1	|= XFRLEN1(wpf - 1);
+	/* Use dual-phase frames always*/
+	regs->rcr2	|= RPHASE;
+	regs->xcr2	|= XPHASE;
 
-	switch (params_format(params)) {
-	case SNDRV_PCM_FORMAT_S16_LE:
-		/* Set word lengths */
-		regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_16);
-		regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_16);
-		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_16);
-		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_16);
-		break;
-	case SNDRV_PCM_FORMAT_S32_LE:
-		/* Set word lengths */
-		regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_32);
-		regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_32);
-		regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_32);
-		regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_32);
-		break;
-	default:
-		/* Unsupported PCM format */
-		return -EINVAL;
-	}
+	/* Set 1 word per (McBSP) frame for phase1 and phase2 */
+	regs->rcr2	|= RFRLEN2(0);
+	regs->xcr2	|= XFRLEN2(0);
 
-	/* In McBSP master modes, FRAME (i.e. sample rate) is generated
-	 * by _counting_ BCLKs. Calculate frame size in BCLKs */
-	master = mcbsp_data->fmt & SND_SOC_DAIFMT_MASTER_MASK;
-	if (master ==	SND_SOC_DAIFMT_CBS_CFS) {
-		div = mcbsp_data->clk_div ? mcbsp_data->clk_div : 1;
-		framesize = (mcbsp_data->in_freq / div) / params_rate(params);
+	regs->rcr1	|= RFRLEN1(0);
+	regs->xcr1	|= XFRLEN1(0);
 
-		if (framesize < wlen * channels) {
-			printk(KERN_ERR "%s: not enough bandwidth for desired rate and "
-					"channels\n", __func__);
-			return -EINVAL;
-		}
-	} else
-		framesize = wlen * channels;
+	/* Set word lengths */
+	regs->rcr2	|= RWDLEN2(OMAP_MCBSP_WORD_16);
+	regs->rcr1	|= RWDLEN1(OMAP_MCBSP_WORD_16);
+	regs->xcr2	|= XWDLEN2(OMAP_MCBSP_WORD_16);
+	regs->xcr1	|= XWDLEN1(OMAP_MCBSP_WORD_16);
+
+	/* MC55 framesize is fixed at 32 bits (2nd phase is "don't care") */
+	framesize = wlen * 2;
 
 	/* Set FS period and length in terms of bit clock periods */
 	regs->srgr2	&= ~FPER(0xfff);
 	regs->srgr1	&= ~FWID(0xff);
-	switch (format) {
-	case SND_SOC_DAIFMT_I2S:
-	case SND_SOC_DAIFMT_LEFT_J:
-		regs->srgr2	|= FPER(framesize - 1);
-		regs->srgr1	|= FWID((framesize >> 1) - 1);
-		break;
-	case SND_SOC_DAIFMT_DSP_A:
-	case SND_SOC_DAIFMT_DSP_B:
-		regs->srgr2	|= FPER(framesize - 1);
-		regs->srgr1	|= FWID(0);
-		break;
-	}
+	regs->srgr2	|= FPER(framesize - 1);
+	regs->srgr1	|= FWID((framesize >> 1) - 1);
 
 	omap_mcbsp_config(bus_id, &mcbsp_data->regs);
 	mcbsp_data->wlen = wlen;
@@ -437,30 +398,11 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 	}
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
-	case SND_SOC_DAIFMT_I2S:
-		/* 1-bit data delay */
-		regs->rcr2	|= RDATDLY(1);
-		regs->xcr2	|= XDATDLY(1);
-		break;
 	case SND_SOC_DAIFMT_LEFT_J:
 		/* 0-bit data delay */
 		regs->rcr2	|= RDATDLY(0);
 		regs->xcr2	|= XDATDLY(0);
 		regs->spcr1	|= RJUST(2);
-		/* Invert FS polarity configuration */
-		inv_fs = true;
-		break;
-	case SND_SOC_DAIFMT_DSP_A:
-		/* 1-bit data delay */
-		regs->rcr2      |= RDATDLY(1);
-		regs->xcr2      |= XDATDLY(1);
-		/* Invert FS polarity configuration */
-		inv_fs = true;
-		break;
-	case SND_SOC_DAIFMT_DSP_B:
-		/* 0-bit data delay */
-		regs->rcr2      |= RDATDLY(0);
-		regs->xcr2      |= XDATDLY(0);
 		/* Invert FS polarity configuration */
 		inv_fs = true;
 		break;
@@ -632,6 +574,18 @@ static int omap_mcbsp_dai_set_dai_sysclk(struct snd_soc_dai *cpu_dai,
 		err = -ENODEV;
 	}
 
+/** KILL THIS LATER!!! **/
+printk(KERN_INFO "omap_mcbsp_dai_SET_DAI_SYSCLK()");
+printk(KERN_INFO " - regs->rcr2 = 0x%08x", regs->rcr2);
+printk(KERN_INFO " - regs->xcr2 = 0x%08x", regs->xcr2);
+printk(KERN_INFO " - regs->rcr1 = 0x%08x", regs->rcr1);
+printk(KERN_INFO " - regs->xcr1 = 0x%08x", regs->xcr1);
+printk(KERN_INFO " - regs->srgr2 = 0x%08x", regs->srgr2);
+printk(KERN_INFO " - regs->srgr1 = 0x%08x", regs->srgr1);
+printk(KERN_INFO " - regs->spcr1 = 0x%08x", regs->spcr1);
+printk(KERN_INFO " - regs->pcr0 = 0x%08x", regs->pcr0);
+/** KILL THIS LATER!!! **/
+	
 	return err;
 }
 
@@ -657,148 +611,20 @@ static struct snd_soc_dai_driver omap_mcbsp_dai = {
 	.probe = mcbsp_dai_probe,
 	.playback = {
 		.channels_min = 1,
-		.channels_max = 16,
+		.channels_max = 1,
 		.rates = OMAP_MCBSP_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.capture = {
 		.channels_min = 1,
-		.channels_max = 16,
+		.channels_max = 1,
 		.rates = OMAP_MCBSP_RATES,
-		.formats = SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S32_LE,
+		.formats = SNDRV_PCM_FMTBIT_S16_LE,
 	},
 	.ops = &mcbsp_dai_ops,
 };
 
-static int omap_mcbsp_st_info_volsw(struct snd_kcontrol *kcontrol,
-			struct snd_ctl_elem_info *uinfo)
-{
-	struct soc_mixer_control *mc =
-		(struct soc_mixer_control *)kcontrol->private_value;
-	int max = mc->max;
-	int min = mc->min;
-
-	uinfo->type = SNDRV_CTL_ELEM_TYPE_INTEGER;
-	uinfo->count = 1;
-	uinfo->value.integer.min = min;
-	uinfo->value.integer.max = max;
-	return 0;
-}
-
-#define OMAP_MCBSP_ST_SET_CHANNEL_VOLUME(id, channel)			\
-static int								\
-omap_mcbsp##id##_set_st_ch##channel##_volume(struct snd_kcontrol *kc,	\
-					struct snd_ctl_elem_value *uc)	\
-{									\
-	struct soc_mixer_control *mc =					\
-		(struct soc_mixer_control *)kc->private_value;		\
-	int max = mc->max;						\
-	int min = mc->min;						\
-	int val = uc->value.integer.value[0];				\
-									\
-	if (val < min || val > max)					\
-		return -EINVAL;						\
-									\
-	/* OMAP McBSP implementation uses index values 0..4 */		\
-	return omap_st_set_chgain((id)-1, channel, val);		\
-}
-
-#define OMAP_MCBSP_ST_GET_CHANNEL_VOLUME(id, channel)			\
-static int								\
-omap_mcbsp##id##_get_st_ch##channel##_volume(struct snd_kcontrol *kc,	\
-					struct snd_ctl_elem_value *uc)	\
-{									\
-	s16 chgain;							\
-									\
-	if (omap_st_get_chgain((id)-1, channel, &chgain))		\
-		return -EAGAIN;						\
-									\
-	uc->value.integer.value[0] = chgain;				\
-	return 0;							\
-}
-
-OMAP_MCBSP_ST_SET_CHANNEL_VOLUME(2, 0)
-OMAP_MCBSP_ST_SET_CHANNEL_VOLUME(2, 1)
-OMAP_MCBSP_ST_SET_CHANNEL_VOLUME(3, 0)
-OMAP_MCBSP_ST_SET_CHANNEL_VOLUME(3, 1)
-OMAP_MCBSP_ST_GET_CHANNEL_VOLUME(2, 0)
-OMAP_MCBSP_ST_GET_CHANNEL_VOLUME(2, 1)
-OMAP_MCBSP_ST_GET_CHANNEL_VOLUME(3, 0)
-OMAP_MCBSP_ST_GET_CHANNEL_VOLUME(3, 1)
-
-static int omap_mcbsp_st_put_mode(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	struct soc_mixer_control *mc =
-		(struct soc_mixer_control *)kcontrol->private_value;
-	u8 value = ucontrol->value.integer.value[0];
-
-	if (value == omap_st_is_enabled(mc->reg))
-		return 0;
-
-	if (value)
-		omap_st_enable(mc->reg);
-	else
-		omap_st_disable(mc->reg);
-
-	return 1;
-}
-
-static int omap_mcbsp_st_get_mode(struct snd_kcontrol *kcontrol,
-				struct snd_ctl_elem_value *ucontrol)
-{
-	struct soc_mixer_control *mc =
-		(struct soc_mixer_control *)kcontrol->private_value;
-
-	ucontrol->value.integer.value[0] = omap_st_is_enabled(mc->reg);
-	return 0;
-}
-
-static const struct snd_kcontrol_new omap_mcbsp2_st_controls[] = {
-	SOC_SINGLE_EXT("McBSP2 Sidetone Switch", 1, 0, 1, 0,
-			omap_mcbsp_st_get_mode, omap_mcbsp_st_put_mode),
-	OMAP_MCBSP_SOC_SINGLE_S16_EXT("McBSP2 Sidetone Channel 0 Volume",
-				      -32768, 32767,
-				      omap_mcbsp2_get_st_ch0_volume,
-				      omap_mcbsp2_set_st_ch0_volume),
-	OMAP_MCBSP_SOC_SINGLE_S16_EXT("McBSP2 Sidetone Channel 1 Volume",
-				      -32768, 32767,
-				      omap_mcbsp2_get_st_ch1_volume,
-				      omap_mcbsp2_set_st_ch1_volume),
-};
-
-static const struct snd_kcontrol_new omap_mcbsp3_st_controls[] = {
-	SOC_SINGLE_EXT("McBSP3 Sidetone Switch", 2, 0, 1, 0,
-			omap_mcbsp_st_get_mode, omap_mcbsp_st_put_mode),
-	OMAP_MCBSP_SOC_SINGLE_S16_EXT("McBSP3 Sidetone Channel 0 Volume",
-				      -32768, 32767,
-				      omap_mcbsp3_get_st_ch0_volume,
-				      omap_mcbsp3_set_st_ch0_volume),
-	OMAP_MCBSP_SOC_SINGLE_S16_EXT("McBSP3 Sidetone Channel 1 Volume",
-				      -32768, 32767,
-				      omap_mcbsp3_get_st_ch1_volume,
-				      omap_mcbsp3_set_st_ch1_volume),
-};
-
-int omap_mcbsp_st_add_controls(struct snd_soc_codec *codec, int mcbsp_id)
-{
-	if (!cpu_is_omap34xx())
-		return -ENODEV;
-
-	switch (mcbsp_id) {
-	case 1: /* McBSP 2 */
-		return snd_soc_add_controls(codec, omap_mcbsp2_st_controls,
-					ARRAY_SIZE(omap_mcbsp2_st_controls));
-	case 2: /* McBSP 3 */
-		return snd_soc_add_controls(codec, omap_mcbsp3_st_controls,
-					ARRAY_SIZE(omap_mcbsp3_st_controls));
-	default:
-		break;
-	}
-
-	return -EINVAL;
-}
-EXPORT_SYMBOL_GPL(omap_mcbsp_st_add_controls);
+/*** pure pcm ONLY, remove all sidetone stuff ***/
 
 static __devinit int asoc_mcbsp_probe(struct platform_device *pdev)
 {
@@ -833,6 +659,6 @@ static void __exit snd_omap_mcbsp_exit(void)
 }
 module_exit(snd_omap_mcbsp_exit);
 
-MODULE_AUTHOR("Jarkko Nikula <jarkko.nikula@bitmer.com>");
-MODULE_DESCRIPTION("OMAP I2S SoC Interface");
+MODULE_AUTHOR("Based on Jarkko Nikula <jarkko.nikula@bitmer.com>");
+MODULE_DESCRIPTION("OMAP DAI SoC Interface");
 MODULE_LICENSE("GPL");
