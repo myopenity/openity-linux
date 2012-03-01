@@ -93,6 +93,7 @@ static void omap_pcm_dma_irq(int ch, u16 stat, void *data)
 	}
 
 	snd_pcm_period_elapsed(substream);
+trace_printk("***omap-pcm irq\n");
 }
 
 /* this may get called several times by oss emulation */
@@ -272,7 +273,6 @@ static snd_pcm_uframes_t omap_pcm_pointer(struct snd_pcm_substream *substream)
 
 	if (offset >= runtime->buffer_size)
 		offset = 0;
-
 	return offset;
 }
 

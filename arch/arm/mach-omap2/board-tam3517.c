@@ -712,11 +712,13 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
 	OMAP3_MUX(GPMC_NCS7, OMAP_MUX_MODE4 | OMAP_PULL_UP),
         OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
 
+#if 1
 	/* MCBSP2 config */
-        OMAP3_MUX(MCBSP2_CLKX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN),
-        OMAP3_MUX(MCBSP2_FSX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN),
-        OMAP3_MUX(MCBSP2_DR, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN),
-        OMAP3_MUX(MCBSP2_DX, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCBSP2_CLKX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_FSX, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_DR, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCBSP2_DX, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+#endif
 
  { .reg_offset = OMAP_MUX_TERMINATOR },
 };
@@ -887,6 +889,19 @@ static void __init tam3517_init(void) {
 #else
 	tam3517_emac_ethernet_init();
 #endif // USE_ALT__EMAC
+
+/*
+// TEST!!!!
+	if ((gpio_request(118, "GPIO118") == 0) &&
+	    (gpio_direction_output(118, 0) == 0)) {
+		gpio_export(118, 0);
+		printk(KERN_ERR "GPIO118 exported = 0\n");
+	} else {
+		printk(KERN_ERR "could not obtain gpio 118\n");
+		return;
+	}
+*/
+	
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")

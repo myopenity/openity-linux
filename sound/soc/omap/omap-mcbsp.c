@@ -246,7 +246,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	channels = params_channels(params);
 
 	if ( !( (channels == 1) && 
-			(format == SND_SOC_DAIFMT_LEFT_J) &&
+			(format == SND_SOC_DAIFMT_RIGHT_J) &&
 			(params_format(params) == SNDRV_PCM_FORMAT_S16_LE)
 	      )
 		)
@@ -400,9 +400,12 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		regs->rccr = RFULL_CYCLE | RDMAEN | RDISABLE;
 	}
 
-	/* set digital loop back to tie CLKR_int to CLKX_int */
-	// NOT SURE ABOUT THIS ONE!
-	//regs->xccr |= DLB;
+#if 0  // i don't believe this is right
+	// set TX to full-cycle
+	regs->xccr |= XFULL_CYCLE;
+	// set RX to full-cycle
+	regs->rccr |= RFULL_CYCLE;
+#endif
 
 	switch (fmt & SND_SOC_DAIFMT_FORMAT_MASK) {
 	case SND_SOC_DAIFMT_LEFT_J:
@@ -410,6 +413,14 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		regs->rcr2	|= RDATDLY(0);
 		regs->xcr2	|= XDATDLY(0);
 		regs->spcr1	|= RJUST(2);
+		/* Invert FS polarity configuration */
+		inv_fs = true;
+		break;
+	case SND_SOC_DAIFMT_RIGHT_J:
+		/* 0-bit data delay */
+		regs->rcr2	|= RDATDLY(0);
+		regs->xcr2	|= XDATDLY(0);
+		regs->spcr1	|= RJUST(0);
 		/* Invert FS polarity configuration */
 		inv_fs = true;
 		break;

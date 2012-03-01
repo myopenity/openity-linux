@@ -231,6 +231,8 @@ static int snd_soc_dapm_set_bias_level(struct snd_soc_dapm_context *dapm,
 	struct snd_soc_card *card = dapm->card;
 	int ret = 0;
 
+trace_printk("-bias level %d\n", level);
+
 	trace_snd_soc_bias_level_start(card, level);
 
 	if (card && card->set_bias_level)
