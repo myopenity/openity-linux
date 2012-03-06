@@ -23,45 +23,40 @@
 
 #include "control.h"
 
-static struct mdio_platform_data am35xx_mdio_pdata;
+static struct mdio_platform_data am35xx_emac_mdio_pdata;
 
-static struct resource am35xx_mdio_resources[] = {
-	{
-		.start  = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET,
-		.end    = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET +
-			  SZ_4K - 1,
-		.flags  = IORESOURCE_MEM,
-	},
+static struct resource am35xx_emac_mdio_resources[] = {
+	DEFINE_RES_MEM(AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET, SZ_4K),
 };
 
-static struct platform_device am35xx_mdio_device = {
+static struct platform_device am35xx_emac_mdio_device = {
 	.name		= "davinci_mdio",
 	.id		= 0,
-	.num_resources	= ARRAY_SIZE(am35xx_mdio_resources),
-	.resource	= am35xx_mdio_resources,
-	.dev.platform_data = &am35xx_mdio_pdata,
+	.num_resources	= ARRAY_SIZE(am35xx_emac_mdio_resources),
+	.resource	= am35xx_emac_mdio_resources,
+	.dev.platform_data = &am35xx_emac_mdio_pdata,
 };
 
-static void am35xx_enable_ethernet_int(void)
+static void am35xx_enable_emac_int(void)
 {
 	u32 regval;
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = (regval | AM35XX_CPGMAC_C0_RX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_TX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_MISC_PULSE_CLR |
-		AM35XX_CPGMAC_C0_RX_THRESH_CLR);
+		  AM35XX_CPGMAC_C0_TX_PULSE_CLR |
+		  AM35XX_CPGMAC_C0_MISC_PULSE_CLR |
+		  AM35XX_CPGMAC_C0_RX_THRESH_CLR);
 	omap_ctrl_writel(regval, AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 }
 
-static void am35xx_disable_ethernet_int(void)
+static void am35xx_disable_emac_int(void)
 {
 	u32 regval;
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = (regval | AM35XX_CPGMAC_C0_RX_PULSE_CLR |
-		AM35XX_CPGMAC_C0_TX_PULSE_CLR);
+		  AM35XX_CPGMAC_C0_TX_PULSE_CLR);
 	omap_ctrl_writel(regval, AM35XX_CONTROL_LVL_INTR_CLEAR);
 	regval = omap_ctrl_readl(AM35XX_CONTROL_LVL_INTR_CLEAR);
 }
@@ -71,38 +66,18 @@ static struct emac_platform_data am35xx_emac_pdata = {
 	.ctrl_mod_reg_offset	= AM35XX_EMAC_CNTRL_MOD_OFFSET,
 	.ctrl_ram_offset	= AM35XX_EMAC_CNTRL_RAM_OFFSET,
 	.ctrl_ram_size		= AM35XX_EMAC_CNTRL_RAM_SIZE,
-	.version		= EMAC_VERSION_2,
 	.hw_ram_addr		= AM35XX_EMAC_HW_RAM_ADDR,
-	.interrupt_enable	= am35xx_enable_ethernet_int,
-	.interrupt_disable	= am35xx_disable_ethernet_int,
+	.version		= EMAC_VERSION_2,
+	.interrupt_enable	= am35xx_enable_emac_int,
+	.interrupt_disable	= am35xx_disable_emac_int,
 };
 
 static struct resource am35xx_emac_resources[] = {
-	{
-		.start  = AM35XX_IPSS_EMAC_BASE,
-		.end    = AM35XX_IPSS_EMAC_BASE + 0x2FFFF,
-		.flags  = IORESOURCE_MEM,
-	},
-	{
-		.start  = INT_35XX_EMAC_C0_RXTHRESH_IRQ,
-		.end    = INT_35XX_EMAC_C0_RXTHRESH_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = INT_35XX_EMAC_C0_RX_PULSE_IRQ,
-		.end    = INT_35XX_EMAC_C0_RX_PULSE_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = INT_35XX_EMAC_C0_TX_PULSE_IRQ,
-		.end    = INT_35XX_EMAC_C0_TX_PULSE_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
-	{
-		.start  = INT_35XX_EMAC_C0_MISC_PULSE_IRQ,
-		.end    = INT_35XX_EMAC_C0_MISC_PULSE_IRQ,
-		.flags  = IORESOURCE_IRQ,
-	},
+	DEFINE_RES_MEM(AM35XX_IPSS_EMAC_BASE, 0x30000),
+	DEFINE_RES_IRQ(INT_35XX_EMAC_C0_RXTHRESH_IRQ),
+	DEFINE_RES_IRQ(INT_35XX_EMAC_C0_RX_PULSE_IRQ),
+	DEFINE_RES_IRQ(INT_35XX_EMAC_C0_TX_PULSE_IRQ),
+	DEFINE_RES_IRQ(INT_35XX_EMAC_C0_MISC_PULSE_IRQ),
 };
 
 static struct platform_device am35xx_emac_device = {
@@ -115,14 +90,25 @@ static struct platform_device am35xx_emac_device = {
 	},
 };
 
-void am35xx_ethernet_init(unsigned long mdio_bus_freq, int rmii_en)
+void __init am35xx_emac_init(unsigned long mdio_bus_freq, u8 rmii_en)
 {
 	unsigned int regval;
+	int err;
 
 	am35xx_emac_pdata.rmii_en = rmii_en;
-	am35xx_mdio_pdata.bus_freq = mdio_bus_freq;
-	platform_device_register(&am35xx_emac_device);
-	platform_device_register(&am35xx_mdio_device);
+	am35xx_emac_mdio_pdata.bus_freq = mdio_bus_freq;
+	err = platform_device_register(&am35xx_emac_device);
+	if (err) {
+		pr_err("AM35x: failed registering EMAC device: %d\n", err);
+		return;
+	}
+
+	err = platform_device_register(&am35xx_emac_mdio_device);
+	if (err) {
+		pr_err("AM35x: failed registering EMAC MDIO device: %d\n", err);
+		platform_device_unregister(&am35xx_emac_device);
+		return;
+	}
 
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
 	regval = regval & (~(AM35XX_CPGMACSS_SW_RST));

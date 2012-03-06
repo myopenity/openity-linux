@@ -1,8 +1,8 @@
 /*
  * linux/arch/arm/mach-omap2/board-tam3517.c
  *
- * Copyright (C) 2012 Misc Folks
- * Author: Technexion + Homer Simpson
+ * Copyright (C) 2012 Technexion and friends
+ * Author: Technexion + others
  *
  * Based on mach-omap2/board-tam3517.c from Technexion BSP release
  *
@@ -51,10 +51,11 @@
 #include "hsmmc.h"
 
 /* custom settings */
-#define USE_ALT__SMSC	0
-#define USE_ALT__EMAC	0
+#define ENABLE_EMAC_ETH	1 // this messes with the SMSC right now
+#define USE_ALT__EMAC_ETH	1
 
-#define ENABLE_SMSC	0 // this messes with the EMAC right now
+#define ENABLE_SMSC_ETH	1 // this messes with the EMAC right now
+#define USE_ALT__SMSC_ETH	0
 
 /****************************************************************************
  *
@@ -224,7 +225,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 		.transceiver    = true,
-                .ocr_mask	= MMC_VDD_32_33 | MMC_VDD_33_34, /* 3.2-3.4V */
+		.ocr_mask	= MMC_VDD_32_33 | MMC_VDD_33_34, /* 3.2-3.4V */
 	},
 	{}	/* Terminator */
 };
@@ -235,7 +236,7 @@ static struct omap2_hsmmc_info mmc[] = {
  *
  ****************************************************************************/
 
-#if ENABLE_SMSC && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
+#if ENABLE_SMSC_ETH && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 
 #include <linux/smsc911x.h>
 #include <plat/gpmc-smsc911x.h>
@@ -244,7 +245,7 @@ static struct omap2_hsmmc_info mmc[] = {
 #define SMSC911X_GPIO_RESET 142
 #define SMSC911X_GPIO_CS 5
 
-#if USE_ALT__SMSC // TRY OMAP-style (like Overo and others)?
+#if USE_ALT__SMSC_ETH // gpmc-smsc911x style
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.id		= 0,
@@ -259,7 +260,7 @@ static void __init tam3517_init_smsc911x(void)
 	gpmc_smsc911x_init(&tam3517_smsc911x_cfg);
 }
 
-#else // TRY old 2.6.37 (AM-?) style
+#else // use older style
 
 
 static struct resource tam3517_smsc911x_resources[] = {
@@ -331,7 +332,7 @@ static void __init tam3517_init_smsc911x(void)
 
 }
 
-#endif // USE_ALT__SMSC
+#endif // USE_ALT__SMSC_ETH
 
 #else
 static inline void __init tam3517_init_smsc911x(void) { return; }
@@ -342,12 +343,11 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
  * EMAC LAN
  *
  ****************************************************************************/
+#if ENABLE_EMAC_ETH
 
 #include <linux/davinci_emac.h>
 
-#define AM35XX_EVM_MDIO_FREQUENCY	(1000000)
-
-#if USE_ALT__EMAC // Use new standalone EMAC code for generic AM35xx?
+#if USE_ALT__EMAC_ETH // Use new standalone EMAC code for generic AM35xx?
 
 #include "am35xx-emac.h"
 
@@ -468,7 +468,8 @@ static void tam3517_emac_ethernet_init(void) {
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
 }
 
-#endif  // USE_ALT__EMAC
+#endif  // USE_ALT__EMAC_ETH
+#endif  // ENABLE_EMAC_ETH
 
 /****************************************************************************
  *
@@ -847,14 +848,14 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 
 /* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
-#if ENABLE_SMSC && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) ) && !(USE_ALT__SMSC)
+#if ENABLE_SMSC_ETH && !(USE_ALT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 	&tam3517_smsc911x_device,
 #endif
 #if 0 && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
 	&tam3517_hecc_device,
 #endif
 	&tam3517_dss_device,
-#if !(USE_ALT__EMAC)
+#if ENABLE_EMAC_ETH && !(USE_ALT__EMAC_ETH)
 	&tam3517_mdio_device,
 	&tam3517_emac_device,
 #endif
@@ -879,28 +880,18 @@ static void __init tam3517_init(void) {
 	tam3517_nand_init();
 
 	/*Ethernet:  SMSC911x */
-#if ENABLE_SMSC
+#if ENABLE_SMSC_ETH
 	tam3517_init_smsc911x();
 #endif
 
 	/*Ethernet:  DaVinci EMAC */
-#if USE_ALT__EMAC
-	am35xx_ethernet_init(AM35XX_EVM_MDIO_FREQUENCY, 1);
+#if ENABLE_EMAC_ETH
+#if USE_ALT__EMAC_ETH
+	am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
 #else
 	tam3517_emac_ethernet_init();
-#endif // USE_ALT__EMAC
-
-/*
-// TEST!!!!
-	if ((gpio_request(118, "GPIO118") == 0) &&
-	    (gpio_direction_output(118, 0) == 0)) {
-		gpio_export(118, 0);
-		printk(KERN_ERR "GPIO118 exported = 0\n");
-	} else {
-		printk(KERN_ERR "could not obtain gpio 118\n");
-		return;
-	}
-*/
+#endif  // USE_ALT__EMAC_ETH
+#endif  // ENABLE_EMAC_ETH
 	
 }
 
