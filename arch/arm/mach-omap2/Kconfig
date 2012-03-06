@@ -248,6 +248,49 @@ config MACH_OMAP_3430SDP
 	default y
 	select OMAP_PACKAGE_CBB
 
+config MACH_TAM3517
+	bool "TechNexion TAM-3517 CPU module"
+	depends on ARCH_OMAP3
+	default y
+        select TECHNEXION_TAO3530_SERIES
+        select OMAP_PACKAGE_CBB
+	select AEABI
+	select REGULATOR
+	select VFP
+	select NEON if ARCH_OMAP3 || ARCH_OMAP4
+	select SERIAL_OMAP
+	select SERIAL_OMAP_CONSOLE
+	select I2C
+	select I2C_OMAP
+	select MFD_CORE
+	select MFD_SUPPORT
+        help
+          Adds support for TechNexion TAM 3517 CPU module.
+
+	config TAM3517_TWISTER_CARRIER
+		bool "Twister baseboard"
+		depends on MACH_TAM3517
+		default y
+		select SMSC911X
+#		select OMAP_SMARTREFLEX_CLASS2 
+#		select OMAP_SMARTREFLEX
+#		select TI_HECC
+#		select TI_DAVINCI_EMAC
+#		select TI_DAVINCI_MDIO
+#		select LIBERTAS
+#		select LIBERTAS_SDIO=m
+#		select LIBERTAS_SDIO_FIRMWARE
+#		select TOUCHSCREEN_ADS7846
+#		select USB_ARMLINUX
+#		select USB_SUPPORT
+#		select USB
+#		select USB_OTG
+#		select USB_EHCI_HCD
+#		select USB_OMAP	
+		help
+		  Selects a collection of drivers for devices present on the TechNexion Twister baseboard.
+
+
 config MACH_NOKIA_N800
        bool
 
