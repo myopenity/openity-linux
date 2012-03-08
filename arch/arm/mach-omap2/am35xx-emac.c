@@ -62,6 +62,7 @@ static void am35xx_disable_emac_int(void)
 }
 
 static struct emac_platform_data am35xx_emac_pdata = {
+	.phy_id			= "davinci_mdio-0:00",
 	.ctrl_reg_offset	= AM35XX_EMAC_CNTRL_OFFSET,
 	.ctrl_mod_reg_offset	= AM35XX_EMAC_CNTRL_MOD_OFFSET,
 	.ctrl_ram_offset	= AM35XX_EMAC_CNTRL_RAM_OFFSET,

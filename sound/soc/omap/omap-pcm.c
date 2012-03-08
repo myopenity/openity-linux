@@ -93,7 +93,6 @@ static void omap_pcm_dma_irq(int ch, u16 stat, void *data)
 	}
 
 	snd_pcm_period_elapsed(substream);
-trace_printk("***omap-pcm irq\n");
 }
 
 /* this may get called several times by oss emulation */

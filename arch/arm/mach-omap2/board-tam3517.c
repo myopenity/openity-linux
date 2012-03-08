@@ -52,9 +52,9 @@
 
 /* custom settings */
 #define ENABLE_EMAC_ETH	1 // this messes with the SMSC right now
-#define USE_ALT__EMAC_ETH	1
+#define USE_ALT__EMAC_ETH	0
 
-#define ENABLE_SMSC_ETH	1 // this messes with the EMAC right now
+#define ENABLE_SMSC_ETH	0 // this messes with the EMAC right now
 #define USE_ALT__SMSC_ETH	0
 
 /****************************************************************************
@@ -248,11 +248,10 @@ static struct omap2_hsmmc_info mmc[] = {
 #if USE_ALT__SMSC_ETH // gpmc-smsc911x style
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
-	.id		= 0,
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
-	.flags		= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags			= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -363,7 +362,7 @@ static struct resource tam3517_mdio_resources[] = {
 };
 
 static struct mdio_platform_data tam3517_mdio_pdata = {
-	.bus_freq	= AM35XX_EVM_MDIO_FREQUENCY,
+	.bus_freq	= 1000000,
 };
 
 static struct platform_device tam3517_mdio_device = {
@@ -545,8 +544,8 @@ static struct regulator_init_data tam3517_regulators[] = {
 	/* DCDC2 */
 	{
 		.constraints = {
-			.min_uV = 3300000,
-			.max_uV = 3300000,
+			.min_uV = 1800000,
+			.max_uV = 1800000, /* should be 1V8 -- 3V3 */
 			.valid_modes_mask = REGULATOR_MODE_NORMAL,
 			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 			.always_on = true,
@@ -559,7 +558,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 	{
 		.constraints = {
 			.min_uV = 1800000,
-			.max_uV = 1800000,
+			.max_uV = 3300000,
 			.valid_modes_mask = REGULATOR_MODE_NORMAL,
 			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
 			.always_on = true,
@@ -678,7 +677,7 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 
 static int __init tam3517_i2c_init(void)
 {
-	//omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
+//	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
 //			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
@@ -698,20 +697,20 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
 	/* USB OTG DRVVBUS offset = 0x212 */
 	OMAP3_MUX(CHASSIS_DMAREQ3, OMAP_MUX_MODE0 | OMAP_PIN_INPUT_PULLDOWN), /* spi */
 	OMAP3_MUX(MCBSP_CLKS, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),
-        OMAP3_MUX(MCSPI1_CLK, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
-        OMAP3_MUX(MCSPI1_SIMO, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
-        OMAP3_MUX(MCSPI1_SOMI, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
-        OMAP3_MUX(MCSPI1_CS0, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCSPI1_CLK, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCSPI1_SIMO, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
+	OMAP3_MUX(MCSPI1_SOMI, OMAP_MUX_MODE0 | OMAP_PIN_INPUT),
+	OMAP3_MUX(MCSPI1_CS0, OMAP_MUX_MODE0 | OMAP_PIN_OUTPUT),
           
-        OMAP3_MUX(SDMMC2_DAT4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP), /* Touchscreen irq */
-        OMAP3_MUX(SDMMC2_DAT6, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
-        OMAP3_MUX(SDMMC2_DAT7, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
-        OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN), /* DVI */
+	OMAP3_MUX(SDMMC2_DAT4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP), /* Touchscreen irq */
+	OMAP3_MUX(SDMMC2_DAT6, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
+	OMAP3_MUX(SDMMC2_DAT7, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
+	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN), /* DVI */
 	OMAP3_MUX(GPMC_NCS2, OMAP_MUX_MODE4 | OMAP_PULL_UP), /* BL */
 	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
 	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE4 ),
 	OMAP3_MUX(GPMC_NCS7, OMAP_MUX_MODE4 | OMAP_PULL_UP),
-        OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
+	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
 
 #if 1
 	/* MCBSP2 config */
