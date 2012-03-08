@@ -679,8 +679,8 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 static int __init tam3517_i2c_init(void)
 {
 // comment top line?
-	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
-			ARRAY_SIZE(tam3517_i2c1_boardinfo));
+//	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
+//			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
