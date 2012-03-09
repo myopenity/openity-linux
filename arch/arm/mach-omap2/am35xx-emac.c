@@ -3,7 +3,7 @@
  *
  * Based on mach-omap2/board-am3517evm.c
  * Copyright (C) 2009 Texas Instruments Incorporated
- * Author: Ranjith Lohithakshan <ranjithl@xxxxxx>
+ * Author: Ranjith Lohithakshan <ranjithl@ti.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2

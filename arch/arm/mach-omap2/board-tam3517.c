@@ -2,7 +2,7 @@
  * linux/arch/arm/mach-omap2/board-tam3517.c
  *
  * Copyright (C) 2012 Technexion and friends
- * Author: Technexion + others
+ * Author: Technexion + LOTS of help!
  *
  * Based on mach-omap2/board-tam3517.c from Technexion BSP release
  *
@@ -51,10 +51,10 @@
 #include "hsmmc.h"
 
 /* custom settings */
-#define ENABLE_EMAC_ETH	1 // this messes with the SMSC right now
+#define ENABLE_EMAC_ETH		1
 #define USE_ALT__EMAC_ETH	0
 
-#define ENABLE_SMSC_ETH	0 // this messes with the EMAC right now
+#define ENABLE_SMSC_ETH		1
 #define USE_ALT__SMSC_ETH	0
 
 /****************************************************************************
@@ -248,6 +248,7 @@ static struct omap2_hsmmc_info mmc[] = {
 #if USE_ALT__SMSC_ETH // gpmc-smsc911x style
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
+	.id		= 0,  // removed by Igor's CL patches
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
@@ -259,7 +260,7 @@ static void __init tam3517_init_smsc911x(void)
 	gpmc_smsc911x_init(&tam3517_smsc911x_cfg);
 }
 
-#else // use older style
+#else // use non-gpmc-smsc911x style
 
 
 static struct resource tam3517_smsc911x_resources[] = {
@@ -367,13 +368,14 @@ static struct mdio_platform_data tam3517_mdio_pdata = {
 
 static struct platform_device tam3517_mdio_device = {
 	.name		= "davinci_mdio",
-	.id		= 0,
+	.id		= 2,
 	.num_resources	= ARRAY_SIZE(tam3517_mdio_resources),
 	.resource	= tam3517_mdio_resources,
 	.dev.platform_data = &tam3517_mdio_pdata,
 };
 
 static struct emac_platform_data tam3517_emac_pdata = {
+	.phy_id		= "2:00",
 	.rmii_en	= 1,
 };
 
@@ -847,6 +849,7 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 
 /* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
+	/*Ethernet:  SMSC911x */
 #if ENABLE_SMSC_ETH && !(USE_ALT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 	&tam3517_smsc911x_device,
 #endif
@@ -854,6 +857,7 @@ static struct platform_device *tam3517_devices[] __initdata = {
 	&tam3517_hecc_device,
 #endif
 	&tam3517_dss_device,
+	/*Ethernet:  DaVinci EMAC */
 #if ENABLE_EMAC_ETH && !(USE_ALT__EMAC_ETH)
 	&tam3517_mdio_device,
 	&tam3517_emac_device,
@@ -889,8 +893,8 @@ static void __init tam3517_init(void) {
 	am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
 #else
 	tam3517_emac_ethernet_init();
-#endif  // USE_ALT__EMAC_ETH
-#endif  // ENABLE_EMAC_ETH
+#endif
+#endif
 	
 }
 
