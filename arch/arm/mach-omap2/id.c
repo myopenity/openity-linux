@@ -231,10 +231,8 @@ void __init omap3xxx_check_features(void)
 	status = omap_ctrl_readl(OMAP3_CONTROL_OMAP_STATUS);
 
 	OMAP3_CHECK_FEATURE(status, L2CACHE);
-	OMAP3_CHECK_FEATURE(status, IVA);
 	OMAP3_CHECK_FEATURE(status, SGX);
 	OMAP3_CHECK_FEATURE(status, NEON);
-	OMAP3_CHECK_FEATURE(status, ISP);
 	if (cpu_is_omap3630())
 		omap_features |= OMAP3_HAS_192MHZ_CLK;
 	if (cpu_is_omap3430() || cpu_is_omap3630())
@@ -242,6 +240,10 @@ void __init omap3xxx_check_features(void)
 	if (cpu_is_omap3630() || omap_rev() == OMAP3430_REV_ES3_1 ||
 	    omap_rev() == OMAP3430_REV_ES3_1_2)
 		omap_features |= OMAP3_HAS_IO_CHAIN_CTRL;
+	if (!cpu_is_omap3505() && !cpu_is_omap3517()) {
+		OMAP3_CHECK_FEATURE(status, IVA);
+		OMAP3_CHECK_FEATURE(status, ISP);
+	}
 
 	omap_features |= OMAP3_HAS_SDRC;
 
