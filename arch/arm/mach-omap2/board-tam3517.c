@@ -850,15 +850,15 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 /* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
 #if ENABLE_SMSC_ETH && !(USE_ALT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
-	&tam3517_smsc911x_device,
+	//&tam3517_smsc911x_device,
 #endif
 #if 0 && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
 	&tam3517_hecc_device,
 #endif
-	&tam3517_dss_device,
+	//&tam3517_dss_device,
 #if ENABLE_EMAC_ETH && !(USE_ALT__EMAC_ETH)
-	&tam3517_mdio_device,
-	&tam3517_emac_device,
+	//&tam3517_mdio_device,
+	//&tam3517_emac_device,
 #endif
 #if 0 && ( defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE) )
 	&tam3517_keys_gpio,
@@ -868,31 +868,38 @@ static struct platform_device *tam3517_devices[] __initdata = {
 /* ------------------------------------------------------------------- */
 
 static void __init tam3517_init(void) {
+	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBB);
+	omap_serial_init();
+	omap_sdrc_init(NULL, NULL);
+	omap_board_config = tam3517_config;
+	omap_board_config_size = ARRAY_SIZE(tam3517_config);
+#if 0
 	platform_add_devices(tam3517_devices, ARRAY_SIZE(tam3517_devices));
 	omap_board_config = tam3517_config;
 	omap_board_config_size = ARRAY_SIZE(tam3517_config);
-	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBC);
+	//omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBC);
 	omap_serial_init();
-	tam3517_i2c_init();
+	//tam3517_i2c_init();
         
-	omap_hsmmc_init(mmc);
+	//omap_hsmmc_init(mmc);
         
-	tam3517_usb_init();        
-	tam3517_nand_init();
+	//tam3517_usb_init();        
+	//tam3517_nand_init();
 
 	/*Ethernet:  SMSC911x */
 #if ENABLE_SMSC_ETH
-	tam3517_init_smsc911x();
+	//tam3517_init_smsc911x();
 #endif
 
 	/*Ethernet:  DaVinci EMAC */
 #if ENABLE_EMAC_ETH
 #if USE_ALT__EMAC_ETH
-	am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
+	//am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
 #else
-	tam3517_emac_ethernet_init();
+	//tam3517_emac_ethernet_init();
 #endif  // USE_ALT__EMAC_ETH
 #endif  // ENABLE_EMAC_ETH
+#endif
 	
 }
 
