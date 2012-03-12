@@ -252,7 +252,7 @@ static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
-	.flags			= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags			= SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -315,7 +315,6 @@ static void __init tam3517_init_smsc911x(void)
 	omap_mux_init_gpio(SMSC911X_GPIO_IRQ, OMAP_PIN_INPUT_PULLUP | OMAP_MUX_MODE4);
 	gpio_direction_input(SMSC911X_GPIO_IRQ);
 
-	// next 2 lines redundant?
 	tam3517_smsc911x_resources[1].start = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
 	tam3517_smsc911x_resources[1].end  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
 	omap_mux_init_gpio(SMSC911X_GPIO_RESET, OMAP_PIN_INPUT_PULLUP|OMAP_MUX_MODE4);
@@ -327,7 +326,10 @@ static void __init tam3517_init_smsc911x(void)
 	}
 	
 	gpio_direction_output(SMSC911X_GPIO_RESET, 0);
-	mdelay(1);
+	/* Use value from gpmc (100) instead of original 1 from this legacy driver
+	 *  datasheet says minimum 30ms
+	 */  
+	mdelay(100);
 	gpio_direction_output(SMSC911X_GPIO_RESET, 1);
 
 }
@@ -679,8 +681,8 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 
 static int __init tam3517_i2c_init(void)
 {
-//	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
-//			ARRAY_SIZE(tam3517_i2c1_boardinfo));
+	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
+			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
@@ -712,7 +714,11 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
 	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
 	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE4 ),
 	OMAP3_MUX(GPMC_NCS7, OMAP_MUX_MODE4 | OMAP_PULL_UP),
-	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
+//	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
+
+	/* ensure nCS and IRQ properly set for SMSC ethernet */
+	OMAP3_MUX(GPMC_NCS5, OMAP_MUX_MODE0),
+	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),
 
 #if 1
 	/* MCBSP2 config */
@@ -767,81 +773,6 @@ static __init void tam3517_usb_init(void) {
 	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);
         usbhs_init(&tam3517_ehci_pdata);
 }
-
-/****************************************************************************
- *
- * GPIO Keypad (THB HMI only)
- *
- ****************************************************************************/
-
-#if 0 && ( defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE) )
-#include <linux/gpio_keys.h>
-
-static struct gpio_keys_button tam3517_gpio_buttons[] = { 
-        {
-                .code                   = KEY_HOME,
-                .gpio                   = 65,
-                .desc                   = "home",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        }, {
-                .code                   = KEY_ENTER,
-                .gpio                   = 64,
-                .desc                   = "enter",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        }, {
-                .code                   = KEY_BACK,
-                .gpio                   = 63,
-                .desc                   = "back",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        }, {
-                .code                   = KEY_MENU,
-                .gpio                   = 150,
-                .desc                   = "menu",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        }, {        
-                .code                   = KEY_BRIGHTNESSUP,
-                .gpio                   = 143,
-                .desc                   = "brightness up",
-                .wakeup                 = 1,
-                .active_low             = 1,
-        }, {
-                .code                   = KEY_BRIGHTNESSDOWN,
-                .gpio                   = 142,
-                .desc                   = "brightness down",
-                .wakeup                 = 1,
-                .active_low             = 1,
-        }, {
-                .code                   = KEY_VOLUMEUP,
-                .gpio                   = 141,
-                .desc                   = "volume up",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        }, {
-                .code                   = KEY_VOLUMEDOWN,
-                .gpio                   = 140,
-                .desc                   = "volume down",
-                .wakeup                 = 1,
-		.active_low		= 1,
-        },
-};
-
-static struct gpio_keys_platform_data tam3517_gpio_key_info = {
-        .buttons        = tam3517_gpio_buttons,
-        .nbuttons       = ARRAY_SIZE(tam3517_gpio_buttons),
-};
-
-struct platform_device tam3517_keys_gpio = {
-        .name   = "gpio-keys",
-        .id     = -1,
-        .dev    = {
-                .platform_data  = &tam3517_gpio_key_info,
-        },
-};
-#endif
 
 /* --------------------------------------------------------- */
 
