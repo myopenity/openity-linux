@@ -68,6 +68,7 @@ static struct nand_ecclayout nand_oob_16 = {
 		 . length = 8} }
 };
 
+#if 0
 static struct nand_ecclayout nand_oob_64 = {
 	.eccbytes = 24,
 	.eccpos = {
@@ -78,6 +79,24 @@ static struct nand_ecclayout nand_oob_64 = {
 		{.offset = 2,
 		 .length = 38} }
 };
+#else
+/* MICRON: modified OOB Layout */
+static struct nand_ecclayout nand_oob_64 = {
+	.eccbytes = 32,
+	.eccpos = {
+		8, 9, 10, 11, 12, 13, 14, 15,
+		24, 25, 26, 27, 28, 29, 30, 31,
+		40, 41, 42, 43, 44, 45, 46, 47,
+		56, 57, 58, 59, 60, 61, 62, 63
+	},
+	.oobfree = {
+		{ .offset = 4, .length = 4 },
+		{ .offset = 20, .length = 4 },
+		{ .offset = 36, .length = 4 },
+		{ .offset = 52, .length = 4 },
+	},
+};
+#endif
 
 static struct nand_ecclayout nand_oob_128 = {
 	.eccbytes = 48,
@@ -678,6 +697,7 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 	 * in, and deplete1 need no delay.
 	 */
 	switch (command) {
+	int status,cnt;				/* MICRON: local vars used */
 
 	case NAND_CMD_CACHEDPROG:
 	case NAND_CMD_PAGEPROG:
@@ -723,6 +743,28 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 			       NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE,
 			       NAND_NCE | NAND_CTRL_CHANGE);
+
+		/* MICRON: wait until part RDY; tR_ECC max */
+		for(cnt=0; cnt<70; cnt++) {
+			ndelay(1000); /* 1 usec delay */
+			chip->cmdfunc(mtd, NAND_CMD_STATUS, -1, -1);
+			status = chip->read_byte(mtd);
+			if( (status & NAND_STATUS_READY ) )
+				break;
+		}
+
+		/* MICRON: Look for STATUS bit ERR */
+		if( (status & NAND_STATUS_FAIL) ) {
+			printk(KERN_WARNING
+				"WARNING :: READ Operation ECC Error: 0x%02x delay %d usec\n",
+				status,cnt+1);
+			/* do something on fail */
+		}
+		/* MICRON: re-issue CMD0 after STATUS Check */
+		chip->cmd_ctrl(mtd, NAND_CMD_READ0,
+		NAND_NCE | NAND_CLE | NAND_CTRL_CHANGE);
+		chip->cmd_ctrl(mtd, NAND_CMD_NONE,
+		NAND_NCE | NAND_CTRL_CHANGE);
 
 		/* This applies to read commands */
 	default:

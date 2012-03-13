@@ -55,7 +55,7 @@
 #define USE_ALT__EMAC_ETH	0
 
 #define ENABLE_SMSC_ETH		1
-#define USE_ALT__SMSC_ETH	0
+#define USE_ALT__SMSC_ETH	1
 
 /****************************************************************************
  *
@@ -239,7 +239,6 @@ static struct omap2_hsmmc_info mmc[] = {
 #if ENABLE_SMSC_ETH && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 
 #include <linux/smsc911x.h>
-#include <plat/gpmc-smsc911x.h>
 
 #define SMSC911X_GPIO_IRQ 153
 #define SMSC911X_GPIO_RESET 142
@@ -247,12 +246,14 @@ static struct omap2_hsmmc_info mmc[] = {
 
 #if USE_ALT__SMSC_ETH // gpmc-smsc911x style
 
+#include <plat/gpmc-smsc911x.h>
+
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
-	.id		= 0,  // removed by Igor's CL patches
+	.id				= 0, // removed by Igor's CL patches
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
-	.flags			= SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags			= SMSC911X_USE_32BIT, // | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -260,7 +261,7 @@ static void __init tam3517_init_smsc911x(void)
 	gpmc_smsc911x_init(&tam3517_smsc911x_cfg);
 }
 
-#else // use non-gpmc-smsc911x style
+#else // use non-gpmc-smsc911x style; modeled after the old Overo
 
 
 static struct resource tam3517_smsc911x_resources[] = {
@@ -269,17 +270,15 @@ static struct resource tam3517_smsc911x_resources[] = {
 		.flags	= IORESOURCE_MEM,
 	},
 	{
-		.start  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
-		.end    = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ),
-		.flags	=  (IORESOURCE_IRQ | IRQF_TRIGGER_LOW),
+		.flags	=  IORESOURCE_IRQ | IORESOURCE_IRQ_LOWLEVEL, // IRQF_TRIGGER_LOW, // (same value: 8)
 	},
 };
 
 static struct smsc911x_platform_config smsc911x_config = {
-	.phy_interface	= PHY_INTERFACE_MODE_MII,
     .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
     .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
     .flags          = SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
 static struct platform_device tam3517_smsc911x_device = {
@@ -302,7 +301,7 @@ static void __init tam3517_init_smsc911x(void)
 	}
 
 	tam3517_smsc911x_resources[0].start = cs_mem_base + 0x0;
-	tam3517_smsc911x_resources[0].end   = cs_mem_base + 0xFF;
+	tam3517_smsc911x_resources[0].end   = cs_mem_base + 0xff;
 
 	if ((gpio_request(SMSC911X_GPIO_IRQ, "smsc911x irq") == 0) &&
 	    (gpio_direction_input(SMSC911X_GPIO_IRQ) == 0)) {
@@ -312,16 +311,12 @@ static void __init tam3517_init_smsc911x(void)
 		return;
 	}
 
-	omap_mux_init_gpio(SMSC911X_GPIO_IRQ, OMAP_PIN_INPUT_PULLUP | OMAP_MUX_MODE4);
-	gpio_direction_input(SMSC911X_GPIO_IRQ);
-
 	tam3517_smsc911x_resources[1].start = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
-	tam3517_smsc911x_resources[1].end  = OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
-	omap_mux_init_gpio(SMSC911X_GPIO_RESET, OMAP_PIN_INPUT_PULLUP|OMAP_MUX_MODE4);
-
+	tam3517_smsc911x_resources[1].end   = 0; // OMAP_GPIO_IRQ(SMSC911X_GPIO_IRQ);
+	
 	if (gpio_request(SMSC911X_GPIO_RESET, "smsc911x reset") < 0)
 	{
-		printk(KERN_ERR "can't get smsc911x reset GPIO\n");
+		printk(KERN_ERR "could not obtain gpio for SMSC911X RESET");
 		return;
 	}
 	
@@ -681,8 +676,8 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 
 static int __init tam3517_i2c_init(void)
 {
-	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
-			ARRAY_SIZE(tam3517_i2c1_boardinfo));
+//	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
+//			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
@@ -773,6 +768,12 @@ static __init void tam3517_usb_init(void) {
 	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);
         usbhs_init(&tam3517_ehci_pdata);
 }
+
+/****************************************************************************
+ *
+ * GPIO Keypad (THB HMI only)
+ *
+ ****************************************************************************/
 
 /* --------------------------------------------------------- */
 

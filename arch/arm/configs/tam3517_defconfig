@@ -1739,14 +1739,7 @@ CONFIG_RTC_DRV_DS1307=y
 #
 # on-CPU RTC drivers
 #
-CONFIG_DMADEVICES=y
-# CONFIG_DMADEVICES_DEBUG is not set
-
-#
-# DMA Devices
-#
-# CONFIG_DW_DMAC is not set
-# CONFIG_TIMB_DMA is not set
+# CONFIG_DMADEVICES is not set
 # CONFIG_AUXDISPLAY is not set
 # CONFIG_UIO is not set
 
