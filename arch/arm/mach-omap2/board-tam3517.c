@@ -249,11 +249,11 @@ static struct omap2_hsmmc_info mmc[] = {
 #include <plat/gpmc-smsc911x.h>
 
 static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
-	.id				= 0, // removed by Igor's CL patches
+	.id		= 0, // removed by Igor's CL patches, but would likely be 0 anyway
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = -EINVAL,
-	.flags			= SMSC911X_USE_32BIT, // | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags		= SMSC911X_USE_32BIT, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -277,7 +277,7 @@ static struct resource tam3517_smsc911x_resources[] = {
 static struct smsc911x_platform_config smsc911x_config = {
     .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
     .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-    .flags          = SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+    .flags          = SMSC911X_USE_16BIT, // | SMSC911X_FORCE_INTERNAL_PHY | SMSC911X_SAVE_MAC_ADDRESS,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
@@ -704,16 +704,16 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
 	OMAP3_MUX(SDMMC2_DAT4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP), /* Touchscreen irq */
 	OMAP3_MUX(SDMMC2_DAT6, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
 	OMAP3_MUX(SDMMC2_DAT7, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT), /* LCD */
-	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN), /* DVI */
-	OMAP3_MUX(GPMC_NCS2, OMAP_MUX_MODE4 | OMAP_PULL_UP), /* BL */
-	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
-	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE4 ),
-	OMAP3_MUX(GPMC_NCS7, OMAP_MUX_MODE4 | OMAP_PULL_UP),
+//	OMAP3_MUX(ETK_D10, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN), /* DVI */
+//	OMAP3_MUX(GPMC_NCS2, OMAP_MUX_MODE4 | OMAP_PULL_UP), /* BL */
+//	OMAP3_MUX(GPMC_NCS4, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLDOWN),
+//	OMAP3_MUX(GPMC_NCS6, OMAP_MUX_MODE4 ),
+//	OMAP3_MUX(GPMC_NCS7, OMAP_MUX_MODE4 | OMAP_PULL_UP),
 //	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4), /* GPIO 142 for keypad */
 
 	/* ensure nCS and IRQ properly set for SMSC ethernet */
-	OMAP3_MUX(GPMC_NCS5, OMAP_MUX_MODE0),
-	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),
+	OMAP3_MUX(GPMC_NCS5, OMAP_MUX_MODE0),	// SMSC CS = 5
+	OMAP3_MUX(MCBSP3_CLKX, OMAP_MUX_MODE4 | OMAP_PIN_INPUT_PULLUP),  // SMSC RESET = 142
 
 #if 1
 	/* MCBSP2 config */
