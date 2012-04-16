@@ -265,7 +265,6 @@ static void omap_st_on(struct omap_mcbsp *mcbsp)
 	/* Enable Sidetone from Sidetone Core */
 	w = MCBSP_ST_READ(mcbsp, SSELCR);
 	MCBSP_ST_WRITE(mcbsp, SSELCR, w | ST_SIDETONEEN);
-trace_printk("*** SIDETONE ON ***\n");
 }
 
 static void omap_st_off(struct omap_mcbsp *mcbsp)
@@ -280,7 +279,6 @@ static void omap_st_off(struct omap_mcbsp *mcbsp)
 
 	if (mcbsp->pdata->enable_st_clock)
 		mcbsp->pdata->enable_st_clock(mcbsp->id, 0);
-trace_printk("*** SIDETONE OFF ***\n");
 }
 
 static void omap_st_fir_write(struct omap_mcbsp *mcbsp, s16 *fir)
@@ -420,7 +418,6 @@ int omap_st_enable(unsigned int id)
 	st_data->enabled = 1;
 	omap_st_start(mcbsp);
 	spin_unlock_irq(&mcbsp->lock);
-trace_printk("*** SIDETONE enabled! ***");
 
 	return 0;
 }
@@ -461,7 +458,7 @@ int omap_st_disable(unsigned int id)
 	omap_st_stop(mcbsp);
 	st_data->enabled = 0;
 	spin_unlock_irq(&mcbsp->lock);
-trace_printk("*** SIDETONE disabled! ***");
+
 	return ret;
 }
 EXPORT_SYMBOL(omap_st_disable);
@@ -835,15 +832,10 @@ void omap_mcbsp_start(unsigned int id, int tx, int rx)
 	udelay(500);
 
 	if (enable_srg) {
-trace_printk("*** SRG running! ***");
 		/* Start frame sync */
 		w = MCBSP_READ_CACHE(mcbsp, SPCR2);
 		MCBSP_WRITE(mcbsp, SPCR2, w | (1 << 7));
 	}
-else
-{
-trace_printk("*** _NO_ SRG running! ***");
-}
 
 	if (mcbsp->pdata->has_ccr) {
 		/* Release the transmitter and receiver */
@@ -938,15 +930,9 @@ void omap2_mcbsp1_mux_clkr_src(u8 mux)
 	const char *src;
 
 	if (mux == CLKR_SRC_CLKR)
-{
 		src = "clkr";
-trace_printk("CLKR = CLKR\n");
-}
 	else if (mux == CLKR_SRC_CLKX)
-{
 		src = "clkx";
-trace_printk("CLKR = CLKX\n");
-}
 	else
 		return;
 
@@ -962,15 +948,9 @@ void omap2_mcbsp1_mux_fsr_src(u8 mux)
 	const char *src;
 
 	if (mux == FSR_SRC_FSR)
-{
 		src = "fsr";
-trace_printk("FSR = FSR\n");
-}
 	else if (mux == FSR_SRC_FSX)
-{
 		src = "fsx";
-trace_printk("FSR = FSX\n");
-}
 	else
 		return;
 

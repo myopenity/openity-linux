@@ -272,6 +272,7 @@ static snd_pcm_uframes_t omap_pcm_pointer(struct snd_pcm_substream *substream)
 
 	if (offset >= runtime->buffer_size)
 		offset = 0;
+
 	return offset;
 }
 
