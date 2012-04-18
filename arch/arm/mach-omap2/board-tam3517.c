@@ -252,7 +252,7 @@ static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.id		= 0, // removed by Igor's CL patches, but would likely be 0 anyway
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
-	.gpio_reset     = -EINVAL,
+	.gpio_reset     = SMSC911X_GPIO_RESET,
 	.flags		= SMSC911X_USE_32BIT, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
@@ -260,7 +260,6 @@ static void __init tam3517_init_smsc911x(void)
 {
 	gpmc_smsc911x_init(&tam3517_smsc911x_cfg);
 }
-
 
 #else // use non-gpmc-smsc911x style; modeled after the old Overo
 
