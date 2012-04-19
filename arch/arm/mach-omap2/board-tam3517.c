@@ -52,91 +52,11 @@
 
 /* custom settings */
 #define ENABLE_EMAC_ETH		1
-#define USE_ALT__EMAC_ETH	0
+#define USE_EXTERNAL_INIT__EMAC_ETH	0
 
 #define ENABLE_SMSC_ETH		1
-#define USE_ALT__SMSC_ETH	1
+#define USE_EXTERNAL_INIT__SMSC_ETH	1
 
-/****************************************************************************
- *
- * Display SubSystem
- *
- ****************************************************************************/
-
-/* -- CANNOT BE DISABLED or board dies!!! -- */
-//#if ( defined(CONFIG_FB_OMAP2) || defined(CONFIG_FB_OMAP2_MODULE) )
-
-#include <video/omapdss.h>
-
-#define TAM3517_LCD_ENVDD_GPIO			138
-#define TAM3517_LCD_BKLIGHT_PON_GPIO		53
-#define TAM3517_LCD_PON_GPIO			139
-#define	TAM3517_DVI_PON_GPIO			24
-
-#define TAM3517_DEFAULT_BACKLIGHT_LEVEL 99
-
-static int tam3517_panel_enable_lcd(struct omap_dss_device *dssdev)
-{
-	gpio_set_value(TAM3517_DVI_PON_GPIO, 0);
-	gpio_set_value(TAM3517_LCD_ENVDD_GPIO, 0);
-	gpio_set_value(TAM3517_LCD_PON_GPIO, 1);
-        printk("LCD voltage on\n");
-	return 0;
-}
-
-static void tam3517_panel_disable_lcd(struct omap_dss_device *dssdev)
-{
-	gpio_set_value(TAM3517_LCD_ENVDD_GPIO, 1);
-	gpio_set_value(TAM3517_LCD_PON_GPIO, 0);
-}
-
-/* TODO? Set display timings here from bootargs, and get rid of the tnlcd / panel tao-series driver? */
-static struct omap_dss_device tam3517_lcd_device = {
-	.type                   = OMAP_DISPLAY_TYPE_DPI,
-	.name			= "lcd",
-	.driver_name		= "tnlcd",
-        .platform_enable        = tam3517_panel_enable_lcd,
-        .platform_disable       = tam3517_panel_disable_lcd,
-        .max_backlight_level    = 100,
-//#ifdef CONFIG_TAM3517_THB_CARRIER
-	.phy.dpi.data_lines	= 24,
-//#else
-//	.phy.dpi.data_lines	= 18,
-//#endif
-
-};
-
-
-static struct omap_dss_device *tam3517_dss_devices[] = {
-	&tam3517_lcd_device,
-};
-
-static struct omap_dss_board_info tam3517_dss_data = {
-	.num_devices	= ARRAY_SIZE(tam3517_dss_devices),
-	.devices	= tam3517_dss_devices,
-	.default_device	= &tam3517_lcd_device,
-};
-
-struct platform_device tam3517_dss_device = {
-	.name		= "omapdss",
-	.id		= -1,
-	.dev		= {
-		.platform_data	= &tam3517_dss_data,
-	},
-};
-
-//#endif // CANNOT BE DISABLED OR BOARD DOES NOT BOOT!
-
-
-
-/****************************************************************************
- *
- * SOUND
- *
- ****************************************************************************/
-
-/* The sound driver had to be moved to sound/soc/omap/ due to initialization
-order. Loading it too early hangs kernel, too late crashes */
 
 
 /****************************************************************************
@@ -244,7 +164,7 @@ static struct omap2_hsmmc_info mmc[] = {
 #define SMSC911X_GPIO_RESET		26 // Twister: 142
 #define SMSC911X_GPIO_CS		4  // Twister: 5
 
-#if USE_ALT__SMSC_ETH // gpmc-smsc911x style
+#if USE_EXTERNAL_INIT__SMSC_ETH // gpmc-smsc911x style
 
 #include <plat/gpmc-smsc911x.h>
 
@@ -329,7 +249,7 @@ static void __init tam3517_init_smsc911x(void)
 
 }
 
-#endif // USE_ALT__SMSC_ETH
+#endif // USE_EXTERNAL_INIT__SMSC_ETH
 
 #else
 static inline void __init tam3517_init_smsc911x(void) { return; }
@@ -344,7 +264,7 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
 
 #include <linux/davinci_emac.h>
 
-#if USE_ALT__EMAC_ETH // Use new standalone EMAC code for generic AM35xx?
+#if USE_EXTERNAL_INIT__EMAC_ETH // Use new standalone EMAC code for generic AM35xx?
 
 #include "am35xx-emac.h"
 
@@ -466,7 +386,7 @@ static void tam3517_emac_ethernet_init(void) {
 	regval = omap_ctrl_readl(AM35XX_CONTROL_IP_SW_RESET);
 }
 
-#endif  // USE_ALT__EMAC_ETH
+#endif  // USE_EXTERNAL_INIT__EMAC_ETH
 #endif  // ENABLE_EMAC_ETH
 
 /****************************************************************************
@@ -514,7 +434,6 @@ static struct regulator_consumer_supply tam3517_ldo1_supplies[] = {
 	},
 	{
 		.supply = "vdda_dac",
-                .dev	= &tam3517_dss_device.dev,
 	},
 };
 
@@ -767,11 +686,278 @@ static __init void tam3517_usb_init(void) {
         usbhs_init(&tam3517_ehci_pdata);
 }
 
+
 /****************************************************************************
  *
- * GPIO Keypad (THB HMI only)
+ * HD01 Custom GPIO configuration
  *
+ *  GPIO definitions: if name ends in '_', active LOW!
  ****************************************************************************/
+
+// reset & power lines 
+#define HD01__O_B_RESET_				171
+#define HD01__O_C_RESET_				172
+#define HD01__O_D_RESET_				173
+#define HD01__O_E_RESET_				177
+#define HD01__O_F_RESET_				176
+#define HD01__O_MASTER_PWR_EN			175
+#define HD01__I_MASTER_PWR_OK			174
+
+// led outputs
+#define HD01__O_POWER_STATUS_LED		93
+#define HD01__O_TAM_STATUS_LED			92
+#define HD01__O_RM1_LED					89
+#define HD01__O_RM2_LED					90
+#define HD01__O_RM3_LED					91
+
+// unit identification switch inputs
+#define HD01__I_SW1_1_BIT6				86
+#define HD01__I_SW1_2_BIT5				85
+#define HD01__I_SW1_3_BIT4				84
+#define HD01__I_SW1_4_BIT3				83
+#define HD01__I_FIXED_BIT2				82
+#define HD01__I_FIXED_BIT1				81
+#define HD01__I_FIXED_BIT0				80
+
+// radio control gpios
+#define HD01__O_ALL_RADIOS_DISABLE		79
+
+#define HD01__I_RM1_STATUS_				66
+#define HD01__I_RM2_STATUS_				67
+#define HD01__I_RM3_STATUS_				68
+
+#define HD01__O_RM1_IGNITION			106
+#define HD01__O_RM1_RESET				105
+#define HD01__I_RM1_INCOMING_CALL		104
+
+#define HD01__O_RM2_IGNITION			78
+#define HD01__O_RM2_RESET				73
+#define HD01__I_RM2_INCOMING_CALL		72
+
+#define HD01__O_RM3_IGNITION			103
+#define HD01__O_RM3_RESET				102
+#define HD01__I_RM3_INCOMING_CALL		101
+
+
+static struct gpio hd01_gpios[] __initdata = {
+	{ HD01__O_B_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_B_RESET_" },
+	{ HD01__O_C_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_C_RESET_" },
+	{ HD01__O_D_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_D_RESET_" },
+	{ HD01__O_E_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_E_RESET_" },
+	{ HD01__O_F_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_F_RESET_" },
+	{ HD01__O_MASTER_PWR_EN, GPIOF_OUT_INIT_LOW, "HD01__O_MASTER_PWR_EN" },
+	{ HD01__I_MASTER_PWR_OK, GPIOF_IN, "HD01__I_MASTER_PWR_OK" },
+	\
+	{ HD01__O_POWER_STATUS_LED, GPIOF_OUT_INIT_LOW, "HD01__O_POWER_STATUS_LED" },
+	{ HD01__O_TAM_STATUS_LED, GPIOF_OUT_INIT_LOW, "HD01__O_TAM_STATUS_LED" },
+	{ HD01__O_RM1_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_LED" },
+	{ HD01__O_RM2_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_LED" },
+	{ HD01__O_RM3_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_LED" },
+	\
+	{ HD01__I_SW1_1_BIT6, GPIOF_IN, "HD01__I_SW1_1_BIT6" },
+	{ HD01__I_SW1_2_BIT5, GPIOF_IN, "HD01__I_SW1_2_BIT5" },
+	{ HD01__I_SW1_3_BIT4, GPIOF_IN, "HD01__I_SW1_3_BIT4" },
+	{ HD01__I_SW1_4_BIT3, GPIOF_IN, "HD01__I_SW1_4_BIT3" },
+	{ HD01__I_FIXED_BIT2, GPIOF_IN, "HD01__I_FIXED_BIT2" },
+	{ HD01__I_FIXED_BIT1, GPIOF_IN, "HD01__I_FIXED_BIT1" },
+	{ HD01__I_FIXED_BIT0, GPIOF_IN, "HD01__I_FIXED_BIT0" },
+	\
+	{ HD01__O_ALL_RADIOS_DISABLE, GPIOF_OUT_INIT_LOW, "HD01__O_ALL_RADIOS_DISABLE" },
+	{ HD01__I_RM1_STATUS_, GPIOF_IN, "HD01__I_RM1_STATUS_" },
+	{ HD01__I_RM2_STATUS_, GPIOF_IN, "HD01__I_RM2_STATUS_" },
+	{ HD01__I_RM3_STATUS_, GPIOF_IN, "HD01__I_RM3_STATUS_" },
+	\
+	{ HD01__O_RM1_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_IGNITION" },
+	{ HD01__O_RM1_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_RESET" },
+	{ HD01__I_RM1_INCOMING_CALL, GPIOF_IN, "HD01__I_RM1_INCOMING_CALL" },
+	\
+	{ HD01__O_RM2_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_IGNITION" },
+	{ HD01__O_RM2_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_RESET" },
+	{ HD01__I_RM2_INCOMING_CALL, GPIOF_IN, "HD01__I_RM2_INCOMING_CALL" },
+	\
+	{ HD01__O_RM3_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_IGNITION" },
+	{ HD01__O_RM3_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_RESET" },
+	{ HD01__I_RM3_INCOMING_CALL, GPIOF_IN, "HD01__I_RM3_INCOMING_CALL" },
+};
+
+static void __init hd01_gpios_init(void)
+{
+	if (gpio_request_array(hd01_gpios, ARRAY_SIZE(hd01_gpios))) {
+		printk(KERN_ERR "failed to obtain HD01 control/display GPIOs\n");
+		return;
+	}
+
+	// reset & power lines 
+	if ( gpio_export(HD01__O_B_RESET_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_B_RESET_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_C_RESET_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_C_RESET_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_D_RESET_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_D_RESET_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_E_RESET_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_E_RESET_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_F_RESET_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_F_RESET_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_MASTER_PWR_EN, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_MASTER_PWR_EN'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_MASTER_PWR_OK, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_MASTER_PWR_OK'\n");
+		return;
+	}
+	// led outputs
+	if ( gpio_export(HD01__O_POWER_STATUS_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_POWER_STATUS_LED'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_TAM_STATUS_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_TAM_STATUS_LED'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM1_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_LED'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM2_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_LED'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM3_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_LED'\n");
+		return;
+	}
+	// unit identification switch inputs
+	if ( gpio_export(HD01__I_SW1_1_BIT6, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_1_BIT6'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_SW1_2_BIT5, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_2_BIT5'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_SW1_3_BIT4, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_3_BIT4'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_SW1_4_BIT3, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_4_BIT3'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_FIXED_BIT2, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT2'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_FIXED_BIT1, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT1'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_FIXED_BIT0, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT0'\n");
+		return;
+	}
+	// radio control gpios
+	if ( gpio_export(HD01__O_ALL_RADIOS_DISABLE, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_ALL_RADIOS_DISABLE'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM1_STATUS_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM1_STATUS_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM2_STATUS_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM2_STATUS_'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM3_STATUS_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM3_STATUS_'\n");
+		return;
+	}
+
+	if ( gpio_export(HD01__O_RM1_IGNITION, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_IGNITION'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM1_RESET, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_RESET'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM1_INCOMING_CALL, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM1_INCOMING_CALL'\n");
+		return;
+	}
+
+	if ( gpio_export(HD01__O_RM2_IGNITION, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_IGNITION'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM2_RESET, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_RESET'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM2_INCOMING_CALL, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM2_INCOMING_CALL'\n");
+		return;
+	}
+	
+	if ( gpio_export(HD01__O_RM3_IGNITION, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_IGNITION'\n");
+		return;
+	}
+	if ( gpio_export(HD01__O_RM3_RESET, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_RESET'\n");
+		return;
+	}
+	if ( gpio_export(HD01__I_RM3_INCOMING_CALL, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD01__I_RM3_INCOMING_CALL'\n");
+		return;
+	}
+	
+	printk(KERN_INFO "HD01 control/display GPIOs initialized\n");
+}
+
 
 /* --------------------------------------------------------- */
 
@@ -780,20 +966,16 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 /* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
 	/*Ethernet:  SMSC911x */
-#if ENABLE_SMSC_ETH && !(USE_ALT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
+#if ENABLE_SMSC_ETH && !(USE_EXTERNAL_INIT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 	&tam3517_smsc911x_device,
 #endif
 #if 0 && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
 	&tam3517_hecc_device,
 #endif
-	&tam3517_dss_device,
 	/*Ethernet:  DaVinci EMAC */
-#if ENABLE_EMAC_ETH && !(USE_ALT__EMAC_ETH)
+#if ENABLE_EMAC_ETH && !(USE_EXTERNAL_INIT__EMAC_ETH)
 	&tam3517_mdio_device,
 	&tam3517_emac_device,
-#endif
-#if 0 && ( defined(CONFIG_KEYBOARD_GPIO) || defined(CONFIG_KEYBOARD_GPIO_MODULE) )
-	&tam3517_keys_gpio,
 #endif
 };
 
@@ -819,13 +1001,13 @@ static void __init tam3517_init(void) {
 
 	/*Ethernet:  DaVinci EMAC */
 #if ENABLE_EMAC_ETH
-#if USE_ALT__EMAC_ETH
+#if USE_EXTERNAL_INIT__EMAC_ETH
 	am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
 #else
 	tam3517_emac_ethernet_init();
 #endif
 #endif
-	
+//	hd01_gpios_init();
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
