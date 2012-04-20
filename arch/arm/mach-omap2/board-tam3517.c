@@ -197,7 +197,7 @@ static struct resource tam3517_smsc911x_resources[] = {
 static struct smsc911x_platform_config smsc911x_config = {
     .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
     .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-    .flags          = SMSC911X_USE_16BIT, // | SMSC911X_FORCE_INTERNAL_PHY | SMSC911X_SAVE_MAC_ADDRESS,
+    .flags          = SMSC911X_USE_32BIT, // SMSC911X_USE_16BIT | SMSC911X_FORCE_INTERNAL_PHY | SMSC911X_SAVE_MAC_ADDRESS,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
@@ -595,8 +595,8 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 
 static int __init tam3517_i2c_init(void)
 {
-//	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
-//			ARRAY_SIZE(tam3517_i2c1_boardinfo));
+	omap_register_i2c_bus(1, 400, tam3517_i2c1_boardinfo,
+			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
@@ -1007,7 +1007,7 @@ static void __init tam3517_init(void) {
 	tam3517_emac_ethernet_init();
 #endif
 #endif
-//	hd01_gpios_init();
+	hd01_gpios_init();
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
