@@ -1089,10 +1089,8 @@ smsc911x_rx_counterrors(struct net_device *dev, unsigned int rxstat)
 
 /* Quickly dumps bad packets */
 static void
-smsc911x_rx_fastforward(struct smsc911x_data *pdata, unsigned int pktbytes)
+smsc911x_rx_fastforward(struct smsc911x_data *pdata, unsigned int pktwords)
 {
-	unsigned int pktwords = (pktbytes + NET_IP_ALIGN + 3) >> 2;
-
 	if (likely(pktwords >= 4)) {
 		unsigned int timeout = 500;
 		unsigned int val;
@@ -1156,7 +1154,7 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 			continue;
 		}
 
-		skb = netdev_alloc_skb(dev, pktlength + NET_IP_ALIGN);
+		skb = netdev_alloc_skb(dev, pktwords << 2);
 		if (unlikely(!skb)) {
 			SMSC_WARN(pdata, rx_err,
 				  "Unable to allocate skb for rx packet");
@@ -1166,14 +1164,12 @@ static int smsc911x_poll(struct napi_struct *napi, int budget)
 			break;
 		}
 
-		skb->data = skb->head;
-		skb_reset_tail_pointer(skb);
+		pdata->ops->rx_readfifo(pdata,
+				 (unsigned int *)skb->data, pktwords);
 
 		/* Align IP on 16B boundary */
 		skb_reserve(skb, NET_IP_ALIGN);
 		skb_put(skb, pktlength - 4);
-		pdata->ops->rx_readfifo(pdata,
-				 (unsigned int *)skb->head, pktwords);
 		skb->protocol = eth_type_trans(skb, dev);
 		skb_checksum_none_assert(skb);
 		netif_receive_skb(skb);
@@ -1243,10 +1239,92 @@ static void smsc911x_rx_multicast_update_workaround(struct smsc911x_data *pdata)
 	spin_unlock(&pdata->mac_lock);
 }
 
+static int smsc911x_phy_disable_energy_detect(struct smsc911x_data *pdata)
+{
+	int rc = 0;
+
+	if (!pdata->phy_dev)
+		return rc;
+
+	rc = phy_read(pdata->phy_dev, MII_LAN83C185_CTRL_STATUS);
+
+	if (rc < 0) {
+		SMSC_WARN(pdata, drv, "Failed reading PHY control reg");
+		return rc;
+	}
+
+	/*
+	 * If energy is detected the PHY is already awake so is not necessary
+	 * to disable the energy detect power-down mode.
+	 */
+	if ((rc & MII_LAN83C185_EDPWRDOWN) &&
+	    !(rc & MII_LAN83C185_ENERGYON)) {
+		/* Disable energy detect mode for this SMSC Transceivers */
+		rc = phy_write(pdata->phy_dev, MII_LAN83C185_CTRL_STATUS,
+			       rc & (~MII_LAN83C185_EDPWRDOWN));
+
+		if (rc < 0) {
+			SMSC_WARN(pdata, drv, "Failed writing PHY control reg");
+			return rc;
+		}
+
+		mdelay(1);
+	}
+
+	return 0;
+}
+
+static int smsc911x_phy_enable_energy_detect(struct smsc911x_data *pdata)
+{
+	int rc = 0;
+
+	if (!pdata->phy_dev)
+		return rc;
+
+	rc = phy_read(pdata->phy_dev, MII_LAN83C185_CTRL_STATUS);
+
+	if (rc < 0) {
+		SMSC_WARN(pdata, drv, "Failed reading PHY control reg");
+		return rc;
+	}
+
+	/* Only enable if energy detect mode is already disabled */
+	if (!(rc & MII_LAN83C185_EDPWRDOWN)) {
+		mdelay(100);
+		/* Enable energy detect mode for this SMSC Transceivers */
+		rc = phy_write(pdata->phy_dev, MII_LAN83C185_CTRL_STATUS,
+			       rc | MII_LAN83C185_EDPWRDOWN);
+
+		if (rc < 0) {
+			SMSC_WARN(pdata, drv, "Failed writing PHY control reg");
+			return rc;
+		}
+
+		mdelay(1);
+	}
+	return 0;
+}
+
 static int smsc911x_soft_reset(struct smsc911x_data *pdata)
 {
 	unsigned int timeout;
 	unsigned int temp;
+	int ret;
+
+	/*
+	 * LAN9210/LAN9211/LAN9220/LAN9221 chips have an internal PHY that
+	 * are initialized in a Energy Detect Power-Down mode that prevents
+	 * the MAC chip to be software reseted. So we have to wakeup the PHY
+	 * before.
+	 */
+	if (pdata->generation == 4) {
+		ret = smsc911x_phy_disable_energy_detect(pdata);
+
+		if (ret) {
+			SMSC_WARN(pdata, drv, "Failed to wakeup the PHY chip");
+			return ret;
+		}
+	}
 
 	/* Reset the LAN911x */
 	smsc911x_reg_write(pdata, HW_CFG, HW_CFG_SRST_);
@@ -1260,6 +1338,16 @@ static int smsc911x_soft_reset(struct smsc911x_data *pdata)
 		SMSC_WARN(pdata, drv, "Failed to complete reset");
 		return -EIO;
 	}
+
+	if (pdata->generation == 4) {
+		ret = smsc911x_phy_enable_energy_detect(pdata);
+
+		if (ret) {
+			SMSC_WARN(pdata, drv, "Failed to wakeup the PHY chip");
+			return ret;
+		}
+	}
+
 	return 0;
 }
 
@@ -1396,7 +1484,7 @@ static int smsc911x_open(struct net_device *dev)
 	smsc911x_reg_write(pdata, FIFO_INT, temp);
 
 	/* set RX Data offset to 2 bytes for alignment */
-	smsc911x_reg_write(pdata, RX_CFG, (2 << 8));
+	smsc911x_reg_write(pdata, RX_CFG, (NET_IP_ALIGN << 8));
 
 	/* enable NAPI polling before enabling RX interrupts */
 	napi_enable(&pdata->napi);

@@ -173,7 +173,7 @@ static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = SMSC911X_GPIO_RESET,
-	.flags		= SMSC911X_USE_32BIT, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags		= SMSC911X_USE_32BIT | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -195,9 +195,9 @@ static struct resource tam3517_smsc911x_resources[] = {
 };
 
 static struct smsc911x_platform_config smsc911x_config = {
-    .irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
-    .irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-    .flags          = SMSC911X_USE_32BIT, // SMSC911X_USE_16BIT | SMSC911X_FORCE_INTERNAL_PHY | SMSC911X_SAVE_MAC_ADDRESS,
+	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
+	.irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
+	.flags          = SMSC911X_USE_32BIT | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
