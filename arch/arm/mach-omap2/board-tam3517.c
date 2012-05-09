@@ -67,7 +67,9 @@
 
 #define NAND_BLOCK_SIZE SZ_128K
 
-/*OAMP3 Teh Flash Init*/
+/*OMAP3 Flash Init*/
+
+#if defined(CONFIG_MTD_NAND_OMAP2) || defined(CONFIG_MTD_NAND_OMAP2_MODULE)
 static struct mtd_partition tam3517_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
 	{
@@ -98,6 +100,7 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 	},
 };
 
+#if 0 // older TAM-style initialization
 static struct omap_nand_platform_data tam3517_nand_data = {
         .cs = GPMC_CS_NUM+1,
         .parts = tam3517_nand_partitions,
@@ -122,6 +125,26 @@ void tam3517_nand_init(void) {
 
         printk(KERN_INFO "NAND: Unable to find configuration in GPMC\n");        
 }
+#else  // CL-style initialization
+
+static struct omap_nand_platform_data tam3517_nand_data = {
+	.parts			= tam3517_nand_partitions,
+	.nr_parts		= ARRAY_SIZE(tam3517_nand_partitions),
+	.cs				= 0,
+};
+
+static void __init tam3517_nand_init(void)
+{
+	if (gpmc_nand_init(&tam3517_nand_data) < 0)
+		pr_err("TAM3517: NAND initialization failed\n");
+}
+
+#endif
+
+#else
+static inline void tam3517_nand_init(void) {}
+#endif
+
 
 
 /****************************************************************************
