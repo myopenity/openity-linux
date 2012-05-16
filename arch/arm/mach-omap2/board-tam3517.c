@@ -22,9 +22,6 @@
 #include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
-#include <linux/mtd/mtd.h>
-#include <linux/mtd/nand.h>
-#include <linux/mtd/partitions.h>
 #include <linux/can/platform/ti_hecc.h>
 
 #include <linux/mmc/host.h>
@@ -65,18 +62,22 @@
  *
  ****************************************************************************/
 
+#if defined(CONFIG_MTD_NAND_OMAP2) || defined(CONFIG_MTD_NAND_OMAP2_MODULE)
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/nand.h>
+#include <linux/mtd/partitions.h>
+
 #define NAND_BLOCK_SIZE SZ_128K
 
 /*OMAP3 Flash Init*/
 
-#if defined(CONFIG_MTD_NAND_OMAP2) || defined(CONFIG_MTD_NAND_OMAP2_MODULE)
 static struct mtd_partition tam3517_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
 	{
 		.name		= "X-Loader",
 		.offset		= 0,
 		.size		= 4 * NAND_BLOCK_SIZE,
-		.mask_flags	= MTD_WRITEABLE,	/* force read-only */
+		.mask_flags	= MTD_WRITEABLE,		/* force read-only */
 	},
 	{
 		.name		= "U-Boot",
@@ -86,16 +87,16 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 	{
 		.name		= "U-Boot Env",
 		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x260000 */
-		.size		= 1 * NAND_BLOCK_SIZE,
+		.size		= 2 * NAND_BLOCK_SIZE,
 	},
 	{
 		.name		= "Kernel",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x280000 */
+		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x2A0000 */
 		.size		= 32 * NAND_BLOCK_SIZE,
 	},
 	{
 		.name		= "File System",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x680000 */
+		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x6A0000 */
 		.size		= MTDPART_SIZ_FULL,
 	},
 };
@@ -196,7 +197,7 @@ static struct omap_smsc911x_platform_data tam3517_smsc911x_cfg = {
 	.cs             = SMSC911X_GPIO_CS,
 	.gpio_irq       = SMSC911X_GPIO_IRQ,
 	.gpio_reset     = SMSC911X_GPIO_RESET,
-	.flags		= SMSC911X_USE_32BIT | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags		= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT,
 };
 
 static void __init tam3517_init_smsc911x(void)
@@ -220,7 +221,7 @@ static struct resource tam3517_smsc911x_resources[] = {
 static struct smsc911x_platform_config smsc911x_config = {
 	.irq_polarity   = SMSC911X_IRQ_POLARITY_ACTIVE_LOW,
 	.irq_type       = SMSC911X_IRQ_TYPE_OPEN_DRAIN,
-	.flags          = SMSC911X_USE_32BIT | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT | SMSC911X_SAVE_MAC_ADDRESS,
+	.flags			= SMSC911X_USE_32BIT | SMSC911X_SAVE_MAC_ADDRESS | SMSC911X_FORCE_INTERNAL_PHY, // SMSC911X_USE_16BIT,
 	.phy_interface	= PHY_INTERFACE_MODE_MII,
 };
 
@@ -293,6 +294,13 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
 
 #else // Use original Davinci EMAC code
 
+/* 
+ * To use this code, configured for mdio "2", you MUST update the line below in
+ *  arch/arm/mach-omap2/clock3xxx_data.c like this!:
+-	CLK("davinci_mdio.0",	NULL,	&emac_fck,	CK_AM35XX),
++	CLK("davinci_mdio.2",	NULL,	&emac_fck,	CK_AM35XX),
+ */
+ 
 static struct resource tam3517_mdio_resources[] = {
 	{
 		.start  = AM35XX_IPSS_EMAC_BASE + AM35XX_EMAC_MDIO_OFFSET,
@@ -675,6 +683,8 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
  *
  ****************************************************************************/
 
+#if defined(CONFIG_USB_EHCI_HCD) || defined(CONFIG_USB_EHCI_HCD_MODULE)
+
 #define TAM3517_EHCI_RESET_PIN	25
 
 static struct omap_musb_board_data tam3517_musb_data = {
@@ -691,7 +701,7 @@ static struct usbhs_omap_board_data tam3517_ehci_pdata __initdata = {
 	.phy_reset  = true,
 	.reset_gpio_port[0]  = TAM3517_EHCI_RESET_PIN,
 	.reset_gpio_port[1]  = -EINVAL,
-	.reset_gpio_port[2]  = -EINVAL
+	.reset_gpio_port[2]  = -EINVAL,
 };
 
 
@@ -708,7 +718,12 @@ static __init void tam3517_usb_init(void) {
 	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);
         usbhs_init(&tam3517_ehci_pdata);
 }
-
+#else
+static __init void tam3517_usb_init(void)
+{
+	return 0;
+}
+#endif
 
 /****************************************************************************
  *
@@ -1008,8 +1023,10 @@ static void __init tam3517_init(void) {
 	platform_add_devices(tam3517_devices, ARRAY_SIZE(tam3517_devices));
 	omap_board_config = tam3517_config;
 	omap_board_config_size = ARRAY_SIZE(tam3517_config);
-	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBC);
+	
+	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBB);	// [CL switched to OMAP_PACKAGE_CBB or CUS?]
 	omap_serial_init();
+/*	omap_sdrc_init(NULL, NULL);  // [CL & am3517evm adds this] */
 	tam3517_i2c_init();
         
 	omap2_hsmmc_init(mmc);
@@ -1035,11 +1052,11 @@ static void __init tam3517_init(void) {
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
 	.atag_offset	= 0x100,
-	.reserve	= omap_reserve,
-	.map_io		= omap3_map_io,
-	.init_early	= am35xx_init_early,
-	.init_irq	= omap3_init_irq,
-	.handle_irq	= omap3_intc_handle_irq,
+	.reserve		= omap_reserve,
+	.map_io			= omap3_map_io,
+	.init_early		= am35xx_init_early,
+	.init_irq		= omap3_init_irq,
+	.handle_irq		= omap3_intc_handle_irq,
 	.init_machine	= tam3517_init,
-	.timer		= &omap3_timer,
+	.timer			= &omap3_timer,
 MACHINE_END
