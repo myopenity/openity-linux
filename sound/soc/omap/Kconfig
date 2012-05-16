@@ -150,3 +150,12 @@ config SND_OMAP_SOC_IGEP0020
 	select SND_SOC_TWL4030
 	help
 	  Say Y if you want to add support for Soc audio on IGEP v2 board.
+
+config SND_OMAP_SOC_SC_HD01
+	tristate "SoC Digital Audio support for SmarTcell HD01 (TAM3517)"
+	depends on SND_OMAP_SOC && SC_HD01_TAM3517_BASEBOARD
+	select SND_OMAP_SOC_MCBSP
+	help
+	  Say Y if you want to add support for SoC audio on the SmarTcell
+	   HD01(TAM3517).
+
