@@ -490,8 +490,13 @@ static struct regulator_init_data tam3517_regulators[] = {
 		.constraints = {
 			.min_uV = 1200000,
 			.max_uV = 1600000,
-			.valid_modes_mask = REGULATOR_MODE_NORMAL,
-			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+			.valid_modes_mask = REGULATOR_MODE_NORMAL
+//					| REGULATOR_MODE_STANDBY
+					,
+			.valid_ops_mask = REGULATOR_CHANGE_STATUS
+//					| REGULATOR_CHANGE_MODE
+//					| REGULATOR_CHANGE_VOLTAGE
+					,
 			.always_on = true,
 			.apply_uV = false,
 		},
@@ -503,8 +508,13 @@ static struct regulator_init_data tam3517_regulators[] = {
 		.constraints = {
 			.min_uV = 1800000,
 			.max_uV = 1800000, /* should be 1V8 -- 3V3 */
-			.valid_modes_mask = REGULATOR_MODE_NORMAL,
-			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+			.valid_modes_mask = REGULATOR_MODE_NORMAL
+//					| REGULATOR_MODE_STANDBY
+					,
+			.valid_ops_mask = REGULATOR_CHANGE_STATUS
+//					| REGULATOR_CHANGE_MODE
+//					| REGULATOR_CHANGE_VOLTAGE
+					,
 			.always_on = true,
 			.apply_uV = false,
 		},
@@ -516,8 +526,13 @@ static struct regulator_init_data tam3517_regulators[] = {
 		.constraints = {
 			.min_uV = 1800000,
 			.max_uV = 3300000,
-			.valid_modes_mask = REGULATOR_MODE_NORMAL,
-			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+			.valid_modes_mask = REGULATOR_MODE_NORMAL
+//					| REGULATOR_MODE_STANDBY
+					,
+			.valid_ops_mask = REGULATOR_CHANGE_STATUS
+//					| REGULATOR_CHANGE_MODE
+//					| REGULATOR_CHANGE_VOLTAGE
+					,
 			.always_on = true,
 			.apply_uV = false,
 		},
@@ -529,8 +544,13 @@ static struct regulator_init_data tam3517_regulators[] = {
 		.constraints = {
 			.min_uV = 1800000,
 			.max_uV = 1800000,
-			.valid_modes_mask = REGULATOR_MODE_NORMAL,
-			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+			.valid_modes_mask = REGULATOR_MODE_NORMAL
+//					| REGULATOR_MODE_STANDBY
+					,
+			.valid_ops_mask = REGULATOR_CHANGE_STATUS
+//					| REGULATOR_CHANGE_MODE
+//					| REGULATOR_CHANGE_VOLTAGE
+					,
 			.always_on = true,
 			.apply_uV = false,
 		},
@@ -542,8 +562,13 @@ static struct regulator_init_data tam3517_regulators[] = {
 		.constraints = {
 			.min_uV = 3300000,
 			.max_uV = 3300000,
-			.valid_modes_mask = REGULATOR_MODE_NORMAL,
-			.valid_ops_mask = REGULATOR_CHANGE_STATUS,
+			.valid_modes_mask = REGULATOR_MODE_NORMAL
+//					| REGULATOR_MODE_STANDBY
+					,
+			.valid_ops_mask = REGULATOR_CHANGE_STATUS
+//					| REGULATOR_CHANGE_MODE
+//					| REGULATOR_CHANGE_VOLTAGE
+					,
 			.always_on = true,
 			.apply_uV = false,
 		},
@@ -623,10 +648,13 @@ static struct i2c_board_info __initdata tam3517_i2c2_boardinfo[] = {
 };
 
 static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
+	/*
         {
                 I2C_BOARD_INFO("s35390a", 0x30),
                 .type           = "s35390a",
-        }, {
+        },
+	*/
+		{
                 I2C_BOARD_INFO("ds1307", 0x68),
         },
 };
