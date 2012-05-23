@@ -349,8 +349,8 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		}
 	} else {
-#if defined(CONFIG_SND_OMAP_SOC_SC_HD01)
-		/* !!! THIS IS A HACK !!!
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+		/* !!!  This is a hack! Not all RIGHT_J's will do this.  !!!
 		 * MC55 framesize is fixed at 32 bits, even with only 1 chan, force it.
 		 * (last 16-bits = "don't care")
 		 */
@@ -366,7 +366,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	switch (format) {
 	case SND_SOC_DAIFMT_I2S:
 	case SND_SOC_DAIFMT_LEFT_J:
-#if defined(CONFIG_SND_OMAP_SOC_SC_HD01)
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 	case SND_SOC_DAIFMT_RIGHT_J:
 #endif
 		regs->srgr2	|= FPER(framesize - 1);  /* i.e. frame period (FPER) to 32 bits [31+1 = 32] */
@@ -429,7 +429,7 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		/* Invert FS polarity configuration */
 		inv_fs = true;
 		break;
-#if defined(CONFIG_SND_OMAP_SOC_SC_HD01)
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 	case SND_SOC_DAIFMT_RIGHT_J:
 		/* 0-bit data delay */
 		regs->rcr2	|= RDATDLY(0);

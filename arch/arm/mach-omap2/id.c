@@ -232,7 +232,7 @@ void __init omap3xxx_check_features(void)
 	status = omap_ctrl_readl(OMAP3_CONTROL_OMAP_STATUS);
 
 	OMAP3_CHECK_FEATURE(status, L2CACHE);
-#if !defined(CONFIG_SC_HD01_TAM3517_BASEBOARD)
+#if !defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 	OMAP3_CHECK_FEATURE(status, IVA);
 	OMAP3_CHECK_FEATURE(status, SGX);
 #endif
