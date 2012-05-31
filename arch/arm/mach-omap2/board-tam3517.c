@@ -69,35 +69,54 @@
 
 #define NAND_BLOCK_SIZE SZ_128K
 
-/*OMAP3 Flash Init*/
+/*
+ * [let's try the 1st one]
+ * 0x00000000 - 0x0007FFFF  Booting Image (X-Loader, 4 copies)	// 512k
+ * 0x00080000 - 0x0023FFFF  U-Boot Image	// 1835k
+ * 0x00240000 - 0x0027FFFF  U-Boot Env Data (X-loader doesn't care)	// 256k
+ * 0x00280000 - 0x0077FFFF  Kernel Image // 5120k
+ * 0x00780000 - 0x0CF80000	Root FS (read-only) // 200MB
+ * 0x0CF80000 - 0x1FB80000	Root FS (writable overlay) // 300MB
+ * 0x1FB80000 - 0x20000000  DATA // ~4.5MB
+ */
 
 static struct mtd_partition tam3517_nand_partitions[] = {
 	/* All the partition sizes are listed in terms of NAND block size */
 	{
 		.name		= "X-Loader",
 		.offset		= 0,
-		.size		= 4 * NAND_BLOCK_SIZE,
-		.mask_flags	= MTD_WRITEABLE,		/* force read-only */
+		.size		= 4 * NAND_BLOCK_SIZE,  /* -> 0x00080000 (size: 0x80000, 512k) */
+		.mask_flags	= MTD_WRITEABLE,        /* force read-only */
 	},
 	{
 		.name		= "U-Boot",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x80000 */
-		.size		= 15 * NAND_BLOCK_SIZE,
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00080000 */
+		.size		= 14 * NAND_BLOCK_SIZE, /* -> 0x00240000 (size: 0x1C0000, 1835k) */
 	},
 	{
 		.name		= "U-Boot Env",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x260000 */
-		.size		= 2 * NAND_BLOCK_SIZE,
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00240000 */
+		.size		= 2 * NAND_BLOCK_SIZE,  /* -> 0x00280000 (size: 0x40000, 256k) */
 	},
 	{
 		.name		= "Kernel",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x2A0000 */
-		.size		= 32 * NAND_BLOCK_SIZE,
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00280000 */
+		.size		= 40 * NAND_BLOCK_SIZE, /* -> 0x00780000 (size: 0x500000, 5120k) */
 	},
 	{
-		.name		= "File System",
-		.offset		= MTDPART_OFS_APPEND,	/* Offset = 0x6A0000 */
-		.size		= MTDPART_SIZ_FULL,
+		.name		= "Root Filesystem (read-only)",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x00780000 */
+		.size		= 1600 * NAND_BLOCK_SIZE, /* -> 0x0CF80000 (size: 0xC800000, 200M) */
+	},
+	{
+		.name		= "Root Filesystem (writeable overlay)",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x0CF80000 */
+		.size		= 2400 * NAND_BLOCK_SIZE, /* -> 0x1FB80000 (size: 0x12C00000, 300M) */
+	},
+	{
+		.name		= "DATA",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x1FB80000 */
+		.size		= MTDPART_SIZ_FULL,      /* -> 0x20000000 (size: 0x480000, ~4.5MB) */
 	},
 };
 
@@ -126,7 +145,7 @@ void tam3517_nand_init(void) {
 
         printk(KERN_INFO "NAND: Unable to find configuration in GPMC\n");        
 }
-#else  // CL-style initialization
+#else  // newer CL-style initialization
 
 static struct omap_nand_platform_data tam3517_nand_data = {
 	.parts			= tam3517_nand_partitions,
