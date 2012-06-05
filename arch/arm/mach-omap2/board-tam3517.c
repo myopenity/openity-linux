@@ -47,14 +47,17 @@
 #include "control.h"
 #include "hsmmc.h"
 
-/* custom settings */
-#define ENABLE_EMAC_ETH		1
+/* SC custom settings */
+#define ENABLE_EMAC_ETH				1
 #define USE_EXTERNAL_INIT__EMAC_ETH	1
 
-#define ENABLE_SMSC_ETH		1
+#define ENABLE_SMSC_ETH				1
 #define USE_EXTERNAL_INIT__SMSC_ETH	1
 
-
+#define ENABLE_HECC					0
+#define ENABLE_I2C_TPS65023			0
+#define ENABLE_I2C_TLV320AIC23		0
+#define ENABLE_I2C_DS1307			0
 
 /****************************************************************************
  *
@@ -199,7 +202,7 @@ static struct omap2_hsmmc_info mmc[] = {
  *
  ****************************************************************************/
 
-#if ENABLE_SMSC_ETH && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
+#if (ENABLE_SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 
 #include <linux/smsc911x.h>
 
@@ -207,7 +210,7 @@ static struct omap2_hsmmc_info mmc[] = {
 #define SMSC911X_GPIO_RESET		26 // Twister: 142
 #define SMSC911X_GPIO_CS		4  // Twister: 5
 
-#if USE_EXTERNAL_INIT__SMSC_ETH // gpmc-smsc911x style
+#if (USE_EXTERNAL_INIT__SMSC_ETH) // gpmc-smsc911x style
 
 #include <plat/gpmc-smsc911x.h>
 
@@ -311,11 +314,11 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
  * EMAC LAN
  *
  ****************************************************************************/
-#if ENABLE_EMAC_ETH
+#if (ENABLE_EMAC_ETH)
 
 #include <linux/davinci_emac.h>
 
-#if USE_EXTERNAL_INIT__EMAC_ETH // Use new standalone EMAC code for generic AM35xx?
+#if (USE_EXTERNAL_INIT__EMAC_ETH) // Use new standalone EMAC code for generic AM35xx?
 
 #include "am35xx-emac.h"
 
@@ -452,6 +455,8 @@ static void tam3517_emac_ethernet_init(void) {
  * TPS65023 voltage regulator
  *
  ****************************************************************************/
+
+#if (ENABLE_I2C_TPS65023) // Unsure about this code from TN
 
 /* VDCDC1 -> VDD_CORE */
 static struct regulator_consumer_supply tam3517_vdcdc1_supplies[] = {
@@ -596,13 +601,15 @@ static struct regulator_init_data tam3517_regulators[] = {
 	},
 };
 
+#endif // ENABLE_I2C_TPS65023
+
 /****************************************************************************
  *
  * HECC (High-End CAN Controller, for CAN-bus)
  *
  ****************************************************************************/
 
-#if 0 && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
+#if (ENABLE_HECC) && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
 /*
  * HECC information
  */
@@ -647,35 +654,43 @@ static struct platform_device tam3517_hecc_device = {
  ****************************************************************************/
 
 static struct i2c_board_info __initdata tam3517_i2c1_boardinfo[] = {
+#if (ENABLE_I2C_TPS65023)
         {
                 I2C_BOARD_INFO("tps65023", 0x48),
                 .flags = I2C_CLIENT_WAKE,
                 .platform_data = tam3517_regulators,
-        }, {
+        },
+#endif  // ENABLE_I2C_TPS65023
+		{
                 I2C_BOARD_INFO("24c02", 0x50),
-        }, {
+        },
+#if (ENABLE_I2C_TLV320AIC23)
+		{
                 I2C_BOARD_INFO("tlv320aic23", 0x1a),
         },
+#endif // ENABLE_I2C_TLV320AIC23
 };
 
 static struct i2c_board_info __initdata tam3517_i2c2_boardinfo[] = {
-/*
+	/* TN comment
         {
                 I2C_BOARD_INFO("24c02", 0x50),
         },
-*/
+	*/
 };
 
 static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
-	/*
+	/* TN comment
         {
                 I2C_BOARD_INFO("s35390a", 0x30),
                 .type           = "s35390a",
         },
 	*/
+#if (ENABLE_I2C_DS1307)
 		{
                 I2C_BOARD_INFO("ds1307", 0x68),
         },
+#endif
 };
 
 
@@ -776,7 +791,7 @@ static __init void tam3517_usb_init(void) {
 #else
 static __init void tam3517_usb_init(void)
 {
-	return 0;
+	return;
 }
 #endif
 
@@ -1059,14 +1074,14 @@ static struct omap_board_config_kernel tam3517_config[] = {};
 /* --------------------------------------------------------- */
 static struct platform_device *tam3517_devices[] __initdata = {
 	/*Ethernet:  SMSC911x */
-#if ENABLE_SMSC_ETH && !(USE_EXTERNAL_INIT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
+#if (ENABLE_SMSC_ETH) && !(USE_EXTERNAL_INIT__SMSC_ETH) && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 	&tam3517_smsc911x_device,
 #endif
-#if 0 && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
+#if (ENABLE_HECC) && ( defined(CONFIG_CAN_TI_HECC) || defined(CONFIG_CAN_TI_HECC_MODULE) )
 	&tam3517_hecc_device,
 #endif
 	/*Ethernet:  DaVinci EMAC */
-#if ENABLE_EMAC_ETH && !(USE_EXTERNAL_INIT__EMAC_ETH)
+#if (ENABLE_EMAC_ETH) && !(USE_EXTERNAL_INIT__EMAC_ETH)
 	&tam3517_mdio_device,
 	&tam3517_emac_device,
 #endif
@@ -1090,13 +1105,13 @@ static void __init tam3517_init(void) {
 	tam3517_nand_init();
 
 	/*Ethernet:  SMSC911x */
-#if ENABLE_SMSC_ETH
+#if (ENABLE_SMSC_ETH)
 	tam3517_init_smsc911x();
 #endif
 
 	/*Ethernet:  DaVinci EMAC */
-#if ENABLE_EMAC_ETH
-#if USE_EXTERNAL_INIT__EMAC_ETH
+#if (ENABLE_EMAC_ETH)
+#if (USE_EXTERNAL_INIT__EMAC_ETH)
 	am35xx_emac_init(AM35XX_DEFAULT_MDIO_FREQUENCY, 1);
 #else
 	tam3517_emac_ethernet_init();
