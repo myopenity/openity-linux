@@ -318,7 +318,7 @@ static inline void __init tam3517_init_smsc911x(void) { return; }
 
 #include <linux/davinci_emac.h>
 
-#if (USE_EXTERNAL_INIT__EMAC_ETH) // Use new standalone EMAC code for generic AM35xx?
+#if (USE_EXTERNAL_INIT__EMAC_ETH) /* Use new standalone EMAC code for generic AM35xx? */
 
 #include "am35xx-emac.h"
 
@@ -456,7 +456,7 @@ static void tam3517_emac_ethernet_init(void) {
  *
  ****************************************************************************/
 
-#if (ENABLE_I2C_TPS65023) // Unsure about this code from TN
+#if (ENABLE_I2C_TPS65023) /* Unsure about this code from TN */
 
 /* VDCDC1 -> VDD_CORE */
 static struct regulator_consumer_supply tam3517_vdcdc1_supplies[] = {
@@ -601,7 +601,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 	},
 };
 
-#endif // ENABLE_I2C_TPS65023
+#endif /* ENABLE_I2C_TPS65023 */
 
 /****************************************************************************
  *
@@ -660,7 +660,7 @@ static struct i2c_board_info __initdata tam3517_i2c1_boardinfo[] = {
                 .flags = I2C_CLIENT_WAKE,
                 .platform_data = tam3517_regulators,
         },
-#endif  // ENABLE_I2C_TPS65023
+#endif  /* ENABLE_I2C_TPS65023 */
 		{
                 I2C_BOARD_INFO("24c02", 0x50),
         },
@@ -668,7 +668,7 @@ static struct i2c_board_info __initdata tam3517_i2c1_boardinfo[] = {
 		{
                 I2C_BOARD_INFO("tlv320aic23", 0x1a),
         },
-#endif // ENABLE_I2C_TLV320AIC23
+#endif /* ENABLE_I2C_TLV320AIC23 */
 };
 
 static struct i2c_board_info __initdata tam3517_i2c2_boardinfo[] = {
