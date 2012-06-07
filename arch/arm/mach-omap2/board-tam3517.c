@@ -51,7 +51,7 @@
 #define ENABLE_EMAC_ETH				1
 #define USE_EXTERNAL_INIT__EMAC_ETH	1
 
-#define ENABLE_SMSC_ETH				1
+#define ENABLE_SMSC_ETH				0
 #define USE_EXTERNAL_INIT__SMSC_ETH	1
 
 #define ENABLE_HECC					0
@@ -206,9 +206,9 @@ static struct omap2_hsmmc_info mmc[] = {
 
 #include <linux/smsc911x.h>
 
-#define SMSC911X_GPIO_IRQ		65 // Twister: 153
-#define SMSC911X_GPIO_RESET		26 // Twister: 142
-#define SMSC911X_GPIO_CS		4  // Twister: 5
+#define SMSC911X_GPIO_IRQ		153 // 65 // Twister: 153
+#define SMSC911X_GPIO_RESET		142 // 26 // Twister: 142
+#define SMSC911X_GPIO_CS		5 // 4  // Twister: 5
 
 #if (USE_EXTERNAL_INIT__SMSC_ETH) // gpmc-smsc911x style
 
@@ -1117,7 +1117,7 @@ static void __init tam3517_init(void) {
 	tam3517_emac_ethernet_init();
 #endif
 #endif
-	hd01_gpios_init();
+//	hd01_gpios_init();
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
