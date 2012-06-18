@@ -78,6 +78,11 @@ static int debug = 3;
 module_param(debug, int, 0);
 MODULE_PARM_DESC(debug, "Debug level (0=none,...,16=all)");
 
+static char *macaddr = ":";
+module_param(macaddr, charp, 0);
+MODULE_PARM_DESC(macaddr, " macaddr=macaddr;[tgt-netdevname] (Set MAC only if there is a device without MAC on EEPROM)");
+
+
 struct smsc911x_data;
 
 struct smsc911x_ops {
@@ -144,7 +149,73 @@ struct smsc911x_data {
 
 	/* regulators */
 	struct regulator_bulk_data supplies[SMSC911X_NUM_SUPPLIES];
+	
+	/* allow MAC addresses to be passed in via kernel command line */
+	bool mac_set_from_param;
 };
+
+/* set mac address from the macaddr module parameter
+ *  based on patch @ lkml.org/lkml/2012/1/31/315
+ */
+static int smsc911x_init_mac_address_from_param(struct net_device *dev, u8 *enetaddr)
+{
+	struct smsc911x_data *pdata = netdev_priv(dev);
+	int i, parsed, ret;
+	char *input = NULL;
+	char *config_param = NULL;
+	char *netdev_name = NULL;
+
+	parsed = 0;
+	ret = 0;
+
+	input = kstrdup(macaddr, GFP_KERNEL);
+
+	if (!input)
+		return -ENOMEM;
+
+	if (strlen(input) >= 17) {
+		while ((config_param = strsep(&input, ";"))) {
+			if (parsed == 0) {
+				if (!mac_pton(config_param, enetaddr)) {
+					ret = 1;
+					goto parse_err;
+				}
+			} else {
+				netdev_name = config_param;
+			}
+			parsed ++;
+		}
+
+		if (parsed && is_valid_ether_addr(enetaddr)) {
+			if (netdev_name && strlen(netdev_name)) {
+				if (strcmp(netdev_name, dev->name) != 0) {
+					netdev_err(dev, "requested devname (%s) didn't match (%s)\n", netdev_name, dev->name);
+					ret = 1;
+					goto out;
+				}
+			}
+
+			/* only supporting 48-bit MACs atm */
+			for (i = 0; i < 6; i++) {
+				dev->dev_addr[i] = enetaddr[i];
+			}
+
+			netdev_info(dev, "set valid MAC address from smsc911x.macaddr\n");
+			netdev_dbg(dev, " -> %02x:%02x:%02x:%02x:%02x:%02x\n", enetaddr[0], enetaddr[1], enetaddr[2], enetaddr[3], enetaddr[4], enetaddr[5]);
+			pdata->mac_set_from_param = true;
+			goto out;
+		}
+	} 
+
+parse_err:
+	netdev_err(dev, "failed to parse (valid) MAC from smsc911x.macaddr\n");
+	memset(enetaddr, 0, 6);
+out:
+	if (input)
+		kfree(input);
+	return ret;
+}
+
 
 /* Easy access to information */
 #define __smsc_shift(pdata, reg) ((reg) << ((pdata)->config.shift))
@@ -2481,11 +2552,22 @@ static int __devinit smsc911x_drv_probe(struct platform_device *pdev)
 			SMSC_TRACE(pdata, probe,
 				   "Mac Address is read from LAN911x EEPROM");
 		} else {
-			/* eeprom values are invalid, generate random MAC */
-			eth_hw_addr_random(dev);
-			smsc911x_set_hw_mac_address(pdata, dev->dev_addr);
-			SMSC_TRACE(pdata, probe,
-				   "MAC Address is set to random_ether_addr");
+			/* see if kernel command line offers a valid mac for this driver */
+			u8 enetaddr[6];
+			if ( (smsc911x_init_mac_address_from_param(dev, enetaddr) == 0) && is_valid_ether_addr(enetaddr) )
+			{
+				smsc911x_set_hw_mac_address(pdata, enetaddr);
+				SMSC_TRACE(pdata, probe,
+					   "MAC Address specified by kernel command line");
+			}
+			else
+			{
+				/* all other values are invalid, generate random MAC */
+				eth_hw_addr_random(dev);
+				smsc911x_set_hw_mac_address(pdata, dev->dev_addr);
+				SMSC_TRACE(pdata, probe,
+					   "MAC Address is set to random_ether_addr");
+			}
 		}
 	}
 
