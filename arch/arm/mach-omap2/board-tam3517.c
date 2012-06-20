@@ -54,7 +54,7 @@
 #define ENABLE_SMSC_ETH				1
 #define USE_EXTERNAL_INIT__SMSC_ETH	1
 
-#define ENABLE_HECC					0
+#define ENABLE_HECC					1
 #define ENABLE_I2C_TPS65023			0
 #define ENABLE_I2C_TLV320AIC23		0
 #define ENABLE_I2C_DS1307			0
