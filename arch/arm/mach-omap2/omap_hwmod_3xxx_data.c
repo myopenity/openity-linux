@@ -519,11 +519,27 @@ static struct omap_hwmod omap36xx_uart4_hwmod = {
 
 static struct omap_hwmod_irq_info am35xx_uart4_mpu_irqs[] = {
 	{ .irq = INT_35XX_UART4_IRQ, },
+	{ .irq = -1 }
 };
 
 static struct omap_hwmod_dma_info am35xx_uart4_sdma_reqs[] = {
 	{ .name = "rx", .dma_req = AM35XX_DMA_UART4_RX, },
 	{ .name = "tx", .dma_req = AM35XX_DMA_UART4_TX, },
+	{ .dma_req = -1 }
+};
+
+/*
+ * XXX AM35xx UART4 cannot complete its softreset without uart1_fck or
+ * uart2_fck being enabled.  So we add uart1_fck as an optional clock,
+ * below, and set the HWMOD_CONTROL_OPT_CLKS_IN_RESET.  This really
+ * should not be needed.  The functional clock structure of the AM35xx
+ * UART4 is extremely unclear and opaque; it is unclear what the role
+ * of uart1/2_fck is for the UART4.  Any clarification from either
+ * empirical testing or the AM3505/3517 hardware designers would be
+ * most welcome.
+ */
+static struct omap_hwmod_opt_clk am35xx_uart4_opt_clks[] = {
+	{ .role = "softreset_uart1_fck", .clk = "uart1_fck" },
 };
 
 static struct omap_hwmod am35xx_uart4_hwmod = {
@@ -535,11 +551,14 @@ static struct omap_hwmod am35xx_uart4_hwmod = {
 		.omap2 = {
 			.module_offs = CORE_MOD,
 			.prcm_reg_id = 1,
-			.module_bit = OMAP3430_EN_UART4_SHIFT,
+			.module_bit = AM35XX_EN_UART4_SHIFT,
 			.idlest_reg_id = 1,
-			.idlest_idle_bit = OMAP3430_EN_UART4_SHIFT,
+			.idlest_idle_bit = AM35XX_ST_UART4_SHIFT,
 		},
 	},
+	.opt_clks	= am35xx_uart4_opt_clks,
+	.opt_clks_cnt	= ARRAY_SIZE(am35xx_uart4_opt_clks),
+	.flags		= HWMOD_CONTROL_OPT_CLKS_IN_RESET,
 	.class		= &omap2_uart_class,
 };
 
@@ -1651,25 +1670,20 @@ static struct omap_hwmod omap3xxx_usbhsotg_hwmod = {
 
 /* usb_otg_hs */
 static struct omap_hwmod_irq_info am35xx_usbhsotg_mpu_irqs[] = {
-
 	{ .name = "mc", .irq = 71 },
 	{ .irq = -1 }
 };
 
 static struct omap_hwmod_class am35xx_usbotg_class = {
 	.name = "am35xx_usbotg",
-	.sysc = NULL,
 };
 
 static struct omap_hwmod am35xx_usbhsotg_hwmod = {
 	.name		= "am35x_otg_hs",
 	.mpu_irqs	= am35xx_usbhsotg_mpu_irqs,
-	.main_clk	= NULL,
-	.prcm = {
-		.omap2 = {
-		},
-	},
+	.main_clk	= "hsotgusb_fck",
 	.class		= &am35xx_usbotg_class,
+	.flags		= HWMOD_NO_IDLEST,
 };
 
 /* MMC/SD/SDIO common */
@@ -2110,9 +2124,10 @@ static struct omap_hwmod_ocp_if omap3xxx_usbhsotg__l3 = {
 static struct omap_hwmod_ocp_if am35xx_usbhsotg__l3 = {
 	.master		= &am35xx_usbhsotg_hwmod,
 	.slave		= &omap3xxx_l3_main_hwmod,
-	.clk		= "core_l3_ick",
+	.clk		= "hsotgusb_ick",
 	.user		= OCP_USER_MPU,
 };
+
 /* L4_CORE -> L4_WKUP interface */
 static struct omap_hwmod_ocp_if omap3xxx_l4_core__l4_wkup = {
 	.master	= &omap3xxx_l4_core_hwmod,
@@ -2256,6 +2271,7 @@ static struct omap_hwmod_addr_space am35xx_uart4_addr_space[] = {
 		.pa_end		= OMAP3_UART4_AM35XX_BASE + SZ_1K - 1,
 		.flags		= ADDR_MAP_ON_INIT | ADDR_TYPE_RT,
 	},
+	{ }
 };
 
 static struct omap_hwmod_ocp_if am35xx_l4_core__uart4 = {
@@ -2406,7 +2422,7 @@ static struct omap_hwmod_addr_space am35xx_usbhsotg_addrs[] = {
 static struct omap_hwmod_ocp_if am35xx_l4_core__usbhsotg = {
 	.master		= &omap3xxx_l4_core_hwmod,
 	.slave		= &am35xx_usbhsotg_hwmod,
-	.clk		= "l4_ick",
+	.clk		= "hsotgusb_ick",
 	.addr		= am35xx_usbhsotg_addrs,
 	.user		= OCP_USER_MPU,
 };
