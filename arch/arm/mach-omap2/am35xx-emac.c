@@ -94,7 +94,7 @@ void __init am35xx_emac_init(unsigned long mdio_bus_freq, u8 rmii_en)
 
 #if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 	/* use the TI-provided MAC address fused in the AM35xx */
-	u32 regval, mac_lo, mac_hi;
+	u32 mac_lo, mac_hi;
 
 	mac_lo = omap_ctrl_readl(AM35XX_CONTROL_FUSE_EMAC_LSB);
 	mac_hi = omap_ctrl_readl(AM35XX_CONTROL_FUSE_EMAC_MSB);
