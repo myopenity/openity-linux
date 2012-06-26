@@ -104,7 +104,7 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 	{
 		.name		= "Kernel",
 		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00280000 */
-		.size		= 40 * NAND_BLOCK_SIZE, /* -> 0x00780000 (size: 0x500000, 5120k) */
+		.size		= 60 * NAND_BLOCK_SIZE, /* -> 0x00780000 (size: 0x500000, 5120k) */
 	},
 	{
 		.name		= "Root Filesystem (read-only)",
