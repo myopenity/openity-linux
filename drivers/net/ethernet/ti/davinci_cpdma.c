@@ -679,6 +679,12 @@ int cpdma_chan_submit(struct cpdma_chan *chan, void *token, void *data,
 	}
 
 	buffer = dma_map_single(ctlr->dev, data, len, chan->dir);
+	if (dma_mapping_error(ctlr->dev, buffer)) {
+		dev_err(ctlr->dev, "CPDMA: dma_map_single failed!");
+		ret = -EINVAL;
+		goto unlock_ret;
+	}
+	
 	mode = CPDMA_DESC_OWNER | CPDMA_DESC_SOP | CPDMA_DESC_EOP;
 
 	desc_write(desc, hw_next,   0);
