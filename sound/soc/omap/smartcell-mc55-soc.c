@@ -90,6 +90,7 @@ static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "can't set codec system clock\n");
 		return ret;
 	}
+#endif
 
 /*** these next 2 are valid only for mcbsp1 (0 to the driver) as other mcbsp's lack separate CLKR/FSR lines ***/
 	/* set cpu CLKR & FSR as inputs (unused) */
@@ -100,13 +101,14 @@ static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
 		return ret;
 	}
 
-	snd_soc_dai_set_sysclk(cpu_dai, OMAP_MCBSP_FSR_SRC_FSX, 0,
+	ret = snd_soc_dai_set_sysclk(cpu_dai, OMAP_MCBSP_FSR_SRC_FSX, 0,
 				SND_SOC_CLOCK_IN);
 	if (ret < 0) {
 		printk(KERN_ERR "can't set CPU system clock OMAP_MCBSP_FSR_SRC_FSX\n");
 		return ret;
 	}
 
+#if 0
 /*** The SRG is not needed since McBSP is slave! ***/
 	/* Set McBSP clock to external */
 	// note, final parameter appears ignored.
@@ -135,6 +137,15 @@ static struct snd_soc_ops sc_mc55_ops = {
 
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link sc_mc55_dai[] = {
+	{
+		.name = "SmarTcell-MC55_0",
+		.stream_name = "SmarTcell-MC55_0",
+		.cpu_dai_name = "omap-mcbsp.1",
+		.platform_name = "omap-pcm-audio",
+		.codec_dai_name = "smartcell-codec-dai",
+		.codec_name = "smartcell-codec",
+		.ops = &sc_mc55_ops,
+	},
 	{
 		.name = "SmarTcell-MC55_A",
 		.stream_name = "SmarTcell-MC55_A",
