@@ -238,7 +238,9 @@ void __init omap3xxx_check_features(void)
 
 	OMAP3_CHECK_FEATURE(status, L2CACHE);
 	OMAP3_CHECK_FEATURE(status, IVA);
+#if !defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 	OMAP3_CHECK_FEATURE(status, SGX);
+#endif
 	OMAP3_CHECK_FEATURE(status, NEON);
 	OMAP3_CHECK_FEATURE(status, ISP);
 	if (cpu_is_omap3630())

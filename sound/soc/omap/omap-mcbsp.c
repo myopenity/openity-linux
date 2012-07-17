@@ -302,7 +302,7 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	}
 
 	regs->rcr2	&= ~(RPHASE | RFRLEN2(0x7f) | RWDLEN2(7));
-	regs->xcr2	&= ~(RPHASE | XFRLEN2(0x7f) | XWDLEN2(7));
+	regs->xcr2	&= ~(XPHASE | XFRLEN2(0x7f) | XWDLEN2(7));
 	regs->rcr1	&= ~(RFRLEN1(0x7f) | RWDLEN1(7));
 	regs->xcr1	&= ~(XFRLEN1(0x7f) | XWDLEN1(7));
 	format = mcbsp->fmt & SND_SOC_DAIFMT_FORMAT_MASK;
@@ -353,8 +353,17 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 					"channels\n", __func__);
 			return -EINVAL;
 		}
-	} else
+	} else {
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+		/* !!!  This is a hack! Not all RIGHT_J's will do this.  !!!
+		 * MC55 framesize is fixed at 32 bits, even with only 1 chan, force it.
+		 * (last 16-bits = "don't care")
+		 */
+		framesize = wlen * 2;
+#else
 		framesize = wlen * channels;
+#endif
+	}
 
 	/* Set FS period and length in terms of bit clock periods */
 	regs->srgr2	&= ~FPER(0xfff);
@@ -362,8 +371,11 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 	switch (format) {
 	case SND_SOC_DAIFMT_I2S:
 	case SND_SOC_DAIFMT_LEFT_J:
-		regs->srgr2	|= FPER(framesize - 1);
-		regs->srgr1	|= FWID((framesize >> 1) - 1);
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+	case SND_SOC_DAIFMT_RIGHT_J:
+#endif
+		regs->srgr2	|= FPER(framesize - 1);  /* i.e. frame period (FPER) to 32 bits [31+1 = 32] */
+		regs->srgr1	|= FWID((framesize >> 1) - 1);  /* i.e. frame width (FWID) to 16 bits [15+1 = 16] */
 		break;
 	case SND_SOC_DAIFMT_DSP_A:
 	case SND_SOC_DAIFMT_DSP_B:
@@ -422,6 +434,16 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		/* Invert FS polarity configuration */
 		inv_fs = true;
 		break;
+#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+	case SND_SOC_DAIFMT_RIGHT_J:
+		/* 0-bit data delay */
+		regs->rcr2	|= RDATDLY(0);
+		regs->xcr2	|= XDATDLY(0);
+		regs->spcr1	|= RJUST(0);
+		/* Invert FS polarity configuration */
+		inv_fs = true;
+		break;
+#endif
 	case SND_SOC_DAIFMT_DSP_A:
 		/* 1-bit data delay */
 		regs->rcr2      |= RDATDLY(1);
