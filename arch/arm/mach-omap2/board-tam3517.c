@@ -58,6 +58,7 @@
 #define ENABLE_I2C_TPS65023			1
 #define ENABLE_I2C_TLV320AIC23		0
 #define ENABLE_I2C_DS1307			0
+#define ENABLE_I2C_M41T80			1
 
 /****************************************************************************
  *
@@ -672,7 +673,7 @@ static struct i2c_board_info __initdata tam3517_i2c1_boardinfo[] = {
 };
 
 static struct i2c_board_info __initdata tam3517_i2c2_boardinfo[] = {
-	/* TN comment
+	/*[TN comment]
         {
                 I2C_BOARD_INFO("24c02", 0x50),
         },
@@ -680,7 +681,7 @@ static struct i2c_board_info __initdata tam3517_i2c2_boardinfo[] = {
 };
 
 static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
-	/* TN comment
+	/*[TN comment]
         {
                 I2C_BOARD_INFO("s35390a", 0x30),
                 .type           = "s35390a",
@@ -690,7 +691,12 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 		{
                 I2C_BOARD_INFO("ds1307", 0x68),
         },
-#endif
+#endif /* ENABLE_I2C_DS1307 */
+#if (ENABLE_I2C_M41T80)
+		{
+                I2C_BOARD_INFO("m41t80", 0x68),
+        },
+#endif /* ENABLE_I2C_M41T80 */
 };
 
 
