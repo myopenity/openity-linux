@@ -706,7 +706,7 @@ static int __init tam3517_i2c_init(void)
 			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
-	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
+	omap_register_i2c_bus(3, 100, tam3517_i2c3_boardinfo,
                         ARRAY_SIZE(tam3517_i2c3_boardinfo));
 	return 0;
 }
