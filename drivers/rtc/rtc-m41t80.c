@@ -213,6 +213,7 @@ static int m41t80_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return m41t80_set_datetime(to_i2c_client(dev), tm);
 }
 
+#if 0 /* XXX - m41t80 alarm functionality is reported broken. */
 static int m41t80_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 {
 	struct i2c_client *client = to_i2c_client(dev);
@@ -353,6 +354,7 @@ static int m41t80_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *t)
 	t->pending = !!(reg[M41T80_REG_FLAGS] & M41T80_FLAGS_AF);
 	return 0;
 }
+#endif /* XXX - m41t80 alarm functionality is reported broken. */
 
 static struct rtc_class_ops m41t80_rtc_ops = {
 	.read_time = m41t80_rtc_read_time,
@@ -497,6 +499,11 @@ static int wdt_margin = WD_TIMO;
 module_param(wdt_margin, int, 0);
 MODULE_PARM_DESC(wdt_margin, "Watchdog timeout in seconds (default 60s)");
 
+static bool nowayout = WATCHDOG_NOWAYOUT;
+module_param(nowayout, bool, 0);
+MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started "
+	"(default=" __MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
+
 static unsigned long wdt_is_open;
 static int boot_flag;
 
@@ -535,7 +542,7 @@ static void wdt_ping(void)
 	 */
 	if (clientdata->features & M41T80_FEATURE_WD)
 		i2c_data[1] &= ~M41T80_WATCHDOG_RB2;
-
+printk(KERN_INFO "***i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
 	i2c_transfer(save_client->adapter, msgs1, 1);
 }
 
@@ -546,36 +553,42 @@ static void wdt_ping(void)
  */
 static void wdt_disable(void)
 {
-	unsigned char i2c_data[2], i2c_buf[0x10];
-	struct i2c_msg msgs0[2] = {
-		{
-			.addr	= save_client->addr,
-			.flags	= 0,
-			.len	= 1,
-			.buf	= i2c_data,
-		},
-		{
-			.addr	= save_client->addr,
-			.flags	= I2C_M_RD,
-			.len	= 1,
-			.buf	= i2c_buf,
-		},
-	};
-	struct i2c_msg msgs1[1] = {
-		{
-			.addr	= save_client->addr,
-			.flags	= 0,
-			.len	= 2,
-			.buf	= i2c_data,
-		},
-	};
+	if (nowayout) {
+		printk(KERN_INFO "Unexpected disable, watchdog still running!\n");
+		wdt_ping();
+	} else {
+		unsigned char i2c_data[2], i2c_buf[0x10];
+		struct i2c_msg msgs0[2] = {
+			{
+				.addr	= save_client->addr,
+				.flags	= 0,
+				.len	= 1,
+				.buf	= i2c_data,
+			},
+			{
+				.addr	= save_client->addr,
+				.flags	= I2C_M_RD,
+				.len	= 1,
+				.buf	= i2c_buf,
+			},
+		};
+		struct i2c_msg msgs1[1] = {
+			{
+				.addr	= save_client->addr,
+				.flags	= 0,
+				.len	= 2,
+				.buf	= i2c_data,
+			},
+		};
+		
+		i2c_data[0] = 0x09;
+		i2c_transfer(save_client->adapter, msgs0, 2);
 
-	i2c_data[0] = 0x09;
-	i2c_transfer(save_client->adapter, msgs0, 2);
-
-	i2c_data[0] = 0x09;
-	i2c_data[1] = 0x00;
-	i2c_transfer(save_client->adapter, msgs1, 1);
+		i2c_data[0] = 0x09;
+		i2c_data[1] = 0x00;
+		i2c_transfer(save_client->adapter, msgs1, 1);
+printk(KERN_INFO "***watchdog disabled!\n");
+	}
 }
 
 /**
@@ -664,8 +677,11 @@ static int wdt_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		return -EINVAL;
+	default:
+		return -ENOTTY;
 	}
-	return -ENOTTY;
+
+	return 0;
 }
 
 static long wdt_unlocked_ioctl(struct file *file, unsigned int cmd,
@@ -698,6 +714,7 @@ static int wdt_open(struct inode *inode, struct file *file)
 		 *	Activate
 		 */
 		wdt_is_open = 1;
+printk(KERN_INFO "***wdt_is_open = 1\n");
 		mutex_unlock(&m41t80_rtc_mutex);
 		return nonseekable_open(inode, file);
 	}
@@ -712,8 +729,16 @@ static int wdt_open(struct inode *inode, struct file *file)
  */
 static int wdt_release(struct inode *inode, struct file *file)
 {
-	if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
-		clear_bit(0, &wdt_is_open);
+	if (nowayout) {
+		printk(KERN_INFO "Unexpected close, watchdog still running!\n");
+		wdt_ping();
+	} else {
+		if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
+{
+			clear_bit(0, &wdt_is_open);
+printk(KERN_INFO "***watchdog disabled\n");
+}
+	}
 	return 0;
 }
 
@@ -846,13 +871,19 @@ static int m41t80_probe(struct i2c_client *client,
 	if (clientdata->features & M41T80_FEATURE_HT) {
 		save_client = client;
 		rc = misc_register(&wdt_dev);
-		if (rc)
+		if (rc) {
+			dev_err(&client->dev,
+				 "watchdog, failed misc_register()\n");
 			goto exit;
+		}
 		rc = register_reboot_notifier(&wdt_notifier);
 		if (rc) {
+			dev_err(&client->dev,
+				 "watchdog, failed register_reboot_notifier()\n");
 			misc_deregister(&wdt_dev);
 			goto exit;
 		}
+		dev_info(&client->dev, "watchdog registered\n");
 	}
 #endif
 	return 0;
