@@ -115,7 +115,7 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 	{
 		.name		= "Root Filesystem (writeable overlay)",
 		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x0CF80000 */
-		.size		= 2400 * NAND_BLOCK_SIZE, /* -> 0x1FB80000 (size: 0x12C00000, 300M) */
+		.size		= 800 * NAND_BLOCK_SIZE, /* -> 0x1FB80000 (size: 0x12C00000, 100M) */
 	},
 	{
 		.name		= "DATA",
