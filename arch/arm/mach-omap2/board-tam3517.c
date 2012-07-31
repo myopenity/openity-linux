@@ -51,7 +51,7 @@
 #define ENABLE_EMAC_ETH				1
 #define USE_EXTERNAL_INIT__EMAC_ETH	1
 
-#define ENABLE_SMSC_ETH				1
+#define ENABLE_SMSC_ETH				0
 #define USE_EXTERNAL_INIT__SMSC_ETH	1
 
 #define ENABLE_HECC					0
