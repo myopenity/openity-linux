@@ -488,6 +488,21 @@ static struct regulator_consumer_supply dummy_supplies[] = {
 	REGULATOR_SUPPLY("vdd33a", "smsc911x.1"),
 };
 
+#if defined(CONFIG_USB_MUSB_HDRC) || defined (CONFIG_USB_MUSB_HDRC_MODULE)
+static struct omap_musb_board_data musb_board_data = {
+       .interface_type         = MUSB_INTERFACE_ULPI,
+       .mode                   = MUSB_HOST,
+       .power                  = 500,
+};
+
+static inline void __init overo_init_musb(void)
+{
+	usb_musb_init(&musb_board_data);
+}
+#else
+static inline void __init overo_init_musb(void) { return; }
+#endif
+
 static void __init overo_init(void)
 {
 	int ret;
@@ -502,7 +517,7 @@ static void __init overo_init(void)
 				  mt46h32m32lf6_sdrc_params);
 	omap_nand_flash_init(0, overo_nand_partitions,
 			     ARRAY_SIZE(overo_nand_partitions));
-	usb_musb_init(NULL);
+	overo_init_musb();
 	usbhs_init(&usbhs_bdata);
 	overo_spi_init();
 	overo_init_smsc911x();
