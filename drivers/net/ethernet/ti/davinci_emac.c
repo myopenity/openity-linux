@@ -991,7 +991,6 @@ static irqreturn_t emac_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-/* SAME AS: netdev_alloc_skb_ip_align()
 static struct sk_buff *emac_rx_alloc(struct emac_priv *priv)
 {
 	struct sk_buff *skb = netdev_alloc_skb(priv->ndev, priv->rx_buf_size);
@@ -1000,7 +999,6 @@ static struct sk_buff *emac_rx_alloc(struct emac_priv *priv)
 	skb_reserve(skb, NET_IP_ALIGN);
 	return skb;
 }
-*/
 
 static void emac_rx_handler(void *token, int len, int status)
 {
@@ -1030,12 +1028,14 @@ static void emac_rx_handler(void *token, int len, int status)
 	ndev->stats.rx_packets++;
 
 	/* alloc a new packet for receive */
-//	skb = emac_rx_alloc(priv);
-	skb = netdev_alloc_skb_ip_align(priv->ndev, priv->rx_buf_size);
-	if (unlikely(!skb)) {
+	skb = emac_rx_alloc(priv);
+	if (!skb) {
 		if (netif_msg_rx_err(priv) && net_ratelimit())
 			dev_err(emac_dev, "failed rx buffer alloc\n");
+<<<<<<< HEAD
 dev_dbg(emac_dev, "(1) lost rx skb?\n");
+=======
+>>>>>>> ddcfbc72a45ac681a22ab3082571ab5995e2e05e
 		return;
 	}
 
@@ -1045,10 +1045,12 @@ recycle:
 
 	WARN_ON(ret == -ENOMEM);
 	if (unlikely(ret < 0))
-	{
 		dev_kfree_skb_any(skb);
+<<<<<<< HEAD
 dev_dbg(emac_dev, "(2) lost rx skb?\n");
 	}
+=======
+>>>>>>> ddcfbc72a45ac681a22ab3082571ab5995e2e05e
 }
 
 static void emac_tx_handler(void *token, int len, int status)
@@ -1060,7 +1062,7 @@ static void emac_tx_handler(void *token, int len, int status)
 	atomic_dec(&priv->cur_tx);
 
 	if (unlikely(netif_queue_stopped(ndev)))
-		netif_start_queue(ndev);	/* maybe consider using 'netif_wake_queue(ndev);' here instead? */
+		netif_start_queue(ndev);
 	ndev->stats.tx_packets++;
 	ndev->stats.tx_bytes += len;
 	dev_kfree_skb_any(skb);
@@ -1112,7 +1114,6 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 	return NETDEV_TX_OK;
 
 fail_tx:
-dev_err(emac_dev, "(3) lost TX skb, queue stopped - needs restarted (tx_handler)?\n");
 	ndev->stats.tx_dropped++;
 	netif_stop_queue(ndev);
 	return NETDEV_TX_BUSY;
@@ -1548,8 +1549,7 @@ static int emac_dev_open(struct net_device *ndev)
 		ndev->dev_addr[cnt] = priv->mac_addr[cnt];
 
 	/* Configuration items */
-//	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE + NET_IP_ALIGN;
-	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE;
+	priv->rx_buf_size = EMAC_DEF_MAX_FRAME_SIZE + NET_IP_ALIGN;
 
 	priv->mac_hash1 = 0;
 	priv->mac_hash2 = 0;
@@ -1557,29 +1557,15 @@ static int emac_dev_open(struct net_device *ndev)
 	emac_write(EMAC_MACHASH2, 0);
 
 	for (i = 0; i < EMAC_DEF_RX_NUM_DESC; i++) {
-//		struct sk_buff *skb = emac_rx_alloc(priv);
-		struct sk_buff *skb = netdev_alloc_skb_ip_align(priv->ndev, priv->rx_buf_size);
+		struct sk_buff *skb = emac_rx_alloc(priv);
 
-		if (unlikely(!skb))
-		{
-			ret = -ENOMEM;
+		if (!skb)
 			break;
-		}
 
 		ret = cpdma_chan_submit(priv->rxchan, skb, skb->data,
 					skb_tailroom(skb), GFP_KERNEL);
 		if (WARN_ON(ret < 0))
-		{
-			dev_kfree_skb_any(skb);
-			ret = -ENOMEM;
 			break;
-		}
-	}
-	
-	if (unlikely(ret < 0))
-	{
-		dev_err(emac_dev, "failed prestaging rx skbs in cpdma");
-		return ret;
 	}
 
 	/* Request IRQ */
