@@ -1032,10 +1032,6 @@ static void emac_rx_handler(void *token, int len, int status)
 	if (!skb) {
 		if (netif_msg_rx_err(priv) && net_ratelimit())
 			dev_err(emac_dev, "failed rx buffer alloc\n");
-<<<<<<< HEAD
-dev_dbg(emac_dev, "(1) lost rx skb?\n");
-=======
->>>>>>> ddcfbc72a45ac681a22ab3082571ab5995e2e05e
 		return;
 	}
 
@@ -1046,11 +1042,6 @@ recycle:
 	WARN_ON(ret == -ENOMEM);
 	if (unlikely(ret < 0))
 		dev_kfree_skb_any(skb);
-<<<<<<< HEAD
-dev_dbg(emac_dev, "(2) lost rx skb?\n");
-	}
-=======
->>>>>>> ddcfbc72a45ac681a22ab3082571ab5995e2e05e
 }
 
 static void emac_tx_handler(void *token, int len, int status)
