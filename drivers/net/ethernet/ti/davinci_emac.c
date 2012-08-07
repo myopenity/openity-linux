@@ -1035,7 +1035,7 @@ static void emac_rx_handler(void *token, int len, int status)
 	if (unlikely(!skb)) {
 		if (netif_msg_rx_err(priv) && net_ratelimit())
 			dev_err(emac_dev, "failed rx buffer alloc\n");
-dev_err(emac_dev, "(1) lost rx skb?\n");
+dev_dbg(emac_dev, "(1) lost rx skb?\n");
 		return;
 	}
 
@@ -1047,7 +1047,7 @@ recycle:
 	if (unlikely(ret < 0))
 	{
 		dev_kfree_skb_any(skb);
-dev_err(emac_dev, "(2) lost rx skb?\n");
+dev_dbg(emac_dev, "(2) lost rx skb?\n");
 	}
 }
 
@@ -1538,7 +1538,7 @@ static int emac_dev_open(struct net_device *ndev)
 	struct device *emac_dev = &ndev->dev;
 	u32 cnt;
 	struct resource *res;
-	int q, m, ret;
+	int q, m, ret = 0;
 	int i = 0;
 	int k = 0;
 	struct emac_priv *priv = netdev_priv(ndev);
