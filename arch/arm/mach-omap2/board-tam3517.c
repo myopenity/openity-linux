@@ -23,6 +23,7 @@
 #include <linux/delay.h>
 #include <linux/gpio.h>
 #include <linux/can/platform/ti_hecc.h>
+#include <linux/serial_8250.h>
 
 #include <linux/mmc/host.h>
 
@@ -59,6 +60,72 @@
 #define ENABLE_I2C_TLV320AIC23		0
 #define ENABLE_I2C_DS1307			0
 #define ENABLE_I2C_M41T65			1
+#define TAM3517_ENABLE_DUAL_UART		0
+
+#if (TAM3517_ENABLE_DUAL_UART)
+
+static struct plat_serial8250_port serial_platform_data[] = {
+	{
+		.mapbase	= 0x21000000,
+		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
+		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
+		.iotype		= UPIO_MEM,
+		.regshift	= 2,
+		.uartclk	= 3072000,
+	}, 
+	{
+		.mapbase	= 0x22000000,
+		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
+		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
+		.iotype		= UPIO_MEM,
+		.regshift	= 2,
+		.uartclk	= 3072000,
+	},
+	{}
+};
+
+static struct platform_device tam3517_serial_device = {
+	.name			= "serial8250",
+	.id			= PLAT8250_DEV_PLATFORM,
+	.dev			= {
+		.platform_data	= serial_platform_data,
+	},
+};
+
+#define TAM3517_UART_IRQ_A_GPIO  127
+#define TAM3517_UART_IRQ_B_GPIO  128
+
+static inline void __init tam3517_init_dualuart(void)
+{
+	unsigned long cs_mem_base;
+
+	if (gpmc_cs_request(4, SZ_1M, &cs_mem_base) < 0) {
+		printk(KERN_ERR "Failed to request GPMC mem CS4"
+				"for Dual UART(TL16CP752C)\n");
+		return;
+	}
+
+	if (gpmc_cs_request(5, SZ_1M, &cs_mem_base) < 0) {
+		printk(KERN_ERR "Failed to request GPMC mem CS5"
+				"for Dual UART(TL16CP752C)\n");
+		return;
+	}
+
+	if (gpio_request_one(TAM3517_UART_IRQ_A_GPIO, GPIOF_IN, "TL16CP7542 IRQ A") < 0)
+		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
+								TAM3517_UART_IRQ_A_GPIO);
+
+	serial_platform_data[0].irq = gpio_to_irq(TAM3517_UART_IRQ_A_GPIO);
+
+	if (gpio_request_one(TAM3517_UART_IRQ_B_GPIO, GPIOF_IN, "TL16CP7542 IRQ B") < 0)
+		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
+								TAM3517_UART_IRQ_A_GPIO);
+
+	serial_platform_data[0].irq = gpio_to_irq(TAM3517_UART_IRQ_A_GPIO);
+	serial_platform_data[1].irq = gpio_to_irq(TAM3517_UART_IRQ_B_GPIO);
+}
+
+#endif
 
 /****************************************************************************
  *
@@ -1091,11 +1158,20 @@ static struct platform_device *tam3517_devices[] __initdata = {
 	&tam3517_mdio_device,
 	&tam3517_emac_device,
 #endif
+
+#if (TAM3517_ENABLE_DUAL_UART)
+	&tam3517_serial_device
+#endif
 };
 
 /* ------------------------------------------------------------------- */
 
 static void __init tam3517_init(void) {
+
+#if (TAM3517_ENABLE_DUAL_UART)
+	tam3517_init_dualuart(); // this must be called before platform_add_devices
+#endif
+
 	platform_add_devices(tam3517_devices, ARRAY_SIZE(tam3517_devices));
 	omap_board_config = tam3517_config;
 	omap_board_config_size = ARRAY_SIZE(tam3517_config);
