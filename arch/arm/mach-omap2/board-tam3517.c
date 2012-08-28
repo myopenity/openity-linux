@@ -60,9 +60,10 @@
 #define ENABLE_I2C_TLV320AIC23		0
 #define ENABLE_I2C_DS1307			0
 #define ENABLE_I2C_M41T65			1
-#define TAM3517_ENABLE_DUAL_UART		0
+#define ENABLE_MUSB					0
+#define ENABLE_DUAL_UART			0
 
-#if (TAM3517_ENABLE_DUAL_UART)
+#if (ENABLE_DUAL_UART)
 
 static struct plat_serial8250_port serial_platform_data[] = {
 	{
@@ -830,11 +831,13 @@ static struct omap_board_mux tam3517_mux[] __initdata = {
 
 #define TAM3517_EHCI_RESET_PIN	25
 
+#if (ENABLE_MUSB)
 static struct omap_musb_board_data tam3517_musb_data = {
 	.interface_type         = MUSB_INTERFACE_ULPI,
 	.mode                   = MUSB_OTG,
 	.power                  = 500,
 };
+#endif
 
 static struct usbhs_omap_board_data tam3517_ehci_pdata __initdata = {
 	.port_mode[0] = OMAP_EHCI_PORT_MODE_PHY,
@@ -857,9 +860,12 @@ static __init void tam3517_usb_init(void) {
         
 	omap_ctrl_writel(devconf2, AM35XX_CONTROL_DEVCONF2);
 
+#if (ENABLE_MUSB)
 	usb_musb_init(&tam3517_musb_data);
+#endif
+
 	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);
-        usbhs_init(&tam3517_ehci_pdata);
+	usbhs_init(&tam3517_ehci_pdata);
 }
 #else
 static __init void tam3517_usb_init(void)
@@ -1159,7 +1165,7 @@ static struct platform_device *tam3517_devices[] __initdata = {
 	&tam3517_emac_device,
 #endif
 
-#if (TAM3517_ENABLE_DUAL_UART)
+#if (ENABLE_DUAL_UART)
 	&tam3517_serial_device
 #endif
 };
@@ -1168,7 +1174,7 @@ static struct platform_device *tam3517_devices[] __initdata = {
 
 static void __init tam3517_init(void) {
 
-#if (TAM3517_ENABLE_DUAL_UART)
+#if (ENABLE_DUAL_UART)
 	tam3517_init_dualuart(); // this must be called before platform_add_devices
 #endif
 
