@@ -542,7 +542,7 @@ static void wdt_ping(void)
 	 */
 	if (clientdata->features & M41T80_FEATURE_WD)
 		i2c_data[1] &= ~M41T80_WATCHDOG_RB2;
-printk(KERN_INFO "***i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
+printk(KERN_INFO "***wdt_ping: i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
 	i2c_transfer(save_client->adapter, msgs1, 1);
 }
 
@@ -587,7 +587,7 @@ static void wdt_disable(void)
 		i2c_data[0] = 0x09;
 		i2c_data[1] = 0x00;
 		i2c_transfer(save_client->adapter, msgs1, 1);
-printk(KERN_INFO "***watchdog disabled!\n");
+printk(KERN_INFO "***wdt_disable\n");
 	}
 }
 
@@ -677,11 +677,8 @@ static int wdt_ioctl(struct file *file, unsigned int cmd,
 		}
 
 		return -EINVAL;
-	default:
-		return -ENOTTY;
 	}
-
-	return 0;
+	return -ENOTTY;
 }
 
 static long wdt_unlocked_ioctl(struct file *file, unsigned int cmd,
@@ -736,7 +733,7 @@ static int wdt_release(struct inode *inode, struct file *file)
 		if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
 {
 			clear_bit(0, &wdt_is_open);
-printk(KERN_INFO "***watchdog disabled\n");
+printk(KERN_INFO "***wdt_release\n");
 }
 	}
 	return 0;
