@@ -63,6 +63,12 @@
 #define ENABLE_MUSB					0
 #define ENABLE_DUAL_UART			0
 
+/****************************************************************************
+ *
+ *  GPMC-based Dual UART setup
+ *
+ ****************************************************************************/
+
 #if (ENABLE_DUAL_UART)
 
 static struct plat_serial8250_port serial_platform_data[] = {
@@ -836,6 +842,10 @@ static struct omap_musb_board_data tam3517_musb_data = {
 	.interface_type         = MUSB_INTERFACE_ULPI,
 	.mode                   = MUSB_OTG,
 	.power                  = 500,
+		.set_phy_power		= am35x_musb_phy_power,
+		.clear_irq		= am35x_musb_clear_irq,
+		.set_mode		= am35x_set_mode,
+		.reset			= am35x_musb_reset,
 };
 #endif
 
@@ -864,7 +874,7 @@ static __init void tam3517_usb_init(void) {
 	usb_musb_init(&tam3517_musb_data);
 #endif
 
-	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(TAM3517_EHCI_RESET_PIN, OMAP_PIN_OUTPUT);  // <= should not be necessary, fix in bootloader
 	usbhs_init(&tam3517_ehci_pdata);
 }
 #else
