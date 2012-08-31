@@ -530,9 +530,8 @@ static void __init overo_opp_init(void)
 				__func__, mpu_dev);
 			return;
 		}
-		/* Enable MPU 1GHz and lower opps */
+		/* Enable MPU 800MHz and lower opps */
 		r = opp_enable(mpu_dev, 800000000);
-		r |= opp_enable(mpu_dev, 1000000000);
 
 		if (omap3_has_iva()) {
 			/* Enable IVA 800MHz and lower opps */
@@ -544,7 +543,6 @@ static void __init overo_opp_init(void)
 			pr_err("%s: failed to enable higher opp %d\n",
 				__func__, r);
 			opp_disable(mpu_dev, 800000000);
-			opp_disable(mpu_dev, 1000000000);
 			if (omap3_has_iva()) {
 				opp_disable(iva_dev, 660000000);
 				opp_disable(iva_dev, 800000000);
