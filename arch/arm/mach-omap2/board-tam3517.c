@@ -545,11 +545,9 @@ static struct regulator_consumer_supply tam3517_vdcdc2_supplies[] = {
 	{
 		.supply = "vddshv",
 	},
-	REGULATOR_SUPPLY("vdds_dsi", "omapdss"),
-	REGULATOR_SUPPLY("vdds_dsi", "omapdss_dsi1"),
 };
 
-/* VDCDC3 |-> VDDS
+/* VDCDC2 |-> VDDS
 	   |-> VDDS_SRAM_CORE_BG
 	   |-> VDDS_SRAM_MPU */
 static struct regulator_consumer_supply tam3517_vdcdc3_supplies[] = {
@@ -562,6 +560,7 @@ static struct regulator_consumer_supply tam3517_vdcdc3_supplies[] = {
 	{
 		.supply = "vdds_sram_mpu",
 	},
+	REGULATOR_SUPPLY("vdds_dsi", "omapdss"),
 };
 
 /* LDO1 |-> VDDA1P8V_USBPHY
@@ -588,7 +587,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 	{
 		.constraints = {
 			.min_uV = 1200000,
-			.max_uV = 1600000,
+			.max_uV = 1200000,
 			.valid_modes_mask = REGULATOR_MODE_NORMAL
 //					| REGULATOR_MODE_STANDBY
 					,
@@ -605,8 +604,8 @@ static struct regulator_init_data tam3517_regulators[] = {
 	/* DCDC2 */
 	{
 		.constraints = {
-			.min_uV = 1800000,
-			.max_uV = 1800000, /* should be 1V8 -- 3V3 */
+			.min_uV = 3300000,
+			.max_uV = 3300000,
 			.valid_modes_mask = REGULATOR_MODE_NORMAL
 //					| REGULATOR_MODE_STANDBY
 					,
@@ -624,7 +623,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 	{
 		.constraints = {
 			.min_uV = 1800000,
-			.max_uV = 3300000,
+			.max_uV = 1800000,
 			.valid_modes_mask = REGULATOR_MODE_NORMAL
 //					| REGULATOR_MODE_STANDBY
 					,
@@ -650,7 +649,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 //					| REGULATOR_CHANGE_MODE
 //					| REGULATOR_CHANGE_VOLTAGE
 					,
-			.always_on = true,
+			.always_on = false,
 			.apply_uV = false,
 		},
 		.num_consumer_supplies = ARRAY_SIZE(tam3517_ldo1_supplies),
@@ -668,7 +667,7 @@ static struct regulator_init_data tam3517_regulators[] = {
 //					| REGULATOR_CHANGE_MODE
 //					| REGULATOR_CHANGE_VOLTAGE
 					,
-			.always_on = true,
+			.always_on = false,
 			.apply_uV = false,
 		},
 		.num_consumer_supplies = ARRAY_SIZE(tam3517_ldo2_supplies),
@@ -857,7 +856,7 @@ static struct usbhs_omap_board_data tam3517_ehci_pdata __initdata = {
 	.phy_reset  = true,
 	.reset_gpio_port[0]  = TAM3517_EHCI_RESET_PIN,
 	.reset_gpio_port[1]  = -EINVAL,
-	.reset_gpio_port[2]  = -EINVAL,
+	.reset_gpio_port[2]  = -EINVAL
 };
 
 
@@ -1194,6 +1193,7 @@ static void __init tam3517_init(void) {
 	
 	omap3_mux_init(tam3517_mux, OMAP_PACKAGE_CBB);	// [CL switched to OMAP_PACKAGE_CBB or CUS?]
 	omap_serial_init();
+
 /*	omap_sdrc_init(NULL, NULL);  // [CL & am3517evm adds this] */
 	tam3517_i2c_init();
         
