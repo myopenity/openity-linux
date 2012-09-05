@@ -147,15 +147,13 @@ static inline void __init tam3517_init_dualuart(void)
 
 #define NAND_BLOCK_SIZE SZ_128K
 
-/*
- * [let's try the 1st one]
+/* Setup MTD for NAND on the TAM
  * 0x00000000 - 0x0007FFFF  Booting Image (X-Loader, 4 copies)	// 512k
  * 0x00080000 - 0x0023FFFF  U-Boot Image	// 1835k
  * 0x00240000 - 0x0027FFFF  U-Boot Env Data (X-loader doesn't care)	// 256k
- * 0x00280000 - 0x0077FFFF  Kernel Image // 5120k
- * 0x00780000 - 0x0CF80000	Root FS (read-only) // 200MB
- * 0x0CF80000 - 0x1FB80000	Root FS (writable overlay) // 300MB
- * 0x1FB80000 - 0x20000000  DATA // ~4.5MB
+ * 0x00280000 - 0x0347FFFF  Kernel Image // 50MB (includes room for initramfs)
+ * 0x03480000 - 0x1E27FFFF  Root FS (storage) // 430MB
+ * 0x1E280000 - 0x20000000  Config // ~30MB
  */
 
 static struct mtd_partition tam3517_nand_partitions[] = {
@@ -177,24 +175,19 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 		.size		= 2 * NAND_BLOCK_SIZE,  /* -> 0x00280000 (size: 0x40000, 256k) */
 	},
 	{
-		.name		= "Kernel",
+		.name		= "Kernel (+ initramfs)",
 		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00280000 */
-		.size		= 60 * NAND_BLOCK_SIZE, /* -> 0x00780000 (size: 0x500000, 5120k) */
+		.size		= 400 * NAND_BLOCK_SIZE, /* -> 0x03480000 (size: 0x3200000, 50M) */
 	},
 	{
-		.name		= "Root Filesystem (read-only)",
-		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x00780000 */
-		.size		= 1600 * NAND_BLOCK_SIZE, /* -> 0x0CF80000 (size: 0xC800000, 200M) */
+		.name		= "Root Filesystem (storage)",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x03480000 */
+		.size		= 3440 * NAND_BLOCK_SIZE, /* -> 0x1E280000 (size: 0x1AE00000, 430M) */
 	},
 	{
-		.name		= "Root Filesystem (writeable overlay)",
-		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x0CF80000 */
-		.size		= 800 * NAND_BLOCK_SIZE, /* -> 0x1FB80000 (size: 0x12C00000, 100M) */
-	},
-	{
-		.name		= "DATA",
-		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x1FB80000 */
-		.size		= MTDPART_SIZ_FULL,      /* -> 0x20000000 (size: 0x480000, ~4.5MB) */
+		.name		= "Config",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x1E280000 */
+		.size		= MTDPART_SIZ_FULL,      /* -> 0x20000000 (size: 0x1D80000, ~30MB) */
 	},
 };
 
