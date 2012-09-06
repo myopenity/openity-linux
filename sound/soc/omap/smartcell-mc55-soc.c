@@ -41,6 +41,8 @@
 #include "omap-mcbsp.h"
 #include "omap-pcm.h"
 
+#define USE_MCBSDP1_4PIN_MODE	1
+
 static struct platform_device *sc_mc55_snd_device;
 static struct platform_device *sc_mc55_codec_device;
 
@@ -92,6 +94,7 @@ static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
 	}
 #endif
 
+#if USE_MCBSDP1_4PIN_MODE
 /*** these next 2 are valid only for mcbsp1 (0 to the driver) as other mcbsp's lack separate CLKR/FSR lines ***/
 	/* set cpu CLKR & FSR as inputs (unused) */
 	ret = snd_soc_dai_set_sysclk(cpu_dai, OMAP_MCBSP_CLKR_SRC_CLKX, 0,
@@ -107,6 +110,7 @@ static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
 		printk(KERN_ERR "can't set CPU system clock OMAP_MCBSP_FSR_SRC_FSX\n");
 		return ret;
 	}
+#endif
 
 #if 0
 /*** The SRG is not needed since McBSP is slave! ***/
@@ -137,18 +141,20 @@ static struct snd_soc_ops sc_mc55_ops = {
 
 /* Digital audio interface glue - connects codec <--> CPU */
 static struct snd_soc_dai_link sc_mc55_dai[] = {
+#if USE_MCBSDP1_4PIN_MODE
 	{
-		.name = "SmarTcell-MC55_0",
-		.stream_name = "SmarTcell-MC55_0",
+		.name = "SmarTcell-MC55_1",
+		.stream_name = "SmarTcell-MC55_1",
 		.cpu_dai_name = "omap-mcbsp.1",
 		.platform_name = "omap-pcm-audio",
 		.codec_dai_name = "smartcell-codec-dai",
 		.codec_name = "smartcell-codec",
 		.ops = &sc_mc55_ops,
 	},
+#endif
 	{
-		.name = "SmarTcell-MC55_A",
-		.stream_name = "SmarTcell-MC55_A",
+		.name = "SmarTcell-MC55_2",
+		.stream_name = "SmarTcell-MC55_2",
 		.cpu_dai_name = "omap-mcbsp.2",
 		.platform_name = "omap-pcm-audio",
 		.codec_dai_name = "smartcell-codec-dai",
@@ -156,8 +162,8 @@ static struct snd_soc_dai_link sc_mc55_dai[] = {
 		.ops = &sc_mc55_ops,
 	},
 	{
-		.name = "SmarTcell-MC55_B",
-		.stream_name = "SmarTcell-MC55_B",
+		.name = "SmarTcell-MC55_3",
+		.stream_name = "SmarTcell-MC55_3",
 		.cpu_dai_name = "omap-mcbsp.3",
 		.platform_name = "omap-pcm-audio",
 		.codec_dai_name = "smartcell-codec-dai",
@@ -165,8 +171,8 @@ static struct snd_soc_dai_link sc_mc55_dai[] = {
 		.ops = &sc_mc55_ops,
 	},
 	{
-		.name = "SmarTcell-MC55_C",
-		.stream_name = "SmarTcell-MC55_C",
+		.name = "SmarTcell-MC55_4",
+		.stream_name = "SmarTcell-MC55_4",
 		.cpu_dai_name = "omap-mcbsp.4",
 		.platform_name = "omap-pcm-audio",
 		.codec_dai_name = "smartcell-codec-dai",
