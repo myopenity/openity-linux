@@ -878,273 +878,374 @@ static __init void tam3517_usb_init(void)
 
 /****************************************************************************
  *
- * HD01 Custom GPIO configuration
+ * HD1U Custom GPIO configuration
  *
  *  GPIO definitions: if name ends in '_', active LOW!
  ****************************************************************************/
 
 // reset & power lines 
-#define HD01__O_B_RESET_				171
-#define HD01__O_C_RESET_				172
-#define HD01__O_D_RESET_				173
-#define HD01__O_E_RESET_				177
-#define HD01__O_F_RESET_				176
-#define HD01__O_MASTER_PWR_EN			175
-#define HD01__I_MASTER_PWR_OK			174
+#define HD1U__O_SUB_A_PWR_EN			171
+#define HD1U__O_SUB_B_PWR_EN			172
+#define HD1U__O_SUB_C_PWR_EN			173
+#define HD1U__O_RES_BUTTON_ACTIVE_		177
+#define HD1U__O_SUB_D_PWR_EN			174
+
+#define HD1U__O_B_PWREN					178
+#define HD1U__O_C_PWREN					179
+#define HD1U__O_D_PWREN					180
 
 // led outputs
-#define HD01__O_POWER_STATUS_LED		93
-#define HD01__O_TAM_STATUS_LED			92
-#define HD01__O_RM1_LED					89
-#define HD01__O_RM2_LED					90
-#define HD01__O_RM3_LED					91
+#define HD1U__O_MODULE_A_STATUS_RED		100
+#define HD1U__O_POWER_STATUS_GREEN		93
+#define HD1U__O_RM4_LED					92
+#define HD1U__O_RM3_LED					91
+#define HD1U__O_RM2_LED					90
+#define HD1U__O_RM1_LED					89
 
-// unit identification switch inputs
-#define HD01__I_SW1_1_BIT6				86
-#define HD01__I_SW1_2_BIT5				85
-#define HD01__I_SW1_3_BIT4				84
-#define HD01__I_SW1_4_BIT3				83
-#define HD01__I_FIXED_BIT2				82
-#define HD01__I_FIXED_BIT1				81
-#define HD01__I_FIXED_BIT0				80
+// unit identification
+#define HD1U__I_MASTER_MODE_			86
+#define HD1U__I_ADDR_FIXED2				85
+#define HD1U__I_ADDR_FIXED1				84
+#define HD1U__I_ADDR_FIXED0				83
+#define HD1U__I_ADDR_DYN7				82
+#define HD1U__I_ADDR_DYN6				81
+#define HD1U__I_ADDR_DYN5				80
+#define HD1U__I_ADDR_DYN4				79
+#define HD1U__I_ADDR_DYN3				78
+#define HD1U__I_ADDR_DYN2				77
+#define HD1U__I_ADDR_DYN1				76
+#define HD1U__I_ADDR_DYN0				75
 
-// radio control gpios
-#define HD01__O_ALL_RADIOS_DISABLE		79
+#define HD1U__I_NET_BLOCK1				71
+#define HD1U__I_NET_BLOCK0				70
 
-#define HD01__I_RM1_STATUS_				66
-#define HD01__I_RM2_STATUS_				67
-#define HD01__I_RM3_STATUS_				68
+// radio control & status
+#define HD1U__I_RM1_STATUS_				66
+#define HD1U__I_RM2_STATUS_				67
+#define HD1U__I_RM3_STATUS_				68
+#define HD1U__I_RM4_STATUS_				69
 
-#define HD01__O_RM1_IGNITION			106
-#define HD01__O_RM1_RESET				105
-#define HD01__I_RM1_INCOMING_CALL		104
+#define HD1U__O_RM1_IGNITION			106
+#define HD1U__O_RM1_VRADIO_ENABLE		105
+#define HD1U__I_RM1_INCOMING_CALL		104
 
-#define HD01__O_RM2_IGNITION			78
-#define HD01__O_RM2_RESET				73
-#define HD01__I_RM2_INCOMING_CALL		72
+#define HD1U__O_RM2_IGNITION			74
+#define HD1U__O_RM2_VRADIO_ENABLE		73
+#define HD1U__I_RM2_INCOMING_CALL		72
 
-#define HD01__O_RM3_IGNITION			103
-#define HD01__O_RM3_RESET				102
-#define HD01__I_RM3_INCOMING_CALL		101
+#define HD1U__O_RM3_IGNITION			103
+#define HD1U__O_RM3_VRADIO_ENABLE		102
+#define HD1U__I_RM3_INCOMING_CALL		101
 
+#define HD1U__O_RM4_IGNITION			139
+#define HD1U__O_RM4_VRADIO_ENABLE		137
+#define HD1U__I_RM4_INCOMING_CALL		138
 
-static struct gpio hd01_gpios[] __initdata = {
-	{ HD01__O_B_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_B_RESET_" },
-	{ HD01__O_C_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_C_RESET_" },
-	{ HD01__O_D_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_D_RESET_" },
-	{ HD01__O_E_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_E_RESET_" },
-	{ HD01__O_F_RESET_, GPIOF_OUT_INIT_HIGH, "HD01__O_F_RESET_" },
-	{ HD01__O_MASTER_PWR_EN, GPIOF_OUT_INIT_HIGH, "HD01__O_MASTER_PWR_EN" },
-	{ HD01__I_MASTER_PWR_OK, GPIOF_IN, "HD01__I_MASTER_PWR_OK" },
+#define HD1U__I_RTCWDT_IRQ_				29
+
+static struct gpio hd1u_gpios[] __initdata = {
+	{ HD1U__O_SUB_A_PWR_EN, GPIOF_OUT_INIT_HIGH, "HD1U__O_SUB_A_PWR_EN" },
+	{ HD1U__O_SUB_B_PWR_EN, GPIOF_OUT_INIT_HIGH, "HD1U__O_SUB_B_PWR_EN" },
+	{ HD1U__O_SUB_C_PWR_EN, GPIOF_OUT_INIT_HIGH, "HD1U__O_SUB_C_PWR_EN" },
+	{ HD1U__O_RES_BUTTON_ACTIVE_, GPIOF_IN, "HD1U__O_RES_BUTTON_ACTIVE_" },
+	{ HD1U__O_SUB_D_PWR_EN, GPIOF_OUT_INIT_HIGH, "HD1U__O_SUB_D_PWR_EN" },
+	{ HD1U__O_B_PWREN, GPIOF_OUT_INIT_HIGH, "HD1U__O_B_PWREN" },
+	{ HD1U__O_C_PWREN, GPIOF_OUT_INIT_HIGH, "HD1U__O_C_PWREN" },
+	{ HD1U__O_D_PWREN, GPIOF_OUT_INIT_HIGH, "HD1U__O_D_PWREN" },
 	\
-	{ HD01__O_POWER_STATUS_LED, GPIOF_OUT_INIT_LOW, "HD01__O_POWER_STATUS_LED" },
-	{ HD01__O_TAM_STATUS_LED, GPIOF_OUT_INIT_LOW, "HD01__O_TAM_STATUS_LED" },
-	{ HD01__O_RM1_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_LED" },
-	{ HD01__O_RM2_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_LED" },
-	{ HD01__O_RM3_LED, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_LED" },
+	{ HD1U__O_MODULE_A_STATUS_RED, GPIOF_OUT_INIT_LOW, "HD1U__O_MODULE_A_STATUS_RED" },
+	{ HD1U__O_POWER_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "HD1U__O_POWER_STATUS_GREEN" },
+	{ HD1U__O_RM4_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_LED" },
+	{ HD1U__O_RM3_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM3_LED" },
+	{ HD1U__O_RM2_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM2_LED" },
+	{ HD1U__O_RM1_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM1_LED" },
 	\
-	{ HD01__I_SW1_1_BIT6, GPIOF_IN, "HD01__I_SW1_1_BIT6" },
-	{ HD01__I_SW1_2_BIT5, GPIOF_IN, "HD01__I_SW1_2_BIT5" },
-	{ HD01__I_SW1_3_BIT4, GPIOF_IN, "HD01__I_SW1_3_BIT4" },
-	{ HD01__I_SW1_4_BIT3, GPIOF_IN, "HD01__I_SW1_4_BIT3" },
-	{ HD01__I_FIXED_BIT2, GPIOF_IN, "HD01__I_FIXED_BIT2" },
-	{ HD01__I_FIXED_BIT1, GPIOF_IN, "HD01__I_FIXED_BIT1" },
-	{ HD01__I_FIXED_BIT0, GPIOF_IN, "HD01__I_FIXED_BIT0" },
+	{ HD1U__I_MASTER_MODE_, GPIOF_IN, "HD1U__I_MASTER_MODE_" },
+	{ HD1U__I_ADDR_FIXED2, GPIOF_IN, "HD1U__I_ADDR_FIXED2" },
+	{ HD1U__I_ADDR_FIXED1, GPIOF_IN, "HD1U__I_ADDR_FIXED1" },
+	{ HD1U__I_ADDR_FIXED0, GPIOF_IN, "HD1U__I_ADDR_FIXED0" },
+	{ HD1U__I_ADDR_DYN7, GPIOF_IN, "HD1U__I_ADDR_DYN7" },
+	{ HD1U__I_ADDR_DYN6, GPIOF_IN, "HD1U__I_ADDR_DYN6" },
+	{ HD1U__I_ADDR_DYN5, GPIOF_IN, "HD1U__I_ADDR_DYN5" },
+	{ HD1U__I_ADDR_DYN4, GPIOF_IN, "HD1U__I_ADDR_DYN4" },
+	{ HD1U__I_ADDR_DYN3, GPIOF_IN, "HD1U__I_ADDR_DYN3" },
+	{ HD1U__I_ADDR_DYN2, GPIOF_IN, "HD1U__I_ADDR_DYN2" },
+	{ HD1U__I_ADDR_DYN1, GPIOF_IN, "HD1U__I_ADDR_DYN1" },
+	{ HD1U__I_ADDR_DYN0, GPIOF_IN, "HD1U__I_ADDR_DYN0" },
 	\
-	{ HD01__O_ALL_RADIOS_DISABLE, GPIOF_OUT_INIT_LOW, "HD01__O_ALL_RADIOS_DISABLE" },
-	{ HD01__I_RM1_STATUS_, GPIOF_IN, "HD01__I_RM1_STATUS_" },
-	{ HD01__I_RM2_STATUS_, GPIOF_IN, "HD01__I_RM2_STATUS_" },
-	{ HD01__I_RM3_STATUS_, GPIOF_IN, "HD01__I_RM3_STATUS_" },
+	{ HD1U__I_NET_BLOCK1, GPIOF_IN, "HD1U__I_NET_BLOCK1" },
+	{ HD1U__I_NET_BLOCK0, GPIOF_IN, "HD1U__I_NET_BLOCK0" },
 	\
-	{ HD01__O_RM1_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_IGNITION" },
-	{ HD01__O_RM1_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM1_RESET" },
-	{ HD01__I_RM1_INCOMING_CALL, GPIOF_IN, "HD01__I_RM1_INCOMING_CALL" },
+	{ HD1U__I_RM1_STATUS_, GPIOF_IN, "HD1U__I_RM1_STATUS_" },
+	{ HD1U__I_RM2_STATUS_, GPIOF_IN, "HD1U__I_RM2_STATUS_" },
+	{ HD1U__I_RM3_STATUS_, GPIOF_IN, "HD1U__I_RM3_STATUS_" },
+	{ HD1U__I_RM4_STATUS_, GPIOF_IN, "HD1U__I_RM4_STATUS_" },
 	\
-	{ HD01__O_RM2_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_IGNITION" },
-	{ HD01__O_RM2_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM2_RESET" },
-	{ HD01__I_RM2_INCOMING_CALL, GPIOF_IN, "HD01__I_RM2_INCOMING_CALL" },
+	{ HD1U__O_RM1_IGNITION, GPIOF_OUT_INIT_LOW, "HD1U__O_RM1_IGNITION" },
+	{ HD1U__O_RM1_VRADIO_ENABLE, GPIOF_OUT_INIT_LOW, "HD1U__O_RM1_VRADIO_ENABLE" },
+	{ HD1U__I_RM1_INCOMING_CALL, GPIOF_IN, "HD1U__I_RM1_INCOMING_CALL" },
 	\
-	{ HD01__O_RM3_IGNITION, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_IGNITION" },
-	{ HD01__O_RM3_RESET, GPIOF_OUT_INIT_LOW, "HD01__O_RM3_RESET" },
-	{ HD01__I_RM3_INCOMING_CALL, GPIOF_IN, "HD01__I_RM3_INCOMING_CALL" },
+	{ HD1U__O_RM2_IGNITION, GPIOF_OUT_INIT_LOW, "HD1U__O_RM2_IGNITION" },
+	{ HD1U__O_RM2_VRADIO_ENABLE, GPIOF_OUT_INIT_LOW, "HD1U__O_RM2_VRADIO_ENABLE" },
+	{ HD1U__I_RM2_INCOMING_CALL, GPIOF_IN, "HD1U__I_RM2_INCOMING_CALL" },
+	\
+	{ HD1U__O_RM3_IGNITION, GPIOF_OUT_INIT_LOW, "HD1U__O_RM3_IGNITION" },
+	{ HD1U__O_RM3_VRADIO_ENABLE, GPIOF_OUT_INIT_LOW, "HD1U__O_RM3_VRADIO_ENABLE" },
+	{ HD1U__I_RM3_INCOMING_CALL, GPIOF_IN, "HD1U__I_RM3_INCOMING_CALL" },
+	\
+	{ HD1U__O_RM4_IGNITION, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_IGNITION" },
+	{ HD1U__O_RM4_VRADIO_ENABLE, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_VRADIO_ENABLE" },
+	{ HD1U__I_RM4_INCOMING_CALL, GPIOF_IN, "HD1U__I_RM4_INCOMING_CALL" },
+	\
+	{ HD1U__I_RTCWDT_IRQ_, GPIOF_IN, "HD1U__I_RTCWDT_IRQ_" },
 };
 
-static void __init hd01_gpios_init(void)
+static void __init hd1u_gpios_init(void)
 {
-	if (gpio_request_array(hd01_gpios, ARRAY_SIZE(hd01_gpios))) {
-		printk(KERN_ERR "failed to obtain HD01 control/display GPIOs\n");
+	if (gpio_request_array(hd1u_gpios, ARRAY_SIZE(hd1u_gpios))) {
+		printk(KERN_ERR "failed to obtain HD1U control/display GPIOs\n");
 		return;
 	}
 
 	// reset & power lines 
-	if ( gpio_export(HD01__O_B_RESET_, 0) < 0 )
+	if ( gpio_export(HD1U__O_SUB_A_PWR_EN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_B_RESET_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_SUB_A_PWR_EN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_C_RESET_, 0) < 0 )
+	if ( gpio_export(HD1U__O_SUB_B_PWR_EN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_C_RESET_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_SUB_B_PWR_EN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_D_RESET_, 0) < 0 )
+	if ( gpio_export(HD1U__O_SUB_C_PWR_EN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_D_RESET_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_SUB_C_PWR_EN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_E_RESET_, 0) < 0 )
+	if ( gpio_export(HD1U__O_RES_BUTTON_ACTIVE_, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_E_RESET_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RES_BUTTON_ACTIVE_'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_F_RESET_, 0) < 0 )
+	if ( gpio_export(HD1U__O_SUB_D_PWR_EN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_F_RESET_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_SUB_D_PWR_EN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_MASTER_PWR_EN, 0) < 0 )
+
+	if ( gpio_export(HD1U__O_B_PWREN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_MASTER_PWR_EN'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_B_PWREN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_MASTER_PWR_OK, 0) < 0 )
+	if ( gpio_export(HD1U__O_C_PWREN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_MASTER_PWR_OK'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_C_PWREN'\n");
 		return;
 	}
-	// led outputs
-	if ( gpio_export(HD01__O_POWER_STATUS_LED, 0) < 0 )
+	if ( gpio_export(HD1U__O_D_PWREN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_POWER_STATUS_LED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_D_PWREN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_TAM_STATUS_LED, 0) < 0 )
+
+	// status led outputs
+	if ( gpio_export(HD1U__O_MODULE_A_STATUS_RED, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_TAM_STATUS_LED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_MODULE_A_STATUS_RED'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM1_LED, 0) < 0 )
+	if ( gpio_export(HD1U__O_POWER_STATUS_GREEN, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_LED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_POWER_STATUS_GREEN'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM2_LED, 0) < 0 )
+	if ( gpio_export(HD1U__O_RM4_LED, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_LED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM4_LED'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM3_LED, 0) < 0 )
+	if ( gpio_export(HD1U__O_RM3_LED, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_LED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM3_LED'\n");
 		return;
 	}
+	if ( gpio_export(HD1U__O_RM2_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM2_LED'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__O_RM1_LED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM1_LED'\n");
+		return;
+	}
+
 	// unit identification switch inputs
-	if ( gpio_export(HD01__I_SW1_1_BIT6, 0) < 0 )
+	if ( gpio_export(HD1U__I_MASTER_MODE_, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_1_BIT6'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_MASTER_MODE_'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_SW1_2_BIT5, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_FIXED2, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_2_BIT5'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_FIXED2'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_SW1_3_BIT4, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_FIXED1, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_3_BIT4'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_FIXED1'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_SW1_4_BIT3, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_FIXED0, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_SW1_4_BIT3'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_FIXED0'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_FIXED_BIT2, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN7, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT2'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN7'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_FIXED_BIT1, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN6, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT1'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN6'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_FIXED_BIT0, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN5, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_FIXED_BIT0'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN5'\n");
 		return;
 	}
-	// radio control gpios
-	if ( gpio_export(HD01__O_ALL_RADIOS_DISABLE, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN4, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_ALL_RADIOS_DISABLE'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN4'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM1_STATUS_, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN3, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM1_STATUS_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN3'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM2_STATUS_, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN2, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM2_STATUS_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN2'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM3_STATUS_, 0) < 0 )
+	if ( gpio_export(HD1U__I_ADDR_DYN1, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM3_STATUS_'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN1'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_ADDR_DYN0, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_ADDR_DYN0'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_NET_BLOCK1, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_NET_BLOCK1'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_NET_BLOCK0, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_NET_BLOCK0'\n");
 		return;
 	}
 
-	if ( gpio_export(HD01__O_RM1_IGNITION, 0) < 0 )
+	if ( gpio_export(HD1U__I_RM1_STATUS_, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_IGNITION'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM1_STATUS_'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM1_RESET, 0) < 0 )
+	if ( gpio_export(HD1U__I_RM2_STATUS_, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM1_RESET'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM2_STATUS_'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM1_INCOMING_CALL, 0) < 0 )
+	if ( gpio_export(HD1U__I_RM3_STATUS_, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM1_INCOMING_CALL'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM3_STATUS_'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_RM4_STATUS_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM4_STATUS_'\n");
 		return;
 	}
 
-	if ( gpio_export(HD01__O_RM2_IGNITION, 0) < 0 )
+	if ( gpio_export(HD1U__O_RM1_IGNITION, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_IGNITION'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM1_IGNITION'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM2_RESET, 0) < 0 )
+	if ( gpio_export(HD1U__O_RM1_VRADIO_ENABLE, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM2_RESET'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM1_VRADIO_ENABLE'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM2_INCOMING_CALL, 0) < 0 )
+	if ( gpio_export(HD1U__I_RM1_INCOMING_CALL, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM2_INCOMING_CALL'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM1_INCOMING_CALL'\n");
 		return;
 	}
-	
-	if ( gpio_export(HD01__O_RM3_IGNITION, 0) < 0 )
+
+	if ( gpio_export(HD1U__O_RM2_IGNITION, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_IGNITION'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM2_IGNITION'\n");
 		return;
 	}
-	if ( gpio_export(HD01__O_RM3_RESET, 0) < 0 )
+	if ( gpio_export(HD1U__O_RM2_VRADIO_ENABLE, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__O_RM3_RESET'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM2_VRADIO_ENABLE'\n");
 		return;
 	}
-	if ( gpio_export(HD01__I_RM3_INCOMING_CALL, 0) < 0 )
+	if ( gpio_export(HD1U__I_RM2_INCOMING_CALL, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD01__I_RM3_INCOMING_CALL'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM2_INCOMING_CALL'\n");
 		return;
 	}
-	
-	printk(KERN_INFO "HD01 control/display GPIOs initialized\n");
+
+	if ( gpio_export(HD1U__O_RM3_IGNITION, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM3_IGNITION'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__O_RM3_VRADIO_ENABLE, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM3_VRADIO_ENABLE'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_RM3_INCOMING_CALL, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM3_INCOMING_CALL'\n");
+		return;
+	}
+
+	if ( gpio_export(HD1U__O_RM4_IGNITION, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM4_IGNITION'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__O_RM4_VRADIO_ENABLE, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RM4_VRADIO_ENABLE'\n");
+		return;
+	}
+	if ( gpio_export(HD1U__I_RM4_INCOMING_CALL, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RM4_INCOMING_CALL'\n");
+		return;
+	}
+
+	if ( gpio_export(HD1U__I_RTCWDT_IRQ_, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'HD1U__I_RTCWDT_IRQ_'\n");
+		return;
+	}
+
+	printk(KERN_INFO "HD1U control/display GPIOs initialized\n");
 }
 
 
@@ -1208,7 +1309,7 @@ static void __init tam3517_init(void) {
 	tam3517_emac_ethernet_init();
 #endif
 #endif
-	hd01_gpios_init();
+	hd1u_gpios_init();
 }
 
 MACHINE_START(TAM3517, "Technexion TAM3517")
