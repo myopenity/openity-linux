@@ -152,7 +152,7 @@ static inline void __init tam3517_init_dualuart(void)
  * 0x00080000 - 0x0023FFFF  U-Boot Image	// 1835k
  * 0x00240000 - 0x0027FFFF  U-Boot Env Data (X-loader doesn't care)	// 256k
  * 0x00280000 - 0x0347FFFF  Kernel Image // 50MB (includes room for initramfs)
- * 0x03480000 - 0x1E27FFFF  Root FS (storage) // 430MB
+ * 0x03480000 - 0x1E27FFFF  Core Storage/Root FS // 430MB
  * 0x1E280000 - 0x20000000  Config // ~30MB
  */
 
@@ -180,7 +180,7 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 		.size		= 400 * NAND_BLOCK_SIZE, /* -> 0x03480000 (size: 0x3200000, 50M) */
 	},
 	{
-		.name		= "Root Filesystem (storage)",
+		.name		= "Core Storage/NV RootFS",
 		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x03480000 */
 		.size		= 3440 * NAND_BLOCK_SIZE, /* -> 0x1E280000 (size: 0x1AE00000, 430M) */
 	},
