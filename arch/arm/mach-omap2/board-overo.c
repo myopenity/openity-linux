@@ -32,6 +32,7 @@
 #include <linux/regulator/machine.h>
 #include <linux/regulator/fixed.h>
 #include <linux/spi/spi.h>
+#include <linux/spi/ads7846.h>
 
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/nand.h>
@@ -106,10 +107,127 @@ static struct platform_device vads7846_device = {
 	},
 };
 
+static int __devinit ads7846_filter_init(const struct ads7846_platform_data *pdata,
+				 void **filter_data);
+static int ads7846_filter(void *filter_data, int data_idx, int *val);
+static void __devexit ads7846_filtercleanup(void *filter_data);
+
+/* don't touch this unless ads7846 has changed ! */
+#define COUNT_MEAS_TYPES	4
+
+/* tweak settings */
+#define FILTER_SIZE		8
+/* Y, X, Z1, Z2 see ads7846.c / ads7846_setup_spi_msg */
+#define MAX_DIFF_SAME_POS	12
+#define MAX_DIFF_SAME_PRESS	12
+
+struct ads7846filter {
+	const struct ads7846_platform_data* 	pdata;
+	u16					read_cnt;
+	u16					filter_idx;
+	int					filter_vals[FILTER_SIZE];
+	int					last_good_val[COUNT_MEAS_TYPES];
+};
+
+static struct ads7846_platform_data ads7846_config = {
+	.x_max			= 0x0fff,
+	.y_max			= 0x0fff,
+	.x_plate_ohms		= 180,
+	.pressure_max		= 255,
+	.gpio_pendown		= -EINVAL,
+	.keep_vref_on		= 1,
+	.settle_delay_usecs     = 0,
+	.debounce_tol		= 1,
+	.debounce_max		= 1,	/* ignored samples */
+	.debounce_rep		= 8,	/* max retries */
+	.filter_init		= ads7846_filter_init,
+	.filter			= ads7846_filter,
+	.filter_cleanup		= ads7846_filtercleanup,
+};
+
+
+static int ads7846_filter(void *filter_data, int data_idx, int *val)
+{
+	struct ads7846filter *ads7846filterdata;
+	int mean_value;
+	mean_value = 0;
+	ads7846filterdata = filter_data;
+	if(ads7846filterdata->read_cnt >=
+		ads7846filterdata->pdata->debounce_max + FILTER_SIZE) {
+		int i;
+		/* calc mean value */
+		for(i=0; i<FILTER_SIZE; i++)
+			mean_value += ads7846filterdata->filter_vals[i];
+		mean_value /= FILTER_SIZE;
+		/* actual ~≃ mean ? */
+		if(abs(mean_value - *val) <=
+			ads7846filterdata->pdata->debounce_tol) {
+			/* is it close to the last valid good one: take that */
+			if(ads7846filterdata->last_good_val[data_idx] != INT_MAX &&
+				abs(mean_value - ads7846filterdata->last_good_val[data_idx]) <
+				((data_idx < 2) ? MAX_DIFF_SAME_POS : MAX_DIFF_SAME_PRESS))
+				*val = ads7846filterdata->last_good_val[data_idx];
+			else {
+				/* seems we moved: keep position */
+				ads7846filterdata->last_good_val[data_idx] = mean_value;
+				*val = mean_value;
+			}
+			/* prepare next coordinate */
+			ads7846filterdata->read_cnt = 0;
+			ads7846filterdata->filter_idx = 0;
+			return ADS7846_FILTER_OK;
+		}
+	}
+	/* Add value in filter */
+	ads7846filterdata->filter_vals[ads7846filterdata->filter_idx] = *val;
+	if(++ads7846filterdata->filter_idx >= FILTER_SIZE)
+		ads7846filterdata->filter_idx = 0;
+	/* Maximum reads reached without stable value ? */
+	if(++ads7846filterdata->read_cnt >=
+		ads7846filterdata->pdata->debounce_max +
+		ads7846filterdata->pdata->debounce_rep + FILTER_SIZE) {
+		/* is it far away to the last valid good one: take that */
+		if(ads7846filterdata->last_good_val[data_idx] != INT_MAX &&
+			abs(mean_value - ads7846filterdata->last_good_val[data_idx]) >=
+			((data_idx < 2) ? MAX_DIFF_SAME_POS : MAX_DIFF_SAME_PRESS))
+			*val = mean_value;
+		else
+			/* stay on last good */
+			*val = ads7846filterdata->last_good_val[data_idx];
+		/*
+		give the next coordinate the chance to make it bettter +
+		prevent throttling */
+		ads7846filterdata->read_cnt = 0;
+		ads7846filterdata->filter_idx = 0;
+		return ADS7846_FILTER_OK;
+	}
+	return ADS7846_FILTER_REPEAT;
+}
+
 static void __init overo_ads7846_init(void)
 {
-	omap_ads7846_init(1, OVERO_GPIO_PENDOWN, 0, NULL);
+	omap_ads7846_init(1, OVERO_GPIO_PENDOWN, 0, &ads7846_config);
 	platform_device_register(&vads7846_device);
+}
+
+static int __devinit ads7846_filter_init(const struct ads7846_platform_data *pdata,
+				 void **filter_data)
+{
+	struct ads7846filter *filterdata;
+	int i;
+	filterdata = kzalloc(sizeof(struct ads7846filter), GFP_KERNEL);
+	if (!filterdata)
+		return -ENOMEM;
+	*filter_data = filterdata;
+	filterdata->pdata = pdata;
+	for(i=0; i<COUNT_MEAS_TYPES; i++)
+		filterdata->last_good_val[i] = INT_MAX;
+	return 0;
+}
+
+static void __devexit ads7846_filtercleanup(void *filter_data)
+{
+	kfree(filter_data);
 }
 
 #else
