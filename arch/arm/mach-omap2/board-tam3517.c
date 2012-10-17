@@ -895,8 +895,8 @@ static __init void tam3517_usb_init(void)
 #define HD1U__O_D_PWREN					180
 
 // led outputs
-#define HD1U__O_MODULE_A_STATUS_RED		100
-#define HD1U__O_POWER_STATUS_GREEN		93
+#define HD1U__O_SYSTEM_STATUS			88
+#define HD1U__O_RED_STATUS				93
 #define HD1U__O_RM4_LED					92
 #define HD1U__O_RM3_LED					91
 #define HD1U__O_RM2_LED					90
@@ -953,8 +953,8 @@ static struct gpio hd1u_gpios[] __initdata = {
 	{ HD1U__O_C_PWREN, GPIOF_OUT_INIT_HIGH, "HD1U__O_C_PWREN" },
 	{ HD1U__O_D_PWREN, GPIOF_OUT_INIT_HIGH, "HD1U__O_D_PWREN" },
 	\
-	{ HD1U__O_MODULE_A_STATUS_RED, GPIOF_OUT_INIT_LOW, "HD1U__O_MODULE_A_STATUS_RED" },
-	{ HD1U__O_POWER_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "HD1U__O_POWER_STATUS_GREEN" },
+	{ HD1U__O_SYSTEM_STATUS, GPIOF_OUT_INIT_LOW, "HD1U__O_SYSTEM_STATUS" },
+	{ HD1U__O_RED_STATUS, GPIOF_OUT_INIT_LOW, "HD1U__O_RED_STATUS" },
 	{ HD1U__O_RM4_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_LED" },
 	{ HD1U__O_RM3_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM3_LED" },
 	{ HD1U__O_RM2_LED, GPIOF_OUT_INIT_LOW, "HD1U__O_RM2_LED" },
@@ -1051,14 +1051,14 @@ static void __init hd1u_gpios_init(void)
 	}
 
 	// status led outputs
-	if ( gpio_export(HD1U__O_MODULE_A_STATUS_RED, 0) < 0 )
+	if ( gpio_export(HD1U__O_SYSTEM_STATUS, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD1U__O_MODULE_A_STATUS_RED'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_SYSTEM_STATUS'\n");
 		return;
 	}
-	if ( gpio_export(HD1U__O_POWER_STATUS_GREEN, 0) < 0 )
+	if ( gpio_export(HD1U__O_RED_STATUS, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'HD1U__O_POWER_STATUS_GREEN'\n");
+		printk(KERN_ERR "gpio failed to export 'HD1U__O_RED_STATUS'\n");
 		return;
 	}
 	if ( gpio_export(HD1U__O_RM4_LED, 0) < 0 )

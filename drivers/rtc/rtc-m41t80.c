@@ -542,7 +542,7 @@ static void wdt_ping(void)
 	 */
 	if (clientdata->features & M41T80_FEATURE_WD)
 		i2c_data[1] &= ~M41T80_WATCHDOG_RB2;
-printk(KERN_INFO "***wdt_ping: i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
+//printk(KERN_INFO "***wdt_ping: i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
 	i2c_transfer(save_client->adapter, msgs1, 1);
 }
 
