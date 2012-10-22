@@ -939,7 +939,7 @@ static __init void tam3517_usb_init(void)
 
 #define HD1U__O_RM4_IGNITION			139
 #define HD1U__O_RM4_VRADIO_ENABLE		137
-#define HD1U__I_RM4_INCOMING_CALL		138
+#define HD1U__I_RM4_INCOMING_CALL		138	// needs hacked for 2A to allow output!
 
 #define HD1U__I_RTCWDT_IRQ_				29
 
@@ -995,7 +995,7 @@ static struct gpio hd1u_gpios[] __initdata = {
 	\
 	{ HD1U__O_RM4_IGNITION, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_IGNITION" },
 	{ HD1U__O_RM4_VRADIO_ENABLE, GPIOF_OUT_INIT_LOW, "HD1U__O_RM4_VRADIO_ENABLE" },
-	{ HD1U__I_RM4_INCOMING_CALL, GPIOF_IN, "HD1U__I_RM4_INCOMING_CALL" },
+	{ HD1U__I_RM4_INCOMING_CALL, GPIOF_OUT_INIT_LOW, "HD1U__I_RM4_INCOMING_CALL" },
 	\
 	{ HD1U__I_RTCWDT_IRQ_, GPIOF_IN, "HD1U__I_RTCWDT_IRQ_" },
 };
