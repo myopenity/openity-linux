@@ -60,6 +60,7 @@
 #define ENABLE_I2C_TLV320AIC23		0
 #define ENABLE_I2C_DS1307			0
 #define ENABLE_I2C_M41T65			1
+#define ENABLE_I2C_24LC00			1
 #define ENABLE_MUSB					0
 #define ENABLE_DUAL_UART			0
 
@@ -729,7 +730,7 @@ static struct i2c_board_info __initdata tam3517_i2c1_boardinfo[] = {
         },
 #endif  /* ENABLE_I2C_TPS65023 */
 		{
-                I2C_BOARD_INFO("24c02", 0x50),
+                I2C_BOARD_INFO("24c02", 0x50),  /* 24c02 on TAM */
         },
 #if (ENABLE_I2C_TLV320AIC23)
 		{
@@ -762,6 +763,11 @@ static struct i2c_board_info __initdata tam3517_i2c3_boardinfo[] = {
 		{
                 I2C_BOARD_INFO("m41t65", 0x68),
         },
+#endif
+#if (ENABLE_I2C_24LC00)
+		{
+                I2C_BOARD_INFO("24c00", 0x50),  /* Microchip 24lc00 on HD1U */
+        },
 #endif /* ENABLE_I2C_M41T80 */
 };
 
@@ -772,7 +778,7 @@ static int __init tam3517_i2c_init(void)
 			ARRAY_SIZE(tam3517_i2c1_boardinfo));
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
-	omap_register_i2c_bus(3, 100, tam3517_i2c3_boardinfo,
+	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
                         ARRAY_SIZE(tam3517_i2c3_boardinfo));
 	return 0;
 }
