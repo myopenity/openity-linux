@@ -542,7 +542,6 @@ static void wdt_ping(void)
 	 */
 	if (clientdata->features & M41T80_FEATURE_WD)
 		i2c_data[1] &= ~M41T80_WATCHDOG_RB2;
-//printk(KERN_INFO "***wdt_ping: i2c_data[0]=0x%02x, i2c_data[1]=0x%02x\n", i2c_data[0], i2c_data[1]);
 	i2c_transfer(save_client->adapter, msgs1, 1);
 }
 
@@ -587,7 +586,6 @@ static void wdt_disable(void)
 		i2c_data[0] = 0x09;
 		i2c_data[1] = 0x00;
 		i2c_transfer(save_client->adapter, msgs1, 1);
-//printk(KERN_INFO "***wdt_disable\n");
 	}
 }
 
@@ -639,46 +637,68 @@ static int wdt_ioctl(struct file *file, unsigned int cmd,
 		.identity = "M41T80 WTD"
 	};
 
-	switch (cmd) {
-	case WDIOC_GETSUPPORT:
-		return copy_to_user((struct watchdog_info __user *)arg, &ident,
-				    sizeof(ident)) ? -EFAULT : 0;
-
-	case WDIOC_GETSTATUS:
-	case WDIOC_GETBOOTSTATUS:
-		return put_user(boot_flag, (int __user *)arg);
-	case WDIOC_KEEPALIVE:
-		wdt_ping();
-		return 0;
-	case WDIOC_SETTIMEOUT:
-		if (get_user(new_margin, (int __user *)arg))
-			return -EFAULT;
-		/* Arbitrary, can't find the card's limits */
-		if (new_margin < 1 || new_margin > 124)
-			return -EINVAL;
-		wdt_margin = new_margin;
-		wdt_ping();
-		/* Fall */
-	case WDIOC_GETTIMEOUT:
-		return put_user(wdt_margin, (int __user *)arg);
-
-	case WDIOC_SETOPTIONS:
-		if (copy_from_user(&rv, (int __user *)arg, sizeof(int)))
-			return -EFAULT;
-
-		if (rv & WDIOS_DISABLECARD) {
-			pr_info("rtc-m41t80: disable watchdog\n");
-			wdt_disable();
+	switch (cmd)
+	{
+		case WDIOC_GETSUPPORT:
+		{
+			return copy_to_user((struct watchdog_info __user *)arg, &ident,
+					    sizeof(ident)) ? -EFAULT : 0;
+			break;
 		}
-
-		if (rv & WDIOS_ENABLECARD) {
-			pr_info("rtc-m41t80: enable watchdog\n");
+		case WDIOC_GETSTATUS:
+		case WDIOC_GETBOOTSTATUS:
+		{
+			return put_user(boot_flag, (int __user *)arg);
+			break;
+		}
+		case WDIOC_KEEPALIVE:
+		{
 			wdt_ping();
+			return 0;
+			break;
 		}
+		case WDIOC_SETTIMEOUT:
+		{
+			if (get_user(new_margin, (int __user *)arg))
+				return -EFAULT;
+			/* Arbitrary, can't find the card's limits */
+			if (new_margin < 1 || new_margin > 124)
+				return -EINVAL;
+			wdt_margin = new_margin;
+			wdt_ping();
+			/* Fall - note suggests no 'break' here I guess??? */
+		}
+		case WDIOC_GETTIMEOUT:
+		{
+			return put_user(wdt_margin, (int __user *)arg);
+		}
+		case WDIOC_SETOPTIONS:
+		{
+			int valid_opt = -EINVAL;
 
-		return -EINVAL;
+			if (copy_from_user(&rv, (int __user *)arg, sizeof(int)))
+				return -EFAULT;
+
+			if (rv & WDIOS_DISABLECARD) {
+				pr_info("rtc-m41t80: disable watchdog\n");
+				wdt_disable();
+				valid_opt = 0;
+			}
+
+			if (rv & WDIOS_ENABLECARD) {
+				pr_info("rtc-m41t80: enable watchdog\n");
+				wdt_ping();
+				valid_opt = 0;
+			}
+			
+			return(valid_opt);
+		}
+		default:
+		{
+			return -ENOTTY;
+			break;
+		}
 	}
-	return -ENOTTY;
 }
 
 static long wdt_unlocked_ioctl(struct file *file, unsigned int cmd,
@@ -711,7 +731,6 @@ static int wdt_open(struct inode *inode, struct file *file)
 		 *	Activate
 		 */
 		wdt_is_open = 1;
-//printk(KERN_INFO "***wdt_is_open = 1\n");
 		mutex_unlock(&m41t80_rtc_mutex);
 		return nonseekable_open(inode, file);
 	}
@@ -733,7 +752,6 @@ static int wdt_release(struct inode *inode, struct file *file)
 		if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
 {
 			clear_bit(0, &wdt_is_open);
-//printk(KERN_INFO "***wdt_release\n");
 }
 	}
 	return 0;
