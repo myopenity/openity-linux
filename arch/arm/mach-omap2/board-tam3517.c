@@ -181,7 +181,7 @@ static struct mtd_partition tam3517_nand_partitions[] = {
 		.size		= 400 * NAND_BLOCK_SIZE, /* -> 0x03480000 (size: 0x3200000, 50M) */
 	},
 	{
-		.name		= "Core Storage/NV RootFS",
+		.name		= "Storage",
 		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x03480000 */
 		.size		= 3440 * NAND_BLOCK_SIZE, /* -> 0x1E280000 (size: 0x1AE00000, 430M) */
 	},
