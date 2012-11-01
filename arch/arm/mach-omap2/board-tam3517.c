@@ -62,7 +62,7 @@
 #define ENABLE_I2C_M41T65			1
 #define ENABLE_I2C_24LC00			1
 #define ENABLE_MUSB					0
-#define ENABLE_DUAL_UART			0
+#define ENABLE_DUAL_UART			1
 
 /****************************************************************************
  *
@@ -74,7 +74,6 @@
 
 static struct plat_serial8250_port serial_platform_data[] = {
 	{
-		.mapbase	= 0x21000000,
 		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
@@ -82,7 +81,6 @@ static struct plat_serial8250_port serial_platform_data[] = {
 		.uartclk	= 3072000,
 	}, 
 	{
-		.mapbase	= 0x22000000,
 		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
@@ -107,13 +105,13 @@ static inline void __init tam3517_init_dualuart(void)
 {
 	unsigned long cs_mem_base;
 
-	if (gpmc_cs_request(4, SZ_1M, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(4, SZ_1M, &serial_platform_data[0].mapbase) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS4"
 				"for Dual UART(TL16CP752C)\n");
 		return;
 	}
 
-	if (gpmc_cs_request(5, SZ_1M, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(5, SZ_1M, &serial_platform_data[1].mapbase) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS5"
 				"for Dual UART(TL16CP752C)\n");
 		return;
