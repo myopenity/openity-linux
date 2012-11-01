@@ -105,6 +105,8 @@ static inline void __init tam3517_init_dualuart(void)
 {
 	unsigned long cs_mem_base;
 
+	printk("CLIFF: tam3517_init_dualuart\n");
+
 	if (gpmc_cs_request(4, SZ_1M, &serial_platform_data[0].mapbase) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS4"
 				"for Dual UART(TL16CP752C)\n");
@@ -116,6 +118,10 @@ static inline void __init tam3517_init_dualuart(void)
 				"for Dual UART(TL16CP752C)\n");
 		return;
 	}
+
+	printk("CLIFF: uart1 mapped to 0x%x, uart 2 mapped to 0x%x\n",
+			serial_platform_data[0].mapbase,
+			serial_platform_data[1].mapbase);
 
 	if (gpio_request_one(TAM3517_UART_IRQ_A_GPIO, GPIOF_IN, "TL16CP7542 IRQ A") < 0)
 		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
