@@ -78,14 +78,14 @@ static struct plat_serial8250_port serial_platform_data[] = {
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= 3072000,
+		.uartclk	= 1843200,
 	}, 
 	{
 		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= 3072000,
+		.uartclk	= 1843200,
 	},
 	{}
 };
@@ -107,13 +107,13 @@ static inline void __init tam3517_init_dualuart(void)
 
 	printk("CLIFF: tam3517_init_dualuart\n");
 
-	if (gpmc_cs_request(4, SZ_1M, &serial_platform_data[0].mapbase) < 0) {
+	if (gpmc_cs_request(4, SZ_16M, &serial_platform_data[0].mapbase) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS4"
 				"for Dual UART(TL16CP752C)\n");
 		return;
 	}
 
-	if (gpmc_cs_request(5, SZ_1M, &serial_platform_data[1].mapbase) < 0) {
+	if (gpmc_cs_request(5, SZ_16M, &serial_platform_data[1].mapbase) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS5"
 				"for Dual UART(TL16CP752C)\n");
 		return;
