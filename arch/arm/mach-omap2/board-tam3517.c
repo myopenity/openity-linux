@@ -104,6 +104,14 @@ static struct platform_device tam3517_serial_device = {
 static inline void __init tam3517_init_dualuart(void)
 {
 	unsigned long cs_base;
+	struct clk *sys_clkout1;
+
+	sys_clkout1 = clk_get(NULL, "sys_clkout1");
+	if (IS_ERR(sys_clkout1)) {
+		printk(KERN_ERR "Can't request sys_clkout1\n");
+	} else {
+		clk_enable(sys_clkout1);
+	}
 
 	if (gpmc_cs_request(4, SZ_16M, &cs_base) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS4"
