@@ -62,7 +62,7 @@
 #define ENABLE_I2C_M41T65			1
 #define ENABLE_I2C_24LC00			1
 #define ENABLE_MUSB					0
-#define ENABLE_DUAL_UART			0
+#define ENABLE_DUAL_UART			1
 
 /****************************************************************************
  *
@@ -74,20 +74,18 @@
 
 static struct plat_serial8250_port serial_platform_data[] = {
 	{
-		.mapbase	= 0x21000000,
 		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= 3072000,
+		.uartclk	= 26000000,
 	}, 
 	{
-		.mapbase	= 0x22000000,
 		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
-		.uartclk	= 3072000,
+		.uartclk	= 26000000,
 	},
 	{}
 };
@@ -105,19 +103,27 @@ static struct platform_device tam3517_serial_device = {
 
 static inline void __init tam3517_init_dualuart(void)
 {
-	unsigned long cs_mem_base;
+	unsigned long cs_base;
 
-	if (gpmc_cs_request(4, SZ_1M, &cs_mem_base) < 0) {
+	if (gpmc_cs_request(4, SZ_16M, &cs_base) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS4"
 				"for Dual UART(TL16CP752C)\n");
 		return;
 	}
 
-	if (gpmc_cs_request(5, SZ_1M, &cs_mem_base) < 0) {
+	serial_platform_data[0].mapbase = cs_base;
+
+	if (gpmc_cs_request(5, SZ_16M, &cs_base) < 0) {
 		printk(KERN_ERR "Failed to request GPMC mem CS5"
 				"for Dual UART(TL16CP752C)\n");
 		return;
 	}
+
+	serial_platform_data[1].mapbase = cs_base;
+
+	printk("CLIFF: uart1 mapped to 0x%x, uart 2 mapped to 0x%x\n",
+			serial_platform_data[0].mapbase,
+			serial_platform_data[1].mapbase);
 
 	if (gpio_request_one(TAM3517_UART_IRQ_A_GPIO, GPIOF_IN, "TL16CP7542 IRQ A") < 0)
 		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
@@ -129,7 +135,6 @@ static inline void __init tam3517_init_dualuart(void)
 		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
 								TAM3517_UART_IRQ_A_GPIO);
 
-	serial_platform_data[0].irq = gpio_to_irq(TAM3517_UART_IRQ_A_GPIO);
 	serial_platform_data[1].irq = gpio_to_irq(TAM3517_UART_IRQ_B_GPIO);
 }
 
