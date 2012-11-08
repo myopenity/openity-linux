@@ -62,26 +62,40 @@
 #define ENABLE_I2C_M41T65			1
 #define ENABLE_I2C_24LC00			1
 #define ENABLE_MUSB					0
-#define ENABLE_DUAL_UART			1
+#define ENABLE_DUAL_UART_TL16C752	1
+
 
 /****************************************************************************
  *
- *  GPMC-based Dual UART setup
+ *  GPMC-based 16C752, Dual UART
  *
  ****************************************************************************/
 
-#if (ENABLE_DUAL_UART)
+#if (ENABLE_DUAL_UART_TL16C752)
 
-static struct plat_serial8250_port serial_platform_data[] = {
+#define TAM3517_TL16C752B_CS_A			4
+#define TAM3517_TL16C752B_CS_B			5
+#define TAM3517_TL16C752B_IRQ_A			127
+#define TAM3517_TL16C752B_IRQ_B			128
+
+/* removed from below:
+#define TAM3517_TL16C752B_UART1_ADDR	0x10000000
+#define TAM3517_TL16C752B_UART2_ADDR	0x20000000
+
+		.mapbase	= TAM3517_TL16C752B_UART1_ADDR,
+...
+		.mapbase	= TAM3517_TL16C752B_UART2_ADDR,
+ */
+static struct plat_serial8250_port tl16c752_platform_data[] = {
 	{
-		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
+		.flags		= UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
 		.uartclk	= 26000000,
 	}, 
 	{
-		.flags		= UPF_BOOT_AUTOCONF|UPF_IOREMAP|UPF_SHARE_IRQ,
+		.flags		= UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ,
 		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
@@ -90,18 +104,17 @@ static struct plat_serial8250_port serial_platform_data[] = {
 	{}
 };
 
-static struct platform_device tam3517_serial_device = {
+static struct platform_device tam3517_tl16c752_device =
+{
 	.name			= "serial8250",
-	.id			= PLAT8250_DEV_PLATFORM,
+	.id				= PLAT8250_DEV_PLATFORM,
 	.dev			= {
-		.platform_data	= serial_platform_data,
-	},
+			.platform_data	= tl16c752_platform_data,
+		},
 };
 
-#define TAM3517_UART_IRQ_A_GPIO  127
-#define TAM3517_UART_IRQ_B_GPIO  128
 
-static inline void __init tam3517_init_dualuart(void)
+static inline void __init tam3517_init_tl16c752(void)
 {
 	unsigned long cs_base;
 	struct clk *sys_clkout1;
@@ -113,40 +126,46 @@ static inline void __init tam3517_init_dualuart(void)
 		clk_enable(sys_clkout1);
 	}
 
-	if (gpmc_cs_request(4, SZ_16M, &cs_base) < 0) {
-		printk(KERN_ERR "Failed to request GPMC mem CS4"
-				"for Dual UART(TL16CP752C)\n");
+	/* fetch chip selects */
+	if (gpmc_cs_request(TAM3517_TL16C752B_CS_A, SZ_16M, &cs_base) < 0)
+	{
+		printk(KERN_ERR "Failed to request GPMC mem CS%d "
+			"for Port A, Dual UART (TL16C752B)\n", TAM3517_TL16C752B_CS_A);
 		return;
 	}
+	tl16c752_platform_data[0].mapbase = cs_base;
+	printk(KERN_INFO "tl16c752b, port A mapped to 0x%x\n", tl16c752_platform_data[0].mapbase);
 
-	serial_platform_data[0].mapbase = cs_base;
-
-	if (gpmc_cs_request(5, SZ_16M, &cs_base) < 0) {
-		printk(KERN_ERR "Failed to request GPMC mem CS5"
-				"for Dual UART(TL16CP752C)\n");
+	if (gpmc_cs_request(TAM3517_TL16C752B_CS_B, SZ_16M, &cs_base) < 0)
+	{
+		printk(KERN_ERR "Failed to request GPMC mem CS%d "
+			"for Port B, Dual UART (TL16C752B)\n", TAM3517_TL16C752B_CS_B);
 		return;
 	}
+	tl16c752_platform_data[1].mapbase = cs_base;
+	printk(KERN_INFO "tl16c752b, port B mapped to 0x%x\n", tl16c752_platform_data[1].mapbase);
 
-	serial_platform_data[1].mapbase = cs_base;
-
-	printk("CLIFF: uart1 mapped to 0x%x, uart 2 mapped to 0x%x\n",
-			serial_platform_data[0].mapbase,
-			serial_platform_data[1].mapbase);
-
-	if (gpio_request_one(TAM3517_UART_IRQ_A_GPIO, GPIOF_IN, "TL16CP7542 IRQ A") < 0)
+	/* fetch irqs */
+	if (gpio_request_one(TAM3517_TL16C752B_IRQ_A, GPIOF_IN, "tl16c752b IRQ port A") < 0)
+	{
 		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
-								TAM3517_UART_IRQ_A_GPIO);
+				TAM3517_TL16C752B_IRQ_A);
+		return;
+	}
+	tl16c752_platform_data[0].irq = gpio_to_irq(TAM3517_TL16C752B_IRQ_A);
 
-	serial_platform_data[0].irq = gpio_to_irq(TAM3517_UART_IRQ_A_GPIO);
-
-	if (gpio_request_one(TAM3517_UART_IRQ_B_GPIO, GPIOF_IN, "TL16CP7542 IRQ B") < 0)
+	if (gpio_request_one(TAM3517_TL16C752B_IRQ_B, GPIOF_IN, "tl16c752b IRQ port B") < 0)
+	{
 		printk(KERN_ERR "Failed to request GPIO%d for TL16CP752C IRQ\n",
-								TAM3517_UART_IRQ_A_GPIO);
+				TAM3517_TL16C752B_IRQ_B);
+		return;
+	}
+	tl16c752_platform_data[1].irq = gpio_to_irq(TAM3517_TL16C752B_IRQ_B);
 
-	serial_platform_data[1].irq = gpio_to_irq(TAM3517_UART_IRQ_B_GPIO);
+	printk(KERN_DEBUG "initialized 16c752\n");
 }
 
-#endif
+#endif /* ENABLE_DUAL_UART_TL16C752 */
 
 /****************************************************************************
  *
@@ -1287,8 +1306,8 @@ static struct platform_device *tam3517_devices[] __initdata = {
 	&tam3517_emac_device,
 #endif
 
-#if (ENABLE_DUAL_UART)
-	&tam3517_serial_device
+#if (ENABLE_DUAL_UART_TL16C752)
+	&tam3517_tl16c752_device
 #endif
 };
 
@@ -1296,8 +1315,8 @@ static struct platform_device *tam3517_devices[] __initdata = {
 
 static void __init tam3517_init(void) {
 
-#if (ENABLE_DUAL_UART)
-	tam3517_init_dualuart(); // this must be called before platform_add_devices
+#if (ENABLE_DUAL_UART_TL16C752)
+	tam3517_init_tl16c752(); // this must be called before platform_add_devices
 #endif
 
 	platform_add_devices(tam3517_devices, ARRAY_SIZE(tam3517_devices));
