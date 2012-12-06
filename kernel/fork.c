@@ -304,12 +304,17 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	}
 
 	err = arch_dup_task_struct(tsk, orig);
+
+	/*
+	 * We defer looking at err, because we will need this setup
+	 * for the clean up path to work correctly.
+	 */
+	tsk->stack = ti;
+	setup_thread_stack(tsk, orig);
+
 	if (err)
 		goto out;
 
-	tsk->stack = ti;
-
-	setup_thread_stack(tsk, orig);
 	clear_user_return_notifier(tsk);
 	clear_tsk_need_resched(tsk);
 	stackend = end_of_stack(tsk);
@@ -413,6 +418,8 @@ static int dup_mmap(struct mm_struct *mm, struct mm_struct *oldmm)
 			struct address_space *mapping = file->f_mapping;
 
 			get_file(file);
+			if (tmp->vm_prfile)
+				get_file(tmp->vm_prfile);
 			if (tmp->vm_flags & VM_DENYWRITE)
 				atomic_dec(&inode->i_writecount);
 			mutex_lock(&mapping->i_mmap_mutex);
