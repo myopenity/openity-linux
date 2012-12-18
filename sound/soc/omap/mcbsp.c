@@ -745,7 +745,14 @@ int omap_mcbsp_6pin_src_mux(struct omap_mcbsp *mcbsp, u8 mux)
 {
 	const char *signal, *src;
 
-	if (mcbsp->pdata->mux_signal)
+	/* This ONLY applies to McBSP1 of AM35xx !!!
+	 * Make sure this is McBSP1 _before_ proceeding!
+	 * If not, just return 'ok'.
+	 */
+	if (mcbsp->id != 1)
+		return 0;
+
+	if (mcbsp->pdata->mux_signal == NULL)
 		return -EINVAL;
 
 	switch (mux) {
