@@ -77,6 +77,7 @@
 #define TAM3517_TL16C752B_CS_B			5
 #define TAM3517_TL16C752B_IRQ_A			127
 #define TAM3517_TL16C752B_IRQ_B			128
+#define TAM3517_TL16C752B_UART_RESET	163
 
 /* removed from below:
 #define TAM3517_TL16C752B_UART1_ADDR	0x10000000
@@ -88,15 +89,15 @@
  */
 static struct plat_serial8250_port tl16c752_platform_data[] = {
 	{
-		.flags		= UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ,
-		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
+		.flags		= UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_IOREMAP | UPF_BUGGY_UART,
+		.irqflags	= IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
 		.uartclk	= 26000000,
 	}, 
 	{
-		.flags		= UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_SHARE_IRQ,
-		.irqflags	= IRQF_SHARED | IRQF_TRIGGER_RISING,
+		.flags		= UPF_BOOT_AUTOCONF | UPF_SKIP_TEST | UPF_IOREMAP | UPF_BUGGY_UART,
+		.irqflags	= IRQF_TRIGGER_RISING,
 		.iotype		= UPIO_MEM,
 		.regshift	= 2,
 		.uartclk	= 26000000,
@@ -119,6 +120,7 @@ static inline void __init tam3517_init_tl16c752(void)
 	unsigned long cs_base;
 	struct clk *sys_clkout1;
 
+	/* enable sys_clkout1 from TAM; fixed @ 26MHz */
 	sys_clkout1 = clk_get(NULL, "sys_clkout1");
 	if (IS_ERR(sys_clkout1)) {
 		printk(KERN_ERR "Can't request sys_clkout1\n");
