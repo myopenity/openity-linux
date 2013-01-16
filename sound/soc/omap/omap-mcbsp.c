@@ -354,7 +354,8 @@ static int omap_mcbsp_dai_hw_params(struct snd_pcm_substream *substream,
 			return -EINVAL;
 		}
 	} else {
-#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+/*** Found this tweak was unnecessary, 0 it out ***/
+#if 0 // defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
 		/* !!!  This is a hack! Not all RIGHT_J's will do this.  !!!
 		 * MC55 framesize is fixed at 32 bits, even with only 1 chan, force it.
 		 * (last 16-bits = "don't care")
@@ -439,7 +440,8 @@ static int omap_mcbsp_dai_set_dai_fmt(struct snd_soc_dai *cpu_dai,
 		/* 0-bit data delay */
 		regs->rcr2	|= RDATDLY(0);
 		regs->xcr2	|= XDATDLY(0);
-		regs->spcr1	|= RJUST(0);
+		/* changed from RJUST(0): extend sign instead of 0 out just in case */
+		regs->spcr1	|= RJUST(1);
 		/* Invert FS polarity configuration */
 		inv_fs = true;
 		break;
