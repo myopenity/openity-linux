@@ -1099,7 +1099,6 @@ static void autoconfig(struct uart_8250_port *up, unsigned int probeflags)
 	 */
 	if (!(port->flags & UPF_SKIP_TEST)) {
 		serial_out(up, UART_MCR, UART_MCR_LOOP | 0x0A);
-		udelay(1);
 		status1 = serial_in(up, UART_MSR) & 0xF0;
 		serial_out(up, UART_MCR, save_mcr);
 		if (status1 != 0x90) {
