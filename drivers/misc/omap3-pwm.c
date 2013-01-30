@@ -47,22 +47,22 @@
 #ifdef TAM3517
 
 #define OMAP34XX_PADCONF_START	0x48002030
-#define OMAP34XX_PADCONF_SIZE		0x05cc
+#define OMAP34XX_PADCONF_SIZE	0x05cc
 
 #define GPT8_MUX_OFFSET			(0x480021DE - OMAP34XX_PADCONF_START)
-#define GPT11_MUX_OFFSET			(0x480021DC - OMAP34XX_PADCONF_START)
+#define GPT11_MUX_OFFSET		(0x480021DC - OMAP34XX_PADCONF_START)
 
 #define PWM_ENABLE_MUX			0x0001	/* IDIS | PTD | DIS | M1 */
 
 #else  /* default to OMAP35xx settings */
 
-#define OMAP34XX_PADCONF_START  	0x48002030
-#define OMAP34XX_PADCONF_SIZE   	0x05cc
+#define OMAP34XX_PADCONF_START  0x48002030
+#define OMAP34XX_PADCONF_SIZE   0x05cc
 
 #define GPT8_MUX_OFFSET			(0x4800217A - OMAP34XX_PADCONF_START) 
 #define GPT9_MUX_OFFSET			(0x48002174 - OMAP34XX_PADCONF_START) 
-#define GPT10_MUX_OFFSET			(0x48002176 - OMAP34XX_PADCONF_START)
-#define GPT11_MUX_OFFSET			(0x48002178 - OMAP34XX_PADCONF_START)
+#define GPT10_MUX_OFFSET		(0x48002176 - OMAP34XX_PADCONF_START)
+#define GPT11_MUX_OFFSET		(0x48002178 - OMAP34XX_PADCONF_START)
 
 #define PWM_ENABLE_MUX			0x0002	/* IDIS | PTD | DIS | M2 */
 
@@ -280,13 +280,7 @@ static int pwm_timer_init(void)
 
 	for (i = 0; i < num_timers; i++) {
 		if (pwm_init_mux(&pwm_dev[i]))
-{
 			goto timer_init_fail;
-}
-else
-{
-printk(KERN_INFO "OMAP3-PWM [DBG]: pwm_init_mux (%d), OK\n", i);
-}
 	}
 
 	for (i = 0; i < num_timers; i++) {
@@ -294,28 +288,15 @@ printk(KERN_INFO "OMAP3-PWM [DBG]: pwm_init_mux (%d), OK\n", i);
 			= omap_dm_timer_request_specific(pwm_dev[i].id);
 
 		if (!pwm_dev[i].timer)
-{
 			goto timer_init_fail;
-}
-else
-{
-printk(KERN_INFO "OMAP3-PWM [DBG]: omap_dm_timer_request_specific (%d), OK\n", i);
-}
 		omap_dm_timer_set_pwm(pwm_dev[i].timer,
 				0,	// ~SCPWM low when off
 				1,	// PT pulse toggle modulation
 				OMAP_TIMER_TRIGGER_OVERFLOW_AND_COMPARE);
-printk(KERN_INFO "OMAP3-PWM [DBG]: omap_dm_timer_set_pwm (%d), OK\n", i);
 
 		if (omap_dm_timer_set_source(pwm_dev[i].timer,
 						OMAP_TIMER_SRC_SYS_CLK))
-{
 			goto timer_init_fail;
-}
-else
-{
-printk(KERN_INFO "OMAP3-PWM [DBG]: omap_dm_timer_set_source (%d), OK\n", i);
-}
 		// make sure we know the source clock frequency
 		fclk = omap_dm_timer_get_fclk(pwm_dev[i].timer);
 		pwm_dev[i].input_freq = clk_get_rate(fclk);
@@ -540,13 +521,13 @@ static int pwm_init_timer_list(void)
 		}
 
 		if (j == MAX_TIMERS) {
-			printk(KERN_ERR "OMAP3-PWM: Invalid timer requested: %d\n",
+			printk(KERN_ERR "omap3-pwm: invalid timer requested: %d\n",
 				timers[i]);
 			return -1;
 		}
 
 		if (timer_init[j].used) {
-			printk(KERN_ERR "OMAP3-PWM: Timer %d specified more then once\n",
+			printk(KERN_ERR "omap3-pwm: timer %d specified more then once\n",
 				timers[i]);
 			return -1;
 		}
@@ -574,6 +555,8 @@ static int __init pwm_init(void)
 
 		if (pwm_init_class(&pwm_dev[i]))
 			goto init_fail;
+		printk(KERN_INFO "omap3-pwm: gptimer[%d] initialized\n",
+			timers[i]);
 	}
 
 	if (servo)
@@ -604,25 +587,21 @@ static int __init pwm_init(void)
 
 	if (servo) {
 		printk(KERN_INFO
-			"OMAP3-PWM: frequency=%d Hz servo=%d " \
+			"omap3-pwm: frequency=%d Hz servo=%d " \
 			"servo_min = %d servo_max = %d\n",
 			frequency, servo, servo_min, servo_max);
 	}
 	else {
-		printk(KERN_INFO "OMAP3-PWM: frequency=%d Hz  servo=%d\n",
-			frequency, servo);
+		printk(KERN_INFO "omap3-pwm: frequency=%d Hz\n",
+			frequency);
 	}
-
-	printk(KERN_INFO "OMAP3-PWM: init OK\n");
 	
 	return 0;
 
 init_fail_2:
-printk(KERN_INFO "OMAP3-PWM [DBG]: init_fail_2\n");
 	pwm_timer_cleanup();
 
 init_fail:
-printk(KERN_INFO "OMAP3-PWM [DBG]: init_fail_1\n");
 	pwm_dev_cleanup();
 
 	return -1;
