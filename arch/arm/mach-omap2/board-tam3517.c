@@ -1251,7 +1251,7 @@ static void __init hd1u_gpios_init(void)
 		return;
 	}
 
-	printk(KERN_INFO "HD1U control/display GPIOs initialized\n");
+	printk(KERN_INFO "HD1U [Rev 2B] control/display GPIOs initialized\n");
 }
 
 
