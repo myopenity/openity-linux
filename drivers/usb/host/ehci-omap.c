@@ -222,8 +222,9 @@ static int ehci_hcd_omap_probe(struct platform_device *pdev)
 	/* Soft reset the PHY using PHY reset command over ULPI */
 	if (pdata->port_mode[0] == OMAP_EHCI_PORT_MODE_PHY)
 		omap_ehci_soft_phy_reset(pdev, 0);
-	if (pdata->port_mode[1] == OMAP_EHCI_PORT_MODE_PHY)
-		omap_ehci_soft_phy_reset(pdev, 1);
+	/* causes 'phy reset operation timed out' and a delay of 1s */
+	/*if (pdata->port_mode[1] == OMAP_EHCI_PORT_MODE_PHY)
+		omap_ehci_soft_phy_reset(pdev, 1);*/
 
 	omap_ehci = hcd_to_ehci(hcd);
 	omap_ehci->sbrn = 0x20;
