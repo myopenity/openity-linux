@@ -248,8 +248,11 @@ void cpsw_tx_handler(void *token, int len, int status)
 	struct net_device	*ndev = skb->dev;
 	struct cpsw_priv	*priv = netdev_priv(ndev);
 
+	/* Check whether the queue is stopped due to stalled tx dma, if the
+	 * queue is stopped then start the queue as we have free desc for tx
+	 */
 	if (unlikely(netif_queue_stopped(ndev)))
-		netif_start_queue(ndev);
+		netif_wake_queue(ndev);
 	priv->stats.tx_packets++;
 	priv->stats.tx_bytes += len;
 	dev_kfree_skb_any(skb);
@@ -289,7 +292,7 @@ void cpsw_rx_handler(void *token, int len, int status)
 			return;
 
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
-					skb_tailroom(skb), GFP_KERNEL);
+					skb_tailroom(skb), 0, GFP_KERNEL);
 	}
 	WARN_ON(ret < 0);
 }
@@ -532,7 +535,7 @@ static int cpsw_ndo_open(struct net_device *ndev)
 		if (!skb)
 			break;
 		ret = cpdma_chan_submit(priv->rxch, skb, skb->data,
-					skb_tailroom(skb), GFP_KERNEL);
+					skb_tailroom(skb), 0, GFP_KERNEL);
 		if (WARN_ON(ret < 0))
 			break;
 	}
@@ -588,11 +591,17 @@ static netdev_tx_t cpsw_ndo_start_xmit(struct sk_buff *skb,
 	}
 
 	ret = cpdma_chan_submit(priv->txch, skb, skb->data,
-				skb->len, GFP_KERNEL);
+				skb->len, 0, GFP_KERNEL);
 	if (unlikely(ret != 0)) {
 		cpsw_err(priv, tx_err, "desc submit failed\n");
 		goto fail;
 	}
+
+	/* If there is no more tx desc left free then we need to
+	 * tell the kernel to stop sending us tx frames.
+	 */
+	if (unlikely(cpdma_check_free_tx_desc(priv->txch)))
+		netif_stop_queue(ndev);
 
 	return NETDEV_TX_OK;
 fail:

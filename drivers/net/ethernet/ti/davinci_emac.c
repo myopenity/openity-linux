@@ -115,7 +115,6 @@ static const char emac_version_string[] = "TI DaVinci EMAC Linux v6.1";
 #define EMAC_DEF_TX_CH			(0) /* Default 0th channel */
 #define EMAC_DEF_RX_CH			(0) /* Default 0th channel */
 #define EMAC_DEF_RX_NUM_DESC		(128)
-#define EMAC_DEF_TX_NUM_DESC		(128)
 #define EMAC_DEF_MAX_TX_CH		(1) /* Max TX channels configured */
 #define EMAC_DEF_MAX_RX_CH		(1) /* Max RX channels configured */
 #define EMAC_POLL_WEIGHT		(64) /* Default NAPI poll weight */
@@ -337,7 +336,6 @@ struct emac_priv {
 	u32 mac_hash2;
 	u32 multicast_hash_cnt[EMAC_NUM_MULTICAST_BITS];
 	u32 rx_addr_type;
-	atomic_t cur_tx;
 	const char *phy_id;
 	struct phy_device *phydev;
 	spinlock_t lock;
@@ -1029,31 +1027,35 @@ static void emac_rx_handler(void *token, int len, int status)
 
 	/* alloc a new packet for receive */
 	skb = emac_rx_alloc(priv);
-	if (!skb) {
+	if (unlikely(!skb)) {
 		if (netif_msg_rx_err(priv) && net_ratelimit())
 			dev_err(emac_dev, "failed rx buffer alloc\n");
+dev_err(emac_dev, "(1) lost rx skb?\n");
 		return;
 	}
 
 recycle:
 	ret = cpdma_chan_submit(priv->rxchan, skb, skb->data,
-			skb_tailroom(skb), GFP_KERNEL);
+			skb_tailroom(skb), 0, GFP_KERNEL);
 
 	WARN_ON(ret == -ENOMEM);
 	if (unlikely(ret < 0))
+	{
 		dev_kfree_skb_any(skb);
+dev_err(emac_dev, "(2) lost rx skb?\n");
+	}
 }
 
 static void emac_tx_handler(void *token, int len, int status)
 {
 	struct sk_buff		*skb = token;
 	struct net_device	*ndev = skb->dev;
-	struct emac_priv	*priv = netdev_priv(ndev);
 
-	atomic_dec(&priv->cur_tx);
-
+	/* Check whether the queue is stopped due to stalled tx dma, if the
+	 * queue is stopped then start the queue as we have free desc for tx
+	 */
 	if (unlikely(netif_queue_stopped(ndev)))
-		netif_start_queue(ndev);
+		netif_wake_queue(ndev);
 	ndev->stats.tx_packets++;
 	ndev->stats.tx_bytes += len;
 	dev_kfree_skb_any(skb);
@@ -1092,19 +1094,23 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 	skb_tx_timestamp(skb);
 
 	ret_code = cpdma_chan_submit(priv->txchan, skb, skb->data, skb->len,
-				     GFP_KERNEL);
+				     0, GFP_KERNEL);
 	if (unlikely(ret_code != 0)) {
 		if (netif_msg_tx_err(priv) && net_ratelimit())
 			dev_err(emac_dev, "DaVinci EMAC: desc submit failed");
 		goto fail_tx;
 	}
 
-	if (atomic_inc_return(&priv->cur_tx) >= EMAC_DEF_TX_NUM_DESC)
+	/* If there is no more tx desc left free then we need to
+	 * tell the kernel to stop sending us tx frames.
+	 */
+	if (unlikely(!cpdma_check_free_tx_desc(priv->txchan)))
 		netif_stop_queue(ndev);
 
 	return NETDEV_TX_OK;
 
 fail_tx:
+dev_err(emac_dev, "(3) lost TX skb, queue stopped - needs restarted (tx_handler)?\n");
 	ndev->stats.tx_dropped++;
 	netif_stop_queue(ndev);
 	return NETDEV_TX_BUSY;
@@ -1550,13 +1556,27 @@ static int emac_dev_open(struct net_device *ndev)
 	for (i = 0; i < EMAC_DEF_RX_NUM_DESC; i++) {
 		struct sk_buff *skb = emac_rx_alloc(priv);
 
-		if (!skb)
+		if (unlikely(!skb))
+		{
+			ret = -ENOMEM;
 			break;
+		}
 
 		ret = cpdma_chan_submit(priv->rxchan, skb, skb->data,
-					skb_tailroom(skb), GFP_KERNEL);
+					skb_tailroom(skb), 0, GFP_KERNEL);
 		if (WARN_ON(ret < 0))
+		{
+			dev_kfree_skb_any(skb);
+			ret = -ENOMEM;
+dev_err(emac_dev, "***freeing failed skb");
 			break;
+		}
+	}
+
+	if (unlikely(ret < 0))
+	{
+		dev_err(emac_dev, "failed prestaging rx skbs in cpdma");
+		return ret;
 	}
 
 	/* Request IRQ */
