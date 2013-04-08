@@ -64,6 +64,12 @@
 
 #include "davinci_cpdma.h"
 
+//// DEBUGGING ONLY!!!!
+#include <linux/jiffies.h>
+static unsigned long qstopped_jifs = 0;
+static unsigned long poll_func_jifs = 0;
+
+
 static int debug_level;
 module_param(debug_level, int, 0);
 MODULE_PARM_DESC(debug_level, "DaVinci EMAC debug level (NETIF_MSG bits)");
@@ -1055,7 +1061,19 @@ static void emac_tx_handler(void *token, int len, int status)
 	 * queue is stopped then start the queue as we have free desc for tx
 	 */
 	if (unlikely(netif_queue_stopped(ndev)))
+	{
 		netif_wake_queue(ndev);
+		if (qstopped_jifs > 0)
+		{
+			// we've been stopped, measure how long
+			if ( time_after_eq(jiffies, (qstopped_jifs + HZ/2)) )
+			{
+				// we've been stopped >= 1/2 second!!!
+				printk(KERN_ERR "===EMAC: TX queue has been stopped for > 1/2 second!!!\n");
+			}
+		}
+		qstopped_jifs = 0;
+	}	
 	ndev->stats.tx_packets++;
 	ndev->stats.tx_bytes += len;
 	dev_kfree_skb_any(skb);
@@ -1105,7 +1123,11 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 	 * tell the kernel to stop sending us tx frames.
 	 */
 	if (unlikely(!cpdma_check_free_tx_desc(priv->txchan)))
+	{
 		netif_stop_queue(ndev);
+		// we just stopped, record the time
+		qstopped_jifs = jiffies;
+	}
 
 	return NETDEV_TX_OK;
 
@@ -1374,6 +1396,15 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	u32 status = 0;
 	u32 num_tx_pkts = 0, num_rx_pkts = 0;
 
+
+unsigned long tmp = jiffies;
+if ( time_after_eq(tmp, (poll_func_jifs + HZ/2)) )
+{
+	// we've been stopped >= 1/2 second!!!
+	printk(KERN_ERR "===EMAC: POLL FUNCTION has not been called for > 1/2 second!!!\n");
+}
+poll_func_jifs = tmp;
+
 	/* Check interrupt vectors and call packet processing */
 	status = emac_read(EMAC_MACINVECTOR);
 
@@ -1426,7 +1457,8 @@ static int emac_poll(struct napi_struct *napi, int budget)
 				dev_err(emac_dev, "RX Host error %s on ch=%d\n",
 					&emac_rxhost_errcodes[cause][0], ch);
 		}
-	} else if (num_rx_pkts < budget) {
+	} else if ( (num_rx_pkts < budget) &&
+			(num_tx_pkts == 0) ) {
 		napi_complete(napi);
 		emac_int_enable(priv);
 	}
@@ -1568,7 +1600,7 @@ static int emac_dev_open(struct net_device *ndev)
 		{
 			dev_kfree_skb_any(skb);
 			ret = -ENOMEM;
-dev_err(emac_dev, "***freeing failed skb");
+dev_err(emac_dev, "===freeing failed skb");
 			break;
 		}
 	}
@@ -1687,6 +1719,7 @@ static int emac_dev_stop(struct net_device *ndev)
 
 	/* inform the upper layers. */
 	netif_stop_queue(ndev);
+dev_err(emac_dev, "===DaVinci EMAC: %s stopped @ emac_dev_stop\n", ndev->name);
 	napi_disable(&priv->napi);
 
 	netif_carrier_off(ndev);
