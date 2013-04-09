@@ -192,7 +192,7 @@ static int sdio_bus_remove(struct device *dev)
 	return ret;
 }
 
-#ifdef CONFIG_PM
+#ifdef CONFIG_SUSPEND
 
 static int pm_no_operation(struct device *dev)
 {

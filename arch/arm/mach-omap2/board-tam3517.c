@@ -740,7 +740,7 @@ static struct ti_hecc_platform_data tam3517_hecc_pdata = {
 
 static struct platform_device tam3517_hecc_device = {
         .name           = "ti_hecc",
-        .id             = 1,
+        .id             = 1,	// latest TN source now says "-1"
         .num_resources  = ARRAY_SIZE(tam3517_hecc_resources),
         .resource       = tam3517_hecc_resources,
 	.dev.platform_data = &tam3517_hecc_pdata,
@@ -813,7 +813,8 @@ static int __init tam3517_i2c_init(void)
 	omap_register_i2c_bus(2, 400, tam3517_i2c2_boardinfo,
 			ARRAY_SIZE(tam3517_i2c2_boardinfo));
 	omap_register_i2c_bus(3, 400, tam3517_i2c3_boardinfo,
-                        ARRAY_SIZE(tam3517_i2c3_boardinfo));
+			ARRAY_SIZE(tam3517_i2c3_boardinfo));
+
 	return 0;
 }
 
@@ -874,10 +875,10 @@ static struct omap_musb_board_data tam3517_musb_data = {
 	.interface_type         = MUSB_INTERFACE_ULPI,
 	.mode                   = MUSB_OTG,
 	.power                  = 500,
-		.set_phy_power		= am35x_musb_phy_power,
-		.clear_irq		= am35x_musb_clear_irq,
-		.set_mode		= am35x_set_mode,
-		.reset			= am35x_musb_reset,
+	.set_phy_power			= am35x_musb_phy_power,
+	.clear_irq				= am35x_musb_clear_irq,
+	.set_mode				= am35x_set_mode,
+	.reset					= am35x_musb_reset,
 };
 #endif
 
@@ -893,7 +894,7 @@ static struct usbhs_omap_board_data tam3517_ehci_pdata __initdata = {
 };
 
 
-static __init void tam3517_usb_init(void) {
+static __init void tam3517_musb_init(void) {
 	u32 devconf2 = omap_ctrl_readl(AM35XX_CONTROL_DEVCONF2);
 
 	/* Set USB2.0 PHY reference clock to 13 MHz */
@@ -910,7 +911,7 @@ static __init void tam3517_usb_init(void) {
 	usbhs_init(&tam3517_ehci_pdata);
 }
 #else
-static __init void tam3517_usb_init(void)
+static __init void tam3517_musb_init(void)
 {
 	return;
 }
@@ -1299,7 +1300,7 @@ static void __init tam3517_init(void) {
         
 	omap_hsmmc_init(mmc);
         
-	tam3517_usb_init();        
+	tam3517_musb_init();
 	tam3517_nand_init();
 
 	/*Ethernet:  SMSC911x */
