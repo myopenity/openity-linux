@@ -69,6 +69,9 @@
 static unsigned long qstopped_jifs = 0;
 static unsigned long poll_func_jifs = 0;
 static u32 last_num_rx_pkts = 0, last_num_tx_pkts = 0;
+static u32 irqs_while_stopped = 0;
+
+
 
 static int debug_level;
 module_param(debug_level, int, 0);
@@ -480,8 +483,8 @@ static void emac_dump_regs(struct emac_priv *priv)
 static void emac_get_drvinfo(struct net_device *ndev,
 			     struct ethtool_drvinfo *info)
 {
-	strcpy(info->driver, emac_version_string);
-	strcpy(info->version, EMAC_MODULE_VERSION);
+	strlcpy(info->driver, emac_version_string, sizeof(info->driver));
+	strlcpy(info->version, EMAC_MODULE_VERSION, sizeof(info->version));
 }
 
 /**
@@ -992,6 +995,14 @@ static irqreturn_t emac_irq(int irq, void *dev_id)
 	} else {
 		/* we are closing down, so dont process anything */
 	}
+if (qstopped_jifs > 0)
+{
+	irqs_while_stopped++;
+}
+else
+{
+	irqs_while_stopped = 0;
+}
 	return IRQ_HANDLED;
 }
 
@@ -1401,7 +1412,7 @@ unsigned long tmp = jiffies;
 if ( time_after_eq(tmp, (poll_func_jifs + HZ/2)) )
 {
 	// we've been stopped >= 1/2 second!!!
-	printk(KERN_ERR "===EMAC: POLL FUNCTION, last RX/TX=[%d][%d]\n", last_num_rx_pkts, last_num_tx_pkts);
+	printk(KERN_ERR "===EMAC: POLL FUNCTION, last RX/TX=[%d][%d], irqs_while_stopped=%d\n", last_num_rx_pkts, last_num_tx_pkts, irqs_while_stopped);
 }
 poll_func_jifs = tmp;
 
