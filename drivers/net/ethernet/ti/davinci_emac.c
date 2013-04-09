@@ -2058,7 +2058,7 @@ static int davinci_emac_suspend(struct device *dev)
 		emac_dev_stop(ndev);
 
 	clk_disable(emac_clk);
-printk(KERN_ERROR "=== EMAC suspending\n");
+printk(KERN_ERR "=== EMAC suspending\n");
 	return 0;
 }
 
@@ -2071,7 +2071,7 @@ static int davinci_emac_resume(struct device *dev)
 
 	if (netif_running(ndev))
 		emac_dev_open(ndev);
-printk(KERN_ERROR "=== EMAC resuming\n");
+printk(KERN_ERR "=== EMAC resuming\n");
 	return 0;
 }
 
