@@ -68,7 +68,7 @@
 #include <linux/jiffies.h>
 static unsigned long qstopped_jifs = 0;
 static unsigned long poll_func_jifs = 0;
-
+static u32 last_num_rx_pkts = 0, last_num_tx_pkts = 0;
 
 static int debug_level;
 module_param(debug_level, int, 0);
@@ -1401,7 +1401,7 @@ unsigned long tmp = jiffies;
 if ( time_after_eq(tmp, (poll_func_jifs + HZ/2)) )
 {
 	// we've been stopped >= 1/2 second!!!
-	printk(KERN_ERR "===EMAC: POLL FUNCTION has not been called for > 1/2 second!!!\n");
+	printk(KERN_ERR "===EMAC: POLL FUNCTION, last RX/TX=[%d][%d]\n", last_num_rx_pkts, last_num_tx_pkts);
 }
 poll_func_jifs = tmp;
 
@@ -1416,6 +1416,10 @@ poll_func_jifs = tmp;
 	if (status & mask) {
 		num_tx_pkts = cpdma_chan_process(priv->txchan,
 					      EMAC_DEF_TX_MAX_SERVICE);
+		if (num_tx_pkts < 0)
+		{
+printk(KERN_ERR "=== ERR!!! num_tx_pkts=%d\n", num_tx_pkts);		
+		}
 	} /* TX processing */
 
 	mask = EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC;
@@ -1425,7 +1429,16 @@ poll_func_jifs = tmp;
 
 	if (status & mask) {
 		num_rx_pkts = cpdma_chan_process(priv->rxchan, budget);
+		if (num_rx_pkts < 0)
+		{
+printk(KERN_ERR "=== ERR!!! num_rx_pkts=%d\n", num_rx_pkts);
+		}
 	} /* RX processing */
+
+
+last_num_tx_pkts = num_tx_pkts;
+last_num_rx_pkts = num_rx_pkts;
+
 
 	mask = EMAC_DM644X_MAC_IN_VECTOR_HOST_INT;
 	if (priv->version == EMAC_VERSION_2)
@@ -1457,8 +1470,7 @@ poll_func_jifs = tmp;
 				dev_err(emac_dev, "RX Host error %s on ch=%d\n",
 					&emac_rxhost_errcodes[cause][0], ch);
 		}
-	} else if ( (num_rx_pkts < budget) &&
-			(num_tx_pkts == 0) ) {
+	} else if (num_rx_pkts < budget) {
 		napi_complete(napi);
 		emac_int_enable(priv);
 	}
@@ -2046,7 +2058,7 @@ static int davinci_emac_suspend(struct device *dev)
 		emac_dev_stop(ndev);
 
 	clk_disable(emac_clk);
-
+printk(KERN_ERROR "=== EMAC suspending\n");
 	return 0;
 }
 
@@ -2059,7 +2071,7 @@ static int davinci_emac_resume(struct device *dev)
 
 	if (netif_running(ndev))
 		emac_dev_open(ndev);
-
+printk(KERN_ERROR "=== EMAC resuming\n");
 	return 0;
 }
 
