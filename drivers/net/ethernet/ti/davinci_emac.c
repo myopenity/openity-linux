@@ -68,6 +68,7 @@
 #include <linux/jiffies.h>
 static unsigned long qstopped_jifs = 0;
 static unsigned long poll_func_jifs = 0;
+static unsigned long emac_irq_jifs = 0;
 static u32 last_num_rx_pkts = 0, last_num_tx_pkts = 0;
 static u32 irqs_while_stopped = 0, num_not_free = 0;
 
@@ -985,6 +986,7 @@ static void emac_int_enable(struct emac_priv *priv)
  */
 static irqreturn_t emac_irq(int irq, void *dev_id)
 {
+unsigned long tmp = jiffies;
 	struct net_device *ndev = (struct net_device *)dev_id;
 	struct emac_priv *priv = netdev_priv(ndev);
 
@@ -1005,6 +1007,16 @@ else
 {
 	irqs_while_stopped = 0;
 }
+
+
+if ( time_after_eq(tmp, (emac_irq_jifs  + HZ/4)) )
+{
+	unsigned long msec = ((tmp - emac_irq_jifs ) * 1000 / HZ);
+	printk(KERN_ERR "=== IRQ not called for %d ms\n", msec);
+}
+emac_irq_jifs  = tmp;
+
+
 	return IRQ_HANDLED;
 }
 
@@ -1083,7 +1095,7 @@ static void emac_tx_handler(void *token, int len, int status)
 			if ( time_after_eq(tmp, (qstopped_jifs + HZ/4)) )
 			{
 				unsigned long msec = ((tmp - qstopped_jifs) * 1000 / HZ);
-				printk(KERN_ERR "===EMAC: TX Q off for %04d ms | irqs_while_stopped=%d, num_not_free=%d\n", msec, irqs_while_stopped, num_not_free);
+				printk(KERN_ERR "=== TX Q off for %d ms | irqs_while_stopped=%d, num_not_free=%d\n", msec, irqs_while_stopped, num_not_free);
 			}
 		}
 		qstopped_jifs = 0;
@@ -1417,7 +1429,7 @@ unsigned long tmp = jiffies;
 if ( time_after_eq(tmp, (poll_func_jifs + HZ/4)) )
 {
 	unsigned long msec = ((tmp - poll_func_jifs) * 1000 / HZ);
-	printk(KERN_ERR "===EMAC: POLL slept for %04d ms | last RX/TX=[%d][%d]\n", msec, last_num_rx_pkts, last_num_tx_pkts);
+	printk(KERN_ERR "=== POLL slept for %d ms | last RX/TX=[%d][%d]\n", msec, last_num_rx_pkts, last_num_tx_pkts);
 }
 poll_func_jifs = tmp;
 
