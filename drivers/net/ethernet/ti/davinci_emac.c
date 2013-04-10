@@ -69,6 +69,7 @@
 static unsigned long qstopped_jifs = 0;
 static unsigned long poll_func_jifs = 0;
 static unsigned long emac_irq_jifs = 0;
+static unsigned long irq_num = 0, irq_poll_delay = 0;
 static u32 last_num_rx_pkts = 0, last_num_tx_pkts = 0;
 static u32 irqs_while_stopped = 0, num_not_free = 0;
 
@@ -990,10 +991,21 @@ unsigned long tmp = jiffies;
 	struct net_device *ndev = (struct net_device *)dev_id;
 	struct emac_priv *priv = netdev_priv(ndev);
 
+irq_num++;
+
+if ( time_after_eq(tmp, (emac_irq_jifs  + HZ/4)) )
+{
+	unsigned long msec = ((tmp - emac_irq_jifs ) * 1000 / HZ);
+	printk(KERN_ERR "=== [%ld] IRQ not called for %d ms\n", irq_num, msec);
+}
+emac_irq_jifs  = tmp;
+
+
 	++priv->isr_count;
 	if (likely(netif_running(priv->ndev))) {
 		emac_int_disable(priv);
 		napi_schedule(&priv->napi);
+		irq_poll_delay = jiffies;
 	} else {
 		/* we are closing down, so dont process anything */
 printk(KERN_ERR "===irq closing down. Whaa???\n");
@@ -1007,15 +1019,6 @@ else
 {
 	irqs_while_stopped = 0;
 }
-
-
-if ( time_after_eq(tmp, (emac_irq_jifs  + HZ/4)) )
-{
-	unsigned long msec = ((tmp - emac_irq_jifs ) * 1000 / HZ);
-	printk(KERN_ERR "=== IRQ not called for %d ms\n", msec);
-}
-emac_irq_jifs  = tmp;
-
 
 	return IRQ_HANDLED;
 }
@@ -1424,12 +1427,19 @@ static int emac_poll(struct napi_struct *napi, int budget)
 	u32 status = 0;
 	u32 num_tx_pkts = 0, num_rx_pkts = 0;
 
+unsigned long time_tx = 0, time_rx = 0, tmp = 0;
 
-unsigned long tmp = jiffies;
+tmp = jiffies;
+if ( time_after_eq(tmp, (irq_poll_delay + HZ/4)) )
+{
+	unsigned long msec = ((tmp - irq_poll_delay) * 1000 / HZ);
+	printk(KERN_ERR "=== [%ld] POLL schedule delay %ld ms\n", irq_num, msec);
+}
+
 if ( time_after_eq(tmp, (poll_func_jifs + HZ/4)) )
 {
 	unsigned long msec = ((tmp - poll_func_jifs) * 1000 / HZ);
-	printk(KERN_ERR "=== POLL slept for %d ms | last RX/TX=[%d][%d]\n", msec, last_num_rx_pkts, last_num_tx_pkts);
+	printk(KERN_ERR "=== [%ld] POLL slept for %ld ms | last RX/TX=[%d][%d]\n", irq_num, msec, last_num_rx_pkts, last_num_tx_pkts);
 }
 poll_func_jifs = tmp;
 
@@ -1441,6 +1451,7 @@ poll_func_jifs = tmp;
 	if (priv->version == EMAC_VERSION_2)
 		mask = EMAC_DM646X_MAC_IN_VECTOR_TX_INT_VEC;
 
+time_tx = jiffies;
 	if (status & mask) {
 		num_tx_pkts = cpdma_chan_process(priv->txchan,
 					      EMAC_DEF_TX_MAX_SERVICE);
@@ -1449,12 +1460,19 @@ poll_func_jifs = tmp;
 printk(KERN_ERR "=== ERR!!! num_tx_pkts=%d\n", num_tx_pkts);		
 		}
 	} /* TX processing */
+tmp = jiffies;
+if ( time_after_eq(tmp, (time_tx + HZ/4)) )
+{
+	unsigned long msec = ((tmp - time_tx) * 1000 / HZ);
+	printk(KERN_ERR "---- TX took %d ms, num_tx_pkts-%\n", msec, num_tx_pkts);
+}
 
 	mask = EMAC_DM644X_MAC_IN_VECTOR_RX_INT_VEC;
 
 	if (priv->version == EMAC_VERSION_2)
 		mask = EMAC_DM646X_MAC_IN_VECTOR_RX_INT_VEC;
 
+time_rx = jiffies;
 	if (status & mask) {
 		num_rx_pkts = cpdma_chan_process(priv->rxchan, budget);
 		if (num_rx_pkts < 0)
@@ -1462,6 +1480,12 @@ printk(KERN_ERR "=== ERR!!! num_tx_pkts=%d\n", num_tx_pkts);
 printk(KERN_ERR "=== ERR!!! num_rx_pkts=%d\n", num_rx_pkts);
 		}
 	} /* RX processing */
+tmp = jiffies;
+if ( time_after_eq(tmp, (time_rx + HZ/4)) )
+{
+	unsigned long msec = ((tmp - time_rx) * 1000 / HZ);
+	printk(KERN_ERR "---- RX took %d ms, num_rx_pkts-%\n", msec, num_rx_pkts);
+}
 
 
 last_num_tx_pkts = num_tx_pkts;
@@ -1759,7 +1783,7 @@ static int emac_dev_stop(struct net_device *ndev)
 
 	/* inform the upper layers. */
 	netif_stop_queue(ndev);
-dev_err(emac_dev, "===DaVinci EMAC: %s stopped @ emac_dev_stop\n", ndev->name);
+dev_err(emac_dev, "===emac_dev_stop(): %s stopped @ emac_dev_stop\n", ndev->name);
 	napi_disable(&priv->napi);
 
 	netif_carrier_off(ndev);
