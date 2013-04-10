@@ -69,7 +69,7 @@
 static unsigned long qstopped_jifs = 0;
 static unsigned long poll_func_jifs = 0;
 static u32 last_num_rx_pkts = 0, last_num_tx_pkts = 0;
-static u32 irqs_while_stopped = 0;
+static u32 irqs_while_stopped = 0, num_not_free = 0;
 
 
 
@@ -994,7 +994,9 @@ static irqreturn_t emac_irq(int irq, void *dev_id)
 		napi_schedule(&priv->napi);
 	} else {
 		/* we are closing down, so dont process anything */
+printk(KERN_ERR "===irq closing down. Whaa???\n");
 	}
+
 if (qstopped_jifs > 0)
 {
 	irqs_while_stopped++;
@@ -1077,10 +1079,11 @@ static void emac_tx_handler(void *token, int len, int status)
 		if (qstopped_jifs > 0)
 		{
 			// we've been stopped, measure how long
-			if ( time_after_eq(jiffies, (qstopped_jifs + HZ/2)) )
+			unsigned long tmp = jiffies;
+			if ( time_after_eq(tmp, (qstopped_jifs + HZ/4)) )
 			{
-				// we've been stopped >= 1/2 second!!!
-				printk(KERN_ERR "===EMAC: TX queue has been stopped for > 1/2 second!!!\n");
+				unsigned long msec = ((tmp - qstopped_jifs) * 1000 / HZ);
+				printk(KERN_ERR "===EMAC: TX Q off for %04d ms | irqs_while_stopped=%d, num_not_free=%d\n", msec, irqs_while_stopped, num_not_free);
 			}
 		}
 		qstopped_jifs = 0;
@@ -1138,6 +1141,7 @@ static int emac_dev_xmit(struct sk_buff *skb, struct net_device *ndev)
 		netif_stop_queue(ndev);
 		// we just stopped, record the time
 		qstopped_jifs = jiffies;
+		num_not_free = 0;
 	}
 
 	return NETDEV_TX_OK;
@@ -1174,6 +1178,7 @@ static void emac_dev_tx_timeout(struct net_device *ndev)
 	cpdma_chan_stop(priv->txchan);
 	cpdma_chan_start(priv->txchan);
 	emac_int_enable(priv);
+printk(KERN_ERR "===emac_dev_tx_timeout(), we should NOT see this!\n");
 }
 
 /**
@@ -1409,10 +1414,10 @@ static int emac_poll(struct napi_struct *napi, int budget)
 
 
 unsigned long tmp = jiffies;
-if ( time_after_eq(tmp, (poll_func_jifs + HZ/2)) )
+if ( time_after_eq(tmp, (poll_func_jifs + HZ/4)) )
 {
-	// we've been stopped >= 1/2 second!!!
-	printk(KERN_ERR "===EMAC: POLL FUNCTION, last RX/TX=[%d][%d], irqs_while_stopped=%d\n", last_num_rx_pkts, last_num_tx_pkts, irqs_while_stopped);
+	unsigned long msec = ((tmp - poll_func_jifs) * 1000 / HZ);
+	printk(KERN_ERR "===EMAC: POLL slept for %04d ms | last RX/TX=[%d][%d]\n", msec, last_num_rx_pkts, last_num_tx_pkts);
 }
 poll_func_jifs = tmp;
 
