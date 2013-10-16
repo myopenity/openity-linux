@@ -57,6 +57,8 @@
 #include <plat/mux.h>
 #include <plat/usb.h>
 
+#include <linux/wl12xx.h>
+
 #include "mux.h"
 #include "pm.h"
 #include "sdram-micron-mt46h32m32lf-6.h"
@@ -70,13 +72,10 @@
 #define OVERO_GPIO_USBH_CPEN	168
 #define OVERO_GPIO_USBH_NRESET	183
 
-#define OVERO_SMSC911X_CS      5
-#define OVERO_SMSC911X_GPIO    176
-#define OVERO_SMSC911X2_CS     4
-#define OVERO_SMSC911X2_GPIO   65
+/* moved SMSC gpios into SMSC define-wrapped section below */
 
-#if defined(CONFIG_TOUCHSCREEN_ADS7846) || \
-	defined(CONFIG_TOUCHSCREEN_ADS7846_MODULE)
+#if 0 && ( defined(CONFIG_TOUCHSCREEN_ADS7846) || \
+	defined(CONFIG_TOUCHSCREEN_ADS7846_MODULE) )
 
 /* fixed regulator for ads7846 */
 static struct regulator_consumer_supply ads7846_supply[] = {
@@ -234,10 +233,15 @@ static void __devexit ads7846_filtercleanup(void *filter_data)
 static inline void __init overo_ads7846_init(void) { return; }
 #endif
 
-#if defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE)
+#if 0 && ( defined(CONFIG_SMSC911X) || defined(CONFIG_SMSC911X_MODULE) )
 
 #include <linux/smsc911x.h>
 #include <plat/gpmc-smsc911x.h>
+
+#define OVERO_SMSC911X_CS      5
+#define OVERO_SMSC911X_GPIO    176
+#define OVERO_SMSC911X2_CS     4
+#define OVERO_SMSC911X2_GPIO   65
 
 static struct omap_smsc911x_platform_data smsc911x_cfg = {
 	.id		= 0,
@@ -266,6 +270,7 @@ static inline void __init overo_init_smsc911x(void) { return; }
 #endif
 
 /* DSS */
+#if 0 /*disable all this display stuff */
 static int lcd_enabled;
 static int dvi_enabled;
 
@@ -369,6 +374,90 @@ static struct omap_dss_board_info overo_dss_data = {
 	.devices	= overo_dss_devices,
 	.default_device	= &overo_dvi_device,
 };
+#endif
+
+
+#if defined(CONFIG_WL12XX_SDIO) || defined(CONFIG_WL12XX_SDIO_MODULE)
+#define FIRECRACKER_WLAN_IRQ	72
+#define FIRECRACKER_WLAN_EN		73
+
+static void __init firecracker_init_wlan_mux(void)
+{
+	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
+	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+}
+
+static struct wl12xx_platform_data firecracker_wlan_pdata = {
+	.irq = OMAP_GPIO_IRQ(FIRECRACKER_WLAN_IRQ),
+	.board_ref_clock = WL12XX_REFCLOCK_38,
+};
+
+
+static struct gpio firecracker_wlan_gpios[] = {
+	{ FIRECRACKER_WLAN_EN, GPIOF_OUT_INIT_HIGH, "wlan pwr" },
+	{ FIRECRACKER_WLAN_IRQ, GPIOF_IN,  "wlan irq" },
+};
+
+static void firecracker_init_wlan(void)
+{
+	int err;
+
+	err = gpio_request_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
+	if (err)
+	{
+		pr_err("Firecracker: WLAN en/irq gpio request failed: %d\n", err);
+		return;
+	}
+	gpio_export(FIRECRACKER_WLAN_EN, 0);
+
+	err = wl12xx_set_platform_data(&firecracker_wlan_pdata);
+	if (err)
+	{
+		pr_err("Firecracker: wl12xx pdata set failed: %d\n", err);
+		goto gpio_free;
+	}
+
+	return;
+
+gpio_free:
+	gpio_free_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
+}
+
+#if defined(CONFIG_BT_HCIUART) || defined(CONFIG_BT_HCIUART_MODULE)
+#define FIRECRACKER_BT_EN_GPIO		74
+#define FIRECRACKER_BT_WAKEUP_GPIO	75
+
+static struct gpio firecracker_bt_gpios[] = {
+	{ FIRECRACKER_BT_EN_GPIO, GPIOF_OUT_INIT_LOW, "bt resetx" },
+	{ FIRECRACKER_BT_WAKEUP_GPIO, GPIOF_IN,  "bt wakeup" },
+};
+
+/* CM sets up BT serial pinmux here. I'm just letting u-boot do it */
+
+static void firecracker_init_bt(void)
+{
+	int err;
+
+	err = gpio_request_array(firecracker_bt_gpios,
+				 ARRAY_SIZE(firecracker_bt_gpios));
+	if (err) {
+		pr_err("CM-T3730: BT reset gpio request failed: %d\n", err);
+		return;
+	}
+	gpio_export(FIRECRACKER_BT_EN_GPIO, 0);
+
+	udelay(100);
+	gpio_set_value(FIRECRACKER_BT_EN_GPIO, 1);
+}
+#else
+static inline void firecracker_init_bt(void) {}
+#endif /* CONFIG_BT_HCIUART */
+#else
+static inline void firecracker_init_wlan_mux(void) {}
+static inline void firecracker_init_wlan(void) {}
+static inline void firecracker_init_bt(void) {}
+#endif /* CONFIG_WL12XX_SDIO */
+
 
 static struct mtd_partition overo_nand_partitions[] = {
 	{
@@ -413,6 +502,15 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_wp	= -EINVAL,
 		.transceiver	= true,
 		.ocr_mask	= 0x00100000,	/* 3.3V */
+	},
+	{
+		.mmc		= 3,
+		.name		= "wl1271",
+		.caps		= MMC_CAP_4_BIT_DATA | MMC_CAP_POWER_OFF_CARD,
+		.gpio_cd	= -EINVAL,
+		.gpio_wp	= -EINVAL,
+		.nonremovable	= true,
+		.ocr_mask	= MMC_VDD_165_195,	/* specify ~1.8V here */
 	},
 	{}	/* Terminator */
 };
@@ -593,13 +691,21 @@ static const struct usbhs_omap_board_data usbhs_bdata __initconst = {
 
 #ifdef CONFIG_OMAP_MUX
 static struct omap_board_mux board_mux[] __initdata = {
+	/*** INHERIT MOST OF THIS FROM U-BOOT ***/
+	/* MMC3 setup */
+//	OMAP3_MUX(ETK_CLK, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
+//	OMAP3_MUX(ETK_CTL, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
+//	OMAP3_MUX(ETK_D4, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
+//	OMAP3_MUX(ETK_D5, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
+//	OMAP3_MUX(ETK_D6, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
+//	OMAP3_MUX(ETK_D3, OMAP_MUX_MODE2 | OMAP_PIN_INPUT_PULLUP),
 	{ .reg_offset = OMAP_MUX_TERMINATOR },
 };
 #endif
 
 static struct gpio overo_bt_gpios[] __initdata = {
-	{ OVERO_GPIO_BT_XGATE,	GPIOF_OUT_INIT_LOW,	"lcd enable"    },
-	{ OVERO_GPIO_BT_NRESET, GPIOF_OUT_INIT_HIGH,	"lcd bl enable" },
+	{ OVERO_GPIO_BT_XGATE,	GPIOF_OUT_INIT_LOW,	"bt xgate"    },
+	{ OVERO_GPIO_BT_NRESET, GPIOF_OUT_INIT_HIGH,	"bt nreset" },
 };
 
 static struct regulator_consumer_supply dummy_supplies[] = {
@@ -623,6 +729,65 @@ static inline void __init overo_init_musb(void)
 #else
 static inline void __init overo_init_musb(void) { return; }
 #endif
+
+
+/****************************************************************************
+ *
+ * Firecracker Custom GPIO configuration
+ *
+ *  GPIO definitions: if name ends in '_', active LOW!
+ ****************************************************************************/
+
+// reset & power lines 
+#define FIRECRACKER__O_SAT_VEXT_ON		82
+#define FIRECRACKER__O_STATUS_GREEN		87
+#define FIRECRACKER__O_STATUS_BLUE		88
+#define FIRECRACKER__O_STATUS_RED		91
+
+
+static struct gpio firecracker_gpios[] __initdata = {
+	{ FIRECRACKER__O_SAT_VEXT_ON, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_SAT_VEXT_ON" },
+	{ FIRECRACKER__O_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN" },
+	{ FIRECRACKER__O_STATUS_BLUE, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_BLUE" },
+	{ FIRECRACKER__O_STATUS_RED, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_RED" },
+};
+
+static void __init firecracker_gpios_init(void)
+{
+	if (gpio_request_array(firecracker_gpios, ARRAY_SIZE(firecracker_gpios))) {
+		printk(KERN_ERR "failed to obtain Firecracker control/status GPIOs\n");
+		return;
+	}
+
+	// satellite enable
+	if ( gpio_export(FIRECRACKER__O_SAT_VEXT_ON, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_SAT_VEXT_ON'\n");
+		return;
+	}
+
+	// status led outputs
+	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__O_STATUS_BLUE, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_BLUE'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__O_STATUS_RED, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_RED'\n");
+		return;
+	}
+
+	printk(KERN_INFO "Firecracker control/status GPIOs initialized\n");
+}
+
+
+
 
 static void __init overo_opp_init(void)
 {
@@ -678,7 +843,9 @@ static void __init overo_init(void)
 	omap3_mux_init(board_mux, OMAP_PACKAGE_CBB);
 	overo_i2c_init();
 	omap_hsmmc_init(mmc);
+#if 0
 	omap_display_init(&overo_dss_data);
+#endif
 	omap_serial_init();
 	omap_sdrc_init(mt46h32m32lf6_sdrc_params,
 				  mt46h32m32lf6_sdrc_params);
@@ -688,15 +855,21 @@ static void __init overo_init(void)
 	usbhs_init(&usbhs_bdata);
 	overo_spi_init();
 	overo_init_smsc911x();
+#if 0
 	overo_display_init();
+#endif
 	overo_init_led();
 	overo_init_keys();
 	overo_opp_init();
+
+	/* export Firecracker-specific GPIOs */
+	firecracker_gpios_init();
 
 	/* Ensure SDRC pins are mux'd for self-refresh */
 	omap_mux_init_signal("sdrc_cke0", OMAP_PIN_OUTPUT);
 	omap_mux_init_signal("sdrc_cke1", OMAP_PIN_OUTPUT);
 
+	/* next 2 stanzas unnecessary on firecracker */
 	ret = gpio_request_one(OVERO_GPIO_W2W_NRESET, GPIOF_OUT_INIT_HIGH,
 			       "OVERO_GPIO_W2W_NRESET");
 	if (ret == 0) {
@@ -727,6 +900,12 @@ static void __init overo_init(void)
 	else
 		printk(KERN_ERR "could not obtain gpio for "
 					"OVERO_GPIO_USBH_CPEN\n");
+
+
+	/* setup firecracker TiWi BLE */
+	firecracker_init_wlan();
+	msleep(100);  // wait for the chip power to stabilize
+	firecracker_init_bt();
 }
 
 MACHINE_START(OVERO, "Gumstix Overo")
