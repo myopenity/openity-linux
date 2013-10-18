@@ -57,7 +57,9 @@
 #include <plat/mux.h>
 #include <plat/usb.h>
 
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
 #include <linux/wl12xx.h>
+#endif
 
 #include "mux.h"
 #include "pm.h"
@@ -377,21 +379,14 @@ static struct omap_dss_board_info overo_dss_data = {
 #endif
 
 
-#if defined(CONFIG_WL12XX_SDIO) || defined(CONFIG_WL12XX_SDIO_MODULE)
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
 #define FIRECRACKER_WLAN_IRQ	72
 #define FIRECRACKER_WLAN_EN		73
 
-static void __init firecracker_init_wlan_mux(void)
-{
-	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
-	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
-}
-
-static struct wl12xx_platform_data firecracker_wlan_pdata = {
-	.irq = OMAP_GPIO_IRQ(FIRECRACKER_WLAN_IRQ),
-	.board_ref_clock = WL12XX_REFCLOCK_38,
+static struct wl12xx_platform_data firecracker_wlan_pdata __initdata = {
+	.irq = -EINVAL,
+	.board_ref_clock = WL12XX_REFCLOCK_38, /* 38.4 MHz */
 };
-
 
 static struct gpio firecracker_wlan_gpios[] = {
 	{ FIRECRACKER_WLAN_EN, GPIOF_OUT_INIT_HIGH, "wlan pwr" },
@@ -402,6 +397,9 @@ static void firecracker_init_wlan(void)
 {
 	int err;
 
+	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
+	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+
 	err = gpio_request_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
 	if (err)
 	{
@@ -409,6 +407,9 @@ static void firecracker_init_wlan(void)
 		return;
 	}
 	gpio_export(FIRECRACKER_WLAN_EN, 0);
+
+	/* set irq */
+	firecracker_wlan_pdata.irq = gpio_to_irq(FIRECRACKER_WLAN_IRQ);
 
 	err = wl12xx_set_platform_data(&firecracker_wlan_pdata);
 	if (err)
@@ -432,11 +433,12 @@ static struct gpio firecracker_bt_gpios[] = {
 	{ FIRECRACKER_BT_WAKEUP_GPIO, GPIOF_IN,  "bt wakeup" },
 };
 
-/* CM sets up BT serial pinmux here. I'm just letting u-boot do it */
-
 static void firecracker_init_bt(void)
 {
 	int err;
+
+	omap_mux_init_gpio(FIRECRACKER_BT_EN_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(FIRECRACKER_BT_WAKEUP_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
 
 	err = gpio_request_array(firecracker_bt_gpios,
 				 ARRAY_SIZE(firecracker_bt_gpios));
@@ -453,10 +455,9 @@ static void firecracker_init_bt(void)
 static inline void firecracker_init_bt(void) {}
 #endif /* CONFIG_BT_HCIUART */
 #else
-static inline void firecracker_init_wlan_mux(void) {}
 static inline void firecracker_init_wlan(void) {}
 static inline void firecracker_init_bt(void) {}
-#endif /* CONFIG_WL12XX_SDIO */
+#endif /* CONFIG_WL12XX_PLATFORM_DATA */
 
 
 static struct mtd_partition overo_nand_partitions[] = {
@@ -503,6 +504,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.transceiver	= true,
 		.ocr_mask	= 0x00100000,	/* 3.3V */
 	},
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
 	{
 		.mmc		= 3,
 		.name		= "wl1271",
@@ -511,7 +513,9 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_wp	= -EINVAL,
 		.nonremovable	= true,
 		.ocr_mask	= MMC_VDD_165_195,	/* specify ~1.8V here */
+		.no_off		= true,  /* make sure this thing doesn't fall asleep? */
 	},
+#endif
 	{}	/* Terminator */
 };
 
