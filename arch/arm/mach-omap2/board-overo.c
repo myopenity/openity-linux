@@ -58,6 +58,7 @@
 #include <plat/usb.h>
 
 #if defined(CONFIG_WL12XX_PLATFORM_DATA)
+#include <plat/mmc.h>
 #include <linux/wl12xx.h>
 #endif
 
@@ -379,87 +380,6 @@ static struct omap_dss_board_info overo_dss_data = {
 #endif
 
 
-#if defined(CONFIG_WL12XX_PLATFORM_DATA)
-#define FIRECRACKER_WLAN_IRQ	72
-#define FIRECRACKER_WLAN_EN		73
-
-static struct wl12xx_platform_data firecracker_wlan_pdata __initdata = {
-	.irq = -EINVAL,
-	.board_ref_clock = WL12XX_REFCLOCK_38, /* 38.4 MHz */
-};
-
-static struct gpio firecracker_wlan_gpios[] = {
-	{ FIRECRACKER_WLAN_EN, GPIOF_OUT_INIT_HIGH, "wlan pwr" },
-	{ FIRECRACKER_WLAN_IRQ, GPIOF_IN,  "wlan irq" },
-};
-
-static void firecracker_init_wlan(void)
-{
-	int err;
-
-	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
-	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
-
-	err = gpio_request_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
-	if (err)
-	{
-		pr_err("Firecracker: WLAN en/irq gpio request failed: %d\n", err);
-		return;
-	}
-	gpio_export(FIRECRACKER_WLAN_EN, 0);
-
-	/* set irq */
-	firecracker_wlan_pdata.irq = gpio_to_irq(FIRECRACKER_WLAN_IRQ);
-
-	err = wl12xx_set_platform_data(&firecracker_wlan_pdata);
-	if (err)
-	{
-		pr_err("Firecracker: wl12xx pdata set failed: %d\n", err);
-		goto gpio_free;
-	}
-
-	return;
-
-gpio_free:
-	gpio_free_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
-}
-
-#if defined(CONFIG_BT_HCIUART) || defined(CONFIG_BT_HCIUART_MODULE)
-#define FIRECRACKER_BT_EN_GPIO		74
-#define FIRECRACKER_BT_WAKEUP_GPIO	75
-
-static struct gpio firecracker_bt_gpios[] = {
-	{ FIRECRACKER_BT_EN_GPIO, GPIOF_OUT_INIT_LOW, "bt resetx" },
-	{ FIRECRACKER_BT_WAKEUP_GPIO, GPIOF_IN,  "bt wakeup" },
-};
-
-static void firecracker_init_bt(void)
-{
-	int err;
-
-	omap_mux_init_gpio(FIRECRACKER_BT_EN_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
-	omap_mux_init_gpio(FIRECRACKER_BT_WAKEUP_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
-
-	err = gpio_request_array(firecracker_bt_gpios,
-				 ARRAY_SIZE(firecracker_bt_gpios));
-	if (err) {
-		pr_err("CM-T3730: BT reset gpio request failed: %d\n", err);
-		return;
-	}
-	gpio_export(FIRECRACKER_BT_EN_GPIO, 0);
-
-	udelay(100);
-	gpio_set_value(FIRECRACKER_BT_EN_GPIO, 1);
-}
-#else
-static inline void firecracker_init_bt(void) {}
-#endif /* CONFIG_BT_HCIUART */
-#else
-static inline void firecracker_init_wlan(void) {}
-static inline void firecracker_init_bt(void) {}
-#endif /* CONFIG_WL12XX_PLATFORM_DATA */
-
-
 static struct mtd_partition overo_nand_partitions[] = {
 	{
 		.name           = "xloader",
@@ -521,6 +441,120 @@ static struct omap2_hsmmc_info mmc[] = {
 static struct regulator_consumer_supply overo_vmmc1_supply[] = {
 	REGULATOR_SUPPLY("vmmc", "omap_hsmmc.0"),
 };
+
+
+#if defined(CONFIG_WL12XX_PLATFORM_DATA)
+#define FIRECRACKER_WLAN_IRQ	72
+#define FIRECRACKER_WLAN_EN		73
+
+static struct wl12xx_platform_data firecracker_wlan_pdata __initdata = {
+	.irq = -EINVAL,
+	.board_ref_clock = WL12XX_REFCLOCK_38, /* 38.4 MHz */
+};
+
+static struct gpio firecracker_wlan_gpios[] = {
+	{ FIRECRACKER_WLAN_EN, GPIOF_OUT_INIT_HIGH, "wlan pwr" },
+	{ FIRECRACKER_WLAN_IRQ, GPIOF_IN,  "wlan irq" },
+};
+
+static int wl12xx_set_power(struct device *dev, int slot, int power_on, int vdd)
+{
+	if (power_on)
+	{
+		gpio_set_value(FIRECRACKER_WLAN_EN, 1);
+		mdelay(70);
+	}
+	else
+	{
+		gpio_set_value(FIRECRACKER_WLAN_EN, 0);
+	}
+	return 0;
+}
+
+static void firecracker_init_wlan(void)
+{
+	int err;
+	struct platform_device *pdev = NULL;
+	struct omap_mmc_platform_data *pdata = NULL;
+
+	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
+	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+
+	err = gpio_request_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
+	if (err)
+	{
+		pr_err("Firecracker: WLAN en/irq gpio request failed: %d\n", err);
+		return;
+	}
+	gpio_export(FIRECRACKER_WLAN_EN, 0);
+
+	/* set irq */
+	firecracker_wlan_pdata.irq = gpio_to_irq(FIRECRACKER_WLAN_IRQ);
+
+	/* setup wl12xx platform data */
+	err = wl12xx_set_platform_data(&firecracker_wlan_pdata);
+	if (err)
+	{
+		pr_err("Firecracker: wl12xx pdata set failed: %d\n", err);
+		goto gpio_free;
+	}
+
+	/* setup power control function */
+	pdev = mmc[2].pdev;
+	if (!pdev)
+	{
+		pr_err("Firecracker: wl12xx mmc device initialization failed\n");
+		goto gpio_free;
+	}
+	pdata = pdev->dev.platform_data;
+	if (!pdata)
+	{
+		pr_err("Platfrom data of wl12xx device not set\n");
+		goto gpio_free;
+	}
+	pdata->slots[0].set_power = wl12xx_set_power;
+
+	return;
+
+gpio_free:
+	gpio_free_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
+}
+
+#if defined(CONFIG_BT_HCIUART) || defined(CONFIG_BT_HCIUART_MODULE)
+#define FIRECRACKER_BT_EN_GPIO		74
+#define FIRECRACKER_BT_WAKEUP_GPIO	75
+
+static struct gpio firecracker_bt_gpios[] = {
+	{ FIRECRACKER_BT_EN_GPIO, GPIOF_OUT_INIT_LOW, "bt resetx" },
+	{ FIRECRACKER_BT_WAKEUP_GPIO, GPIOF_IN,  "bt wakeup" },
+};
+
+static void firecracker_init_bt(void)
+{
+	int err;
+
+	omap_mux_init_gpio(FIRECRACKER_BT_EN_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(FIRECRACKER_BT_WAKEUP_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+
+	err = gpio_request_array(firecracker_bt_gpios,
+				 ARRAY_SIZE(firecracker_bt_gpios));
+	if (err) {
+		pr_err("CM-T3730: BT reset gpio request failed: %d\n", err);
+		return;
+	}
+	gpio_export(FIRECRACKER_BT_EN_GPIO, 0);
+
+	udelay(100);
+	gpio_set_value(FIRECRACKER_BT_EN_GPIO, 1);
+}
+#else
+static inline void firecracker_init_bt(void) {}
+#endif /* CONFIG_BT_HCIUART */
+#else
+static inline void firecracker_init_wlan(void) {}
+static inline void firecracker_init_bt(void) {}
+#endif /* CONFIG_WL12XX_PLATFORM_DATA */
+
 
 #if defined(CONFIG_LEDS_GPIO) || defined(CONFIG_LEDS_GPIO_MODULE)
 #include <linux/leds.h>
