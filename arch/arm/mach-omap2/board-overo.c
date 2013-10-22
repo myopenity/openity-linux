@@ -433,6 +433,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_wp	= -EINVAL,
 		.nonremovable	= true,
 		.ocr_mask	= MMC_VDD_165_195,	/* specify ~1.8V here */
+		.no_off		= true,   /* make sure this thing doesn't try to sleep? */
 	},
 #endif
 	{}	/* Terminator */
