@@ -459,7 +459,6 @@ static struct gpio firecracker_wlan_gpios[] = {
 	{ FIRECRACKER_WLAN_IRQ, GPIOF_IN,  "wlan irq" },
 };
 
-
 static int wl12xx_set_power(struct device *dev, int slot, int power_on, int vdd)
 {
 	if (power_on)
