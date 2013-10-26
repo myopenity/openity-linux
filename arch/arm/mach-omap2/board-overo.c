@@ -432,7 +432,7 @@ static struct omap2_hsmmc_info mmc[] = {
 		.gpio_cd	= -EINVAL,
 		.gpio_wp	= -EINVAL,
 		.nonremovable	= true,
-		.ocr_mask	= MMC_VDD_165_195,	/* specify ~1.8V here */
+		.ocr_mask	= 0x00100000,	/* say "3.3V" just to keep it from whining */
 		.no_off		= true,   /* make sure this thing doesn't try to sleep? */
 	},
 #endif
@@ -444,8 +444,8 @@ static struct regulator_consumer_supply overo_vmmc1_supply[] = {
 };
 
 #if defined(CONFIG_WL12XX_PLATFORM_DATA)
-#define FIRECRACKER_WLAN_IRQ	72
-#define FIRECRACKER_WLAN_EN		73
+#define FIRECRACKER__I_WLAN_IRQ			72
+#define FIRECRACKER__O_WIFI_ENABLE		73
 
 static struct wl12xx_platform_data firecracker_wlan_pdata __initdata = {
 	.irq = -EINVAL,
@@ -453,20 +453,20 @@ static struct wl12xx_platform_data firecracker_wlan_pdata __initdata = {
 };
 
 static struct gpio firecracker_wlan_gpios[] = {
-	{ FIRECRACKER_WLAN_EN, GPIOF_OUT_INIT_HIGH, "wlan pwr" },
-	{ FIRECRACKER_WLAN_IRQ, GPIOF_IN,  "wlan irq" },
+	{ FIRECRACKER__O_WIFI_ENABLE, GPIOF_OUT_INIT_HIGH, "FIRECRACKER__O_WIFI_ENABLE" },
+	{ FIRECRACKER__I_WLAN_IRQ, GPIOF_IN,  "FIRECRACKER__I_WLAN_IRQ" },
 };
 
 static int wl12xx_set_power(struct device *dev, int slot, int power_on, int vdd)
 {
 	if (power_on)
 	{
-		gpio_set_value(FIRECRACKER_WLAN_EN, 1);
+		gpio_set_value(FIRECRACKER__O_WIFI_ENABLE, 1);
 		mdelay(70);
 	}
 	else
 	{
-		gpio_set_value(FIRECRACKER_WLAN_EN, 0);
+		gpio_set_value(FIRECRACKER__O_WIFI_ENABLE, 0);
 	}
 	return 0;
 }
@@ -477,8 +477,8 @@ static void firecracker_init_wlan(void)
 	struct platform_device *pdev = NULL;
 	struct omap_mmc_platform_data *pdata = NULL;
 
-	omap_mux_init_gpio(FIRECRACKER_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
-	omap_mux_init_gpio(FIRECRACKER_WLAN_EN, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(FIRECRACKER__I_WLAN_IRQ, OMAP_MUX_MODE4 | OMAP_PIN_INPUT);
+	omap_mux_init_gpio(FIRECRACKER__O_WIFI_ENABLE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
 
 	err = gpio_request_array(firecracker_wlan_gpios, ARRAY_SIZE(firecracker_wlan_gpios));
 	if (err)
@@ -486,10 +486,10 @@ static void firecracker_init_wlan(void)
 		pr_err("Firecracker: WLAN en/irq gpio request failed: %d\n", err);
 		return;
 	}
-	gpio_export(FIRECRACKER_WLAN_EN, 0);
+	gpio_export(FIRECRACKER__O_WIFI_ENABLE, 0);
 
 	/* set irq */
-	firecracker_wlan_pdata.irq = gpio_to_irq(FIRECRACKER_WLAN_IRQ);
+	firecracker_wlan_pdata.irq = gpio_to_irq(FIRECRACKER__I_WLAN_IRQ);
 
 	/* setup wl12xx platform data */
 	err = wl12xx_set_platform_data(&firecracker_wlan_pdata);
@@ -521,20 +521,20 @@ gpio_free:
 }
 
 #if defined(CONFIG_BT_HCIUART) || defined(CONFIG_BT_HCIUART_MODULE)
-#define FIRECRACKER_BT_EN_GPIO		74
-#define FIRECRACKER_BT_WAKEUP_GPIO	75
+#define FIRECRACKER__O_BT_ENABLE		74
+#define FIRECRACKER__I_BT_WAKEUP		75
 
 static struct gpio firecracker_bt_gpios[] = {
-	{ FIRECRACKER_BT_EN_GPIO, GPIOF_OUT_INIT_LOW, "bt resetx" },
-	{ FIRECRACKER_BT_WAKEUP_GPIO, GPIOF_IN,  "bt wakeup" },
+	{ FIRECRACKER__O_BT_ENABLE, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_BT_ENABLE" },
+	{ FIRECRACKER__I_BT_WAKEUP, GPIOF_IN,  "FIRECRACKER__I_BT_WAKEUP" },
 };
 
 static void firecracker_init_bt(void)
 {
 	int err;
 
-	omap_mux_init_gpio(FIRECRACKER_BT_EN_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
-	omap_mux_init_gpio(FIRECRACKER_BT_WAKEUP_GPIO, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(FIRECRACKER__O_BT_ENABLE, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
+	omap_mux_init_gpio(FIRECRACKER__I_BT_WAKEUP, OMAP_MUX_MODE4 | OMAP_PIN_OUTPUT);
 
 	err = gpio_request_array(firecracker_bt_gpios,
 				 ARRAY_SIZE(firecracker_bt_gpios));
@@ -542,10 +542,10 @@ static void firecracker_init_bt(void)
 		pr_err("CM-T3730: BT reset gpio request failed: %d\n", err);
 		return;
 	}
-	gpio_export(FIRECRACKER_BT_EN_GPIO, 0);
+	gpio_export(FIRECRACKER__O_BT_ENABLE, 0);
 
 	udelay(100);
-	gpio_set_value(FIRECRACKER_BT_EN_GPIO, 1);
+	gpio_set_value(FIRECRACKER__O_BT_ENABLE, 1);
 }
 #else
 static inline void firecracker_init_bt(void) {}
@@ -783,7 +783,7 @@ static inline void __init overo_init_musb(void) { return; }
 
 
 static struct gpio firecracker_gpios[] __initdata = {
-	{ FIRECRACKER__O_SAT_VEXT_ON, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_SAT_VEXT_ON" },
+	{ FIRECRACKER__O_SAT_VEXT_ON, GPIOF_OUT_INIT_HIGH, "FIRECRACKER__O_SAT_VEXT_ON" },
 	{ FIRECRACKER__O_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN" },
 	{ FIRECRACKER__O_STATUS_BLUE, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_BLUE" },
 	{ FIRECRACKER__O_STATUS_RED, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_RED" },
@@ -822,8 +822,6 @@ static void __init firecracker_gpios_init(void)
 
 	printk(KERN_INFO "Firecracker control/status GPIOs initialized\n");
 }
-
-
 
 
 static void __init overo_opp_init(void)
