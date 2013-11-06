@@ -233,7 +233,7 @@ void __init omap3xxx_check_features(void)
 
 	OMAP3_CHECK_FEATURE(status, L2CACHE);
 	OMAP3_CHECK_FEATURE(status, IVA);
-#if !defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+#if !defined(CONFIG_OP_PORTAL_2GSM32AW_BASEBOARD)
 	OMAP3_CHECK_FEATURE(status, SGX);
 #endif
 	OMAP3_CHECK_FEATURE(status, NEON);

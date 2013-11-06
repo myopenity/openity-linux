@@ -153,12 +153,12 @@ config SND_OMAP_SOC_IGEP0020
 	help
 	  Say Y if you want to add support for Soc audio on IGEP v2 board.
 
-config SND_OMAP_SOC_SMARTCELL_MC55
-	tristate "SoC Digital Audio support for SmarTcell MC55 Radios"
-	depends on SND_OMAP_SOC && SC_HD1U_TAM3517_BASEBOARD
+config SND_OMAP_SOC_OPENITY_GEMALTO
+	tristate "SoC Digital Audio support for Openity-driven Gemalto Radios"
+	depends on SND_OMAP_SOC && OP_PORTAL_2GSM32AW_BASEBOARD
 	select SND_OMAP_SOC_MCBSP
-	select SND_SOC_SMARTCELL_CODEC
+	select SND_SOC_OPENITY_CELL_CODEC
 	help
-	  Say Y if you want to add support for SoC audio for SmarTcell MC55
+	  Say Y if you want to add support for SoC audio for Openity-driven Gemalto
 	  	radios.
 

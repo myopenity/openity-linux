@@ -247,8 +247,8 @@ config MACH_TAM3517
         help
           Adds support for TechNexion TAM 3517 CPU module.
 
-config SC_HD1U_TAM3517_BASEBOARD
-	bool "SmarTcell HD-1U (TAM3517) baseboard"
+config OP_PORTAL_2GSM32AW_BASEBOARD
+	bool "Openity Portal 2GSM32AW (TAM3517) baseboard"
 	depends on MACH_TAM3517
 	default y
 #	select SMSC911X
@@ -264,12 +264,12 @@ config SC_HD1U_TAM3517_BASEBOARD
 #	select SND_SOC
 #	select SND_OMAP_SOC
 #	select SND_OMAP_SOC_MCBSP
-#	select SND_OMAP_SOC_SMARTCELL_MC55
+#	select SND_OMAP_SOC_OPENITY_GEMALTO
 	help
-	  Selects SmarTcell HD-1U (TAM3517) Baseboard features.
-	   - Remove 'sgx' support from AM3517
-	   - On-Die Micron NAND support
-	   - Enable omap-mcbsp for MC55<->mcbsp digital audio support
+	  Selects Openity Portal 2GSM32AW (TAM3517) Baseboard features.
+	   - Remove 'sgx' support from AM3517, unneeded
+	   - On-Die Micron NAND support (4-bit ECC workaround)
+	   - Enable omap-mcbsp for Gemalto<->mcbsp digital audio support
 	   - Enable fused MAC address support for DaVinci EMAC
 
 config MACH_NOKIA_N800

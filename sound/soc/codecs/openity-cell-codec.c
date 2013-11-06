@@ -1,8 +1,8 @@
 /*
- * smartcell-codec.c -- SOC codec driver for modem
+ * openity-cell-codec.c -- SOC codec driver for modem
  *
+ * Author: Nathan Eggan <nathan@myopenity.com>
  * Author: Cliff Brake <cbrake@bec-systems.com
- * Author: Nathan Eggan <nathan@ccc-i.com>
  *
  * based on spdif_transciever.c by Steve Chen <schen@mvista.com>
  *
@@ -29,7 +29,7 @@
 #include <sound/pcm.h>
 #include <sound/initval.h>
 
-#define DRV_NAME "smartcell-codec"
+#define DRV_NAME "openity-cell-codec"
 
 
 /***********************************************************************
@@ -39,11 +39,11 @@
  * and it is not configurable. This file is really just a stub.
  ***********************************************************************/
 
-static struct snd_soc_codec_driver soc_codec_smartcell_codec = {
+static struct snd_soc_codec_driver soc_codec_openity_codec = {
 };
 
-static struct snd_soc_dai_driver mc55_dai = {
-	.name		= "smartcell-codec-dai",
+static struct snd_soc_dai_driver gemalto_dai = {
+	.name		= "openity-cell-codec-dai",
 	.playback 	= {
 		.stream_name = "Playback",
 		.channels_min = 1,
@@ -62,13 +62,13 @@ static struct snd_soc_dai_driver mc55_dai = {
 	},
 };
 
-static int __devinit smartcell_codec_probe(struct platform_device *pdev)
+static int __devinit openity_codec_probe(struct platform_device *pdev)
 {
-	return snd_soc_register_codec(&pdev->dev, &soc_codec_smartcell_codec,
-			&mc55_dai, 1);
+	return snd_soc_register_codec(&pdev->dev, &soc_codec_openity_codec,
+			&gemalto_dai, 1);
 }
 
-static int smartcell_codec_remove(struct platform_device *pdev)
+static int openity_codec_remove(struct platform_device *pdev)
 {
 	snd_soc_unregister_codec(&pdev->dev);
 	return 0;
@@ -76,9 +76,9 @@ static int smartcell_codec_remove(struct platform_device *pdev)
 
 MODULE_ALIAS("platform:" DRV_NAME);
 
-static struct platform_driver smartcell_codec_driver = {
-	.probe		= smartcell_codec_probe,
-	.remove		= __devexit_p(smartcell_codec_remove),
+static struct platform_driver openity_codec_driver = {
+	.probe		= openity_codec_probe,
+	.remove		= __devexit_p(openity_codec_remove),
 	.driver		= {
 		.name	= DRV_NAME,
 		.owner	= THIS_MODULE,
@@ -86,9 +86,9 @@ static struct platform_driver smartcell_codec_driver = {
 };
 
 
-module_platform_driver(smartcell_codec_driver);
+module_platform_driver(openity_codec_driver);
 
 
-MODULE_AUTHOR("SmarTcell Tech Support <?>@smartcell.com");
-MODULE_DESCRIPTION("SmarTcell Cellular Digital 'CODEC' Driver");
+MODULE_AUTHOR("Openity Support (support@myopenity.com)");
+MODULE_DESCRIPTION("Openity Cellular 'CODEC' Driver");
 MODULE_LICENSE("GPL");

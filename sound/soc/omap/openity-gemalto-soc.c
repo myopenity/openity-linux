@@ -1,8 +1,8 @@
 /*
- * smartcell-soc.c  --  ALSA SoC audio pcm for OMAP3/AM35xx
+ * openity-gemalto-soc.c  --  ALSA SoC audio pcm for OMAP3/AM35xx
  *
+ * Author: Nathan Eggan <nathan@myopenity.com>
  * Author: Cliff Brake <cbrake@bec-systems.com
- * Author: Nathan Eggan <nathan@ccc-i.com>
  *
  * Based on sound/soc/omap/overo.c by Steve Sakoman
  *   and am3517evm.c by Anuj Aggarwal <anuj.aggarwal@ti.com>
@@ -24,7 +24,6 @@
  */
 
 
-
 //#include <linux/init.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
@@ -43,10 +42,10 @@
 
 #define USE_MCBSP1_4PIN_MODE	1
 
-static struct platform_device *sc_mc55_snd_device;
-static struct platform_device *sc_mc55_codec_device;
+static struct platform_device *openity_gemalto_snd_device;
+static struct platform_device *openity_gemalto_codec_device;
 
-static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
+static int openity_gemalto_hw_params(struct snd_pcm_substream *substream,
 		struct snd_pcm_hw_params *params)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
@@ -135,116 +134,116 @@ static int sc_mc55_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-static struct snd_soc_ops sc_mc55_ops = {
-	.hw_params = sc_mc55_hw_params,
+static struct snd_soc_ops openity_gemalto_ops = {
+	.hw_params = openity_gemalto_hw_params,
 };
 
 /* Digital audio interface glue - connects codec <--> CPU */
-static struct snd_soc_dai_link sc_mc55_dai[] = {
+static struct snd_soc_dai_link openity_gemalto_dai[] = {
 #if USE_MCBSP1_4PIN_MODE
 	{
-		.name = "SmarTcell-MC55_1",
-		.stream_name = "SmarTcell-MC55_4",
+		.name = "Openity-Gemalto_1",
+		.stream_name = "Openity-Gemalto_4",
 		.cpu_dai_name = "omap-mcbsp.1",
 		.platform_name = "omap-pcm-audio",
-		.codec_dai_name = "smartcell-codec-dai",
-		.codec_name = "smartcell-codec",
-		.ops = &sc_mc55_ops,
+		.codec_dai_name = "openity-cell-codec-dai",
+		.codec_name = "openity-cell-codec",
+		.ops = &openity_gemalto_ops,
 	},
 #endif
 	{
-		.name = "SmarTcell-MC55_2",
-		.stream_name = "SmarTcell-MC55_1",
+		.name = "Openity-Gemalto_2",
+		.stream_name = "Openity-Gemalto_1",
 		.cpu_dai_name = "omap-mcbsp.2",
 		.platform_name = "omap-pcm-audio",
-		.codec_dai_name = "smartcell-codec-dai",
-		.codec_name = "smartcell-codec",
-		.ops = &sc_mc55_ops,
+		.codec_dai_name = "openity-cell-codec-dai",
+		.codec_name = "openity-cell-codec",
+		.ops = &openity_gemalto_ops,
 	},
 	{
-		.name = "SmarTcell-MC55_3",
-		.stream_name = "SmarTcell-MC55_2",
+		.name = "Openity-Gemalto_3",
+		.stream_name = "Openity-Gemalto_2",
 		.cpu_dai_name = "omap-mcbsp.3",
 		.platform_name = "omap-pcm-audio",
-		.codec_dai_name = "smartcell-codec-dai",
-		.codec_name = "smartcell-codec",
-		.ops = &sc_mc55_ops,
+		.codec_dai_name = "openity-cell-codec-dai",
+		.codec_name = "openity-cell-codec",
+		.ops = &openity_gemalto_ops,
 	},
 	{
-		.name = "SmarTcell-MC55_4",
-		.stream_name = "SmarTcell-MC55_3",
+		.name = "Openity-Gemalto_4",
+		.stream_name = "Openity-Gemalto_3",
 		.cpu_dai_name = "omap-mcbsp.4",
 		.platform_name = "omap-pcm-audio",
-		.codec_dai_name = "smartcell-codec-dai",
-		.codec_name = "smartcell-codec",
-		.ops = &sc_mc55_ops,
+		.codec_dai_name = "openity-cell-codec-dai",
+		.codec_name = "openity-cell-codec",
+		.ops = &openity_gemalto_ops,
 	}
 };
 
 /* Audio machine driver */
-static struct snd_soc_card snd_soc_sc_mc55 = {
-	.name = "sc-mc55",
+static struct snd_soc_card snd_soc_openity_gemalto = {
+	.name = "openity-gemalto",
 	.owner = THIS_MODULE,
-	.dai_link = sc_mc55_dai,
-	.num_links = ARRAY_SIZE(sc_mc55_dai),
+	.dai_link = openity_gemalto_dai,
+	.num_links = ARRAY_SIZE(openity_gemalto_dai),
 };
 
-static int __init sc_mc55_soc_init(void)
+static int __init openity_gemalto_soc_init(void)
 {
 	int ret;
-	printk(KERN_DEBUG "entering sc_mc55_soc_init...\n");
+	printk(KERN_DEBUG "entering openity_gemalto_soc_init...\n");
 
-	sc_mc55_codec_device = platform_device_alloc("smartcell-codec", -1);
-	if (!sc_mc55_codec_device)
+	openity_gemalto_codec_device = platform_device_alloc("openity-cell-codec", -1);
+	if (!openity_gemalto_codec_device)
 		return -ENOMEM;
 
-	ret = platform_device_add(sc_mc55_codec_device);
+	ret = platform_device_add(openity_gemalto_codec_device);
 	if (ret)
 		goto err1;
 
-	sc_mc55_snd_device = platform_device_alloc("soc-audio", -1);
-	if (!sc_mc55_snd_device) {
+	openity_gemalto_snd_device = platform_device_alloc("soc-audio", -1);
+	if (!openity_gemalto_snd_device) {
 		printk(KERN_ERR "Platform device allocation failed\n");
 		ret = -ENOMEM;
 		goto err2;
 	}
 
-	platform_set_drvdata(sc_mc55_snd_device, &snd_soc_sc_mc55);
+	platform_set_drvdata(openity_gemalto_snd_device, &snd_soc_openity_gemalto);
 
-	ret = platform_device_add(sc_mc55_snd_device);
+	ret = platform_device_add(openity_gemalto_snd_device);
 	if (ret)
 		goto err3;
 
-	printk(KERN_INFO "SmarTcell/MC55 SoC init\n");
+	printk(KERN_INFO "Openity/Gemalto SoC init\n");
 	
 	return 0;
 
 err3:
 	printk(KERN_DEBUG "platform_device_del & _put (soc)\n");
-	platform_device_del(sc_mc55_snd_device);
-	platform_device_put(sc_mc55_snd_device);
+	platform_device_del(openity_gemalto_snd_device);
+	platform_device_put(openity_gemalto_snd_device);
 err2:
 	printk(KERN_DEBUG "platform_device_del (codec)\n");
-	platform_device_del(sc_mc55_codec_device);
+	platform_device_del(openity_gemalto_codec_device);
 err1:
 	printk(KERN_DEBUG "platform_device_put (codec)\n");
-	platform_device_put(sc_mc55_codec_device);
+	platform_device_put(openity_gemalto_codec_device);
 
 	return ret;
 }
 
-static void __exit sc_mc55_soc_exit(void)
+static void __exit openity_gemalto_soc_exit(void)
 {
-	printk(KERN_DEBUG "sc_mc55_soc_exit\n");
-	platform_device_unregister(sc_mc55_snd_device);
-	platform_device_unregister(sc_mc55_codec_device);
+	printk(KERN_DEBUG "openity_gemalto_soc_exit\n");
+	platform_device_unregister(openity_gemalto_snd_device);
+	platform_device_unregister(openity_gemalto_codec_device);
 }
 
-module_init(sc_mc55_soc_init);
-module_exit(sc_mc55_soc_exit);
+module_init(openity_gemalto_soc_init);
+module_exit(openity_gemalto_soc_exit);
 
-MODULE_AUTHOR("SmarTcell Tech Support <?>@smartcell.com");
-MODULE_DESCRIPTION("ALSA SoC - SmarTcell/MC55 DAI");
+MODULE_AUTHOR("Openity Support (support@myopenity.com)");
+MODULE_DESCRIPTION("ALSA SoC - Openity/Gemalto DAI");
 MODULE_LICENSE("GPL v2");
 
 

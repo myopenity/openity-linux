@@ -68,7 +68,7 @@ static struct nand_ecclayout nand_oob_16 = {
 		 . length = 8} }
 };
 
-#if !defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+#if !defined(CONFIG_OP_PORTAL_2GSM32AW_BASEBOARD)
 static struct nand_ecclayout nand_oob_64 = {
 	.eccbytes = 24,
 	.eccpos = {
@@ -725,7 +725,7 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 	 * in, and deplete1 need no delay.
 	 */
 	switch (command) {
-#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)	
+#if defined(CONFIG_OP_PORTAL_2GSM32AW_BASEBOARD)
 	int status,cnt;				/* MICRON: local vars used */
 #endif
 
@@ -774,7 +774,7 @@ static void nand_command_lp(struct mtd_info *mtd, unsigned int command,
 		chip->cmd_ctrl(mtd, NAND_CMD_NONE,
 			       NAND_NCE | NAND_CTRL_CHANGE);
 
-#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+#if defined(CONFIG_OP_PORTAL_2GSM32AW_BASEBOARD)
 		/* MICRON: wait until part RDY; tR_ECC max */
 		for(cnt=0; cnt<70; cnt++) {
 			ndelay(1000); /* 1 usec delay */

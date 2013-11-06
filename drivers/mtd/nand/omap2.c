@@ -1305,7 +1305,7 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 		}
 	}
 
-#if defined(CONFIG_SC_HD1U_TAM3517_BASEBOARD)
+#if defined(CONFIG_OP_PORTAL_2GSM32AW_BASEBOARD)
 	// MICRON ON-DIE: force it to NONE, let the on-die do it
 	info->nand.ecc.mode = NAND_ECC_NONE;
 #endif

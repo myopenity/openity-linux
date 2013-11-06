@@ -510,9 +510,9 @@ config USB_SWITCH_FSA9480
 
 config OMAP3_PWM
 	tristate "OMAP3 PWM driver"
-	depends on SND_OMAP_SOC && SC_HD1U_TAM3517_BASEBOARD
+	depends on MACH_TAM3517
 	help
-	  Implements a driver to test the PWM outputs of an OMAP3 based Linux 
+	  Implements a driver to drive the PWM outputs of an OMAP3-based Linux 
 	  	system from userspace.
 
 source "drivers/misc/c2port/Kconfig"

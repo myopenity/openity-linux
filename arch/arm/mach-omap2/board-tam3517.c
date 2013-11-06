@@ -1,9 +1,7 @@
 /*
  * linux/arch/arm/mach-omap2/board-tam3517.c
  *
- * Copyright (C) 2012 Technexion and friends
- * Author: Technexion + LOTS of help!
- *
+ * Copyright (C) 2013 Openity
  * Based on mach-omap2/board-tam3517.c from Technexion BSP release
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -1252,7 +1250,7 @@ static void __init hd1u_gpios_init(void)
 		return;
 	}
 
-	printk(KERN_INFO "HD1U [Rev 2B] control/display GPIOs initialized\n");
+	printk(KERN_INFO "Openity Portal 2GSM32AW [Rev A] GPIOs initialized\n");
 }
 
 

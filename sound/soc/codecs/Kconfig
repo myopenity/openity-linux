@@ -458,5 +458,5 @@ config SND_SOC_ML26124
 config SND_SOC_TPA6130A2
 	tristate
 
-config SND_SOC_SMARTCELL_CODEC
+config SND_SOC_OPENITY_CELL_CODEC
 	tristate
