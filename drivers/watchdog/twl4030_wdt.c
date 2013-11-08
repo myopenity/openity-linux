@@ -90,7 +90,7 @@ static long twl4030_wdt_ioctl(struct file *file,
 {
 	void __user *argp = (void __user *)arg;
 	int __user *p = argp;
-	int new_margin;
+	int new_margin, rv;
 	struct twl4030_wdt *wdt = file->private_data;
 
 	static const struct watchdog_info twl4030_wd_ident = {
@@ -101,29 +101,57 @@ static long twl4030_wdt_ioctl(struct file *file,
 
 	switch (cmd) {
 	case WDIOC_GETSUPPORT:
-		return copy_to_user(argp, &twl4030_wd_ident,
+		{
+			return copy_to_user(argp, &twl4030_wd_ident,
 				sizeof(twl4030_wd_ident)) ? -EFAULT : 0;
-
+		}
 	case WDIOC_GETSTATUS:
 	case WDIOC_GETBOOTSTATUS:
-		return put_user(0, p);
-
+		{
+			return put_user(0, p);
+		}
 	case WDIOC_KEEPALIVE:
-		twl4030_wdt_enable(wdt);
-		break;
-
+		{
+			twl4030_wdt_enable(wdt);
+			break;
+		}
 	case WDIOC_SETTIMEOUT:
-		if (get_user(new_margin, p))
-			return -EFAULT;
-		if (twl4030_wdt_set_timeout(wdt, new_margin))
-			return -EINVAL;
-		return put_user(wdt->timer_margin, p);
-
+		{
+			if (get_user(new_margin, p))
+				return -EFAULT;
+			if (twl4030_wdt_set_timeout(wdt, new_margin))
+				return -EINVAL;
+			return put_user(wdt->timer_margin, p);
+		}
 	case WDIOC_GETTIMEOUT:
-		return put_user(wdt->timer_margin, p);
+		{
+			return put_user(wdt->timer_margin, p);
+		}
+	case WDIOC_SETOPTIONS:
+                {
+                        int valid_opt = -EINVAL;
+                        if (copy_from_user(&rv, (int __user *)arg, sizeof(int)))
+                                return -EFAULT;
 
+                        if (rv & WDIOS_DISABLECARD) {
+				dev_info(wdt->miscdev.parent,
+                                	"disable watchdog\n");
+				twl4030_wdt_disable(wdt);
+                                valid_opt = 0;
+                        }
+
+                        if (rv & WDIOS_ENABLECARD) {
+				dev_info(wdt->miscdev.parent,
+                                	"enable watchdog\n");
+				twl4030_wdt_enable(wdt);
+                                valid_opt = 0;
+                        }
+                        return(valid_opt);
+                }
 	default:
+		{
 		return -ENOTTY;
+		}
 	}
 
 	return 0;
@@ -201,6 +229,8 @@ static int __devinit twl4030_wdt_probe(struct platform_device *pdev)
 		twl4030_wdt_dev = NULL;
 		return ret;
 	}
+	dev_info(wdt->miscdev.parent,
+		"watchdog initialized\n");
 	return 0;
 }
 
