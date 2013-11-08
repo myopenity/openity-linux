@@ -134,9 +134,17 @@ static long twl4030_wdt_ioctl(struct file *file,
                                 return -EFAULT;
 
                         if (rv & WDIOS_DISABLECARD) {
-				dev_info(wdt->miscdev.parent,
-                                	"disable watchdog\n");
-				twl4030_wdt_disable(wdt);
+				if (nowayout) {
+					dev_alert(wdt->miscdev.parent,
+					       "invalid close, watchdog still running!\n");
+					twl4030_wdt_enable(wdt);
+				} else {
+					if (twl4030_wdt_disable(wdt))
+						return -EFAULT;
+					wdt->state &= ~TWL4030_WDT_STATE_ACTIVE;
+					dev_info(wdt->miscdev.parent,
+						"disable watchdog\n");
+				}
                                 valid_opt = 0;
                         }
 
