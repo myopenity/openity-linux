@@ -781,12 +781,20 @@ static inline void __init overo_init_musb(void) { return; }
 #define FIRECRACKER__O_STATUS_BLUE		88
 #define FIRECRACKER__O_STATUS_RED		91
 
+#define FIRECRACKER__O_SAT_DAT_DTR		78
+#define FIRECRACKER__I_SAT_DAT_DCD		79
+#define FIRECRACKER__I_SAT_DAT_DSR		80
+#define FIRECRACKER__I_SAT_DAT_RI		81
 
 static struct gpio firecracker_gpios[] __initdata = {
 	{ FIRECRACKER__O_SAT_VEXT_ON, GPIOF_OUT_INIT_HIGH, "FIRECRACKER__O_SAT_VEXT_ON" },
 	{ FIRECRACKER__O_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN" },
 	{ FIRECRACKER__O_STATUS_BLUE, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_BLUE" },
 	{ FIRECRACKER__O_STATUS_RED, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_RED" },
+	{ FIRECRACKER__O_SAT_DAT_DTR, GPIOF_OUT_INIT_HIGH, "FIRECRACKER__O_SAT_DAT_DTR" },
+	{ FIRECRACKER__I_SAT_DAT_DCD, GPIOF_IN, "FIRECRACKER__I_SAT_DAT_DCD" },
+	{ FIRECRACKER__I_SAT_DAT_DSR, GPIOF_IN, "FIRECRACKER__I_SAT_DAT_DSR" },
+	{ FIRECRACKER__I_SAT_DAT_RI, GPIOF_IN, "FIRECRACKER__I_SAT_DAT_RI" },
 };
 
 static void __init firecracker_gpios_init(void)
@@ -817,6 +825,28 @@ static void __init firecracker_gpios_init(void)
 	if ( gpio_export(FIRECRACKER__O_STATUS_RED, 0) < 0 )
 	{
 		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_RED'\n");
+		return;
+	}
+
+	// uart 1 (sat dat) control lines
+	if ( gpio_export(FIRECRACKER__O_SAT_DAT_DTR, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_SAT_DAT_DTR'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__I_SAT_DAT_DCD, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__I_SAT_DAT_DCD'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__I_SAT_DAT_DSR, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__I_SAT_DAT_DSR'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__I_SAT_DAT_RI, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__I_SAT_DAT_RI'\n");
 		return;
 	}
 
