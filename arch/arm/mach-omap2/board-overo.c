@@ -379,33 +379,47 @@ static struct omap_dss_board_info overo_dss_data = {
 };
 #endif
 
+/* Setup partitions for NAND
+ * 0x00000000 - 0x0007FFFF  Booting Image (X-Loader, 4 copies)	// 512k
+ * 0x00080000 - 0x0023FFFF  U-Boot Image	// 1835k
+ * 0x00240000 - 0x0027FFFF  U-Boot Env Data (X-loader doesn't care)	// 256k
+ * 0x00280000 - 0x0347FFFF  Kernel Image (includes room for initramfs) // 50MB
+ * 0x03480000 - 0x1E27FFFF  Backup, factory default kernel image + initramfs, etc. // 430MB
+ * 0x1E280000 - 0x20000000  Config // ~30MB
+ */
 
 static struct mtd_partition overo_nand_partitions[] = {
+	/* All the partition sizes are listed in terms of NAND block size */
 	{
-		.name           = "xloader",
-		.offset         = 0,			/* Offset = 0x00000 */
-		.size           = 4 * NAND_BLOCK_SIZE,
-		.mask_flags     = MTD_WRITEABLE
+		.name		= "X-Loader",
+		.offset		= 0,
+		.size		= 4 * NAND_BLOCK_SIZE,  /* -> 0x00080000 (size: 0x80000, 512k) */
+		.mask_flags	= MTD_WRITEABLE,        /* force read-only */
 	},
 	{
-		.name           = "uboot",
-		.offset         = MTDPART_OFS_APPEND,	/* Offset = 0x80000 */
-		.size           = 14 * NAND_BLOCK_SIZE,
+		.name		= "U-Boot",
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00080000 */
+		.size		= 14 * NAND_BLOCK_SIZE, /* -> 0x00240000 (size: 0x1C0000, 1835k) */
 	},
 	{
-		.name           = "uboot environment",
-		.offset         = MTDPART_OFS_APPEND,	/* Offset = 0x240000 */
-		.size           = 2 * NAND_BLOCK_SIZE,
+		.name		= "U-Boot Environment",
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00240000 */
+		.size		= 2 * NAND_BLOCK_SIZE,  /* -> 0x00280000 (size: 0x40000, 256k) */
 	},
 	{
-		.name           = "linux",
-		.offset         = MTDPART_OFS_APPEND,	/* Offset = 0x280000 */
-		.size           = 64 * NAND_BLOCK_SIZE,
+		.name		= "Kernel (+ initramfs)",
+		.offset		= MTDPART_OFS_APPEND,   /* Offset = 0x00280000 */
+		.size		= 400 * NAND_BLOCK_SIZE, /* -> 0x03480000 (size: 0x3200000, 50M) */
 	},
 	{
-		.name           = "rootfs",
-		.offset         = MTDPART_OFS_APPEND,	/* Offset = 0xA80000 */
-		.size           = MTDPART_SIZ_FULL,
+		.name		= "Backup - Kernel (+ initramfs)",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x03480000 */
+		.size		= 3440 * NAND_BLOCK_SIZE, /* -> 0x1E280000 (size: 0x1AE00000, 430M) */
+	},
+	{
+		.name		= "Config",
+		.offset		= MTDPART_OFS_APPEND,    /* Offset = 0x1E280000 */
+		.size		= MTDPART_SIZ_FULL,      /* -> 0x20000000 (size: 0x1D80000, ~30MB) */
 	},
 };
 
@@ -777,9 +791,11 @@ static inline void __init overo_init_musb(void) { return; }
 
 // reset & power lines 
 #define FIRECRACKER__O_SAT_VEXT_ON		82
-#define FIRECRACKER__O_STATUS_GREEN		87
+#define FIRECRACKER__O_STATUS_GREEN_1	87
 #define FIRECRACKER__O_STATUS_BLUE		88
-#define FIRECRACKER__O_STATUS_RED		91
+#define FIRECRACKER__O_STATUS_GREEN_2	89
+#define FIRECRACKER__O_STATUS_GREEN_3	90
+#define FIRECRACKER__O_STATUS_GREEN_4	91
 
 #define FIRECRACKER__I_SAT_CTL_DSR		76
 #define FIRECRACKER__O_SAT_CTL_DTR		77
@@ -791,9 +807,11 @@ static inline void __init overo_init_musb(void) { return; }
 
 static struct gpio firecracker_gpios[] __initdata = {
 	{ FIRECRACKER__O_SAT_VEXT_ON, GPIOF_OUT_INIT_HIGH, "FIRECRACKER__O_SAT_VEXT_ON" },
-	{ FIRECRACKER__O_STATUS_GREEN, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN" },
+	{ FIRECRACKER__O_STATUS_GREEN_1, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN_1" },
 	{ FIRECRACKER__O_STATUS_BLUE, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_BLUE" },
-	{ FIRECRACKER__O_STATUS_RED, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_RED" },
+	{ FIRECRACKER__O_STATUS_GREEN_4, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN_2" },
+	{ FIRECRACKER__O_STATUS_GREEN_4, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN_3" },
+	{ FIRECRACKER__O_STATUS_GREEN_4, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_STATUS_GREEN_4" },
 	{ FIRECRACKER__I_SAT_CTL_DSR, GPIOF_IN, "FIRECRACKER__I_SAT_CTL_DSR" },
 	{ FIRECRACKER__O_SAT_CTL_DTR, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_SAT_CTL_DTR" },
 	{ FIRECRACKER__O_SAT_DAT_DTR, GPIOF_OUT_INIT_LOW, "FIRECRACKER__O_SAT_DAT_DTR" },
@@ -817,9 +835,9 @@ static void __init firecracker_gpios_init(void)
 	}
 
 	// status led outputs
-	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN, 0) < 0 )
+	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN_1, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN'\n");
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN_1'\n");
 		return;
 	}
 	if ( gpio_export(FIRECRACKER__O_STATUS_BLUE, 0) < 0 )
@@ -827,9 +845,19 @@ static void __init firecracker_gpios_init(void)
 		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_BLUE'\n");
 		return;
 	}
-	if ( gpio_export(FIRECRACKER__O_STATUS_RED, 0) < 0 )
+	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN_2, 0) < 0 )
 	{
-		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_RED'\n");
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN_2'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN_3, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN_3'\n");
+		return;
+	}
+	if ( gpio_export(FIRECRACKER__O_STATUS_GREEN_4, 0) < 0 )
+	{
+		printk(KERN_ERR "gpio failed to export 'FIRECRACKER__O_STATUS_GREEN_4'\n");
 		return;
 	}
 
