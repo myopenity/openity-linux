@@ -226,14 +226,6 @@ config MACH_OMAP_3430SDP
 	default y
 	select OMAP_PACKAGE_CBB
 
-config OP_FIRECRACKER_OVERO_BASEBOARD
-	bool "Openity Firecracker (Overo-based) baseboard"
-	depends on MACH_OVERO
-	default n
-	help
-	  Selects Openity Portal Firecracker Baseboard features.
-	   - On-Die Micron NAND support (4-bit+ ECC workaround)
-
 config MACH_NOKIA_N800
        bool
 

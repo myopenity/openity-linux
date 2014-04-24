@@ -1305,11 +1305,6 @@ static int __devinit omap_nand_probe(struct platform_device *pdev)
 		}
 	}
 
-#if defined(CONFIG_OP_FIRECRACKER_OVERO_BASEBOARD)
-	// MICRON ON-DIE: force it to NONE, let the on-die do it
-	info->nand.ecc.mode = NAND_ECC_NONE;
-#endif
-
 	/* DIP switches on some boards change between 8 and 16 bit
 	 * bus widths for flash.  Try the other width if the first try fails.
 	 */
