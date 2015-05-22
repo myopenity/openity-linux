@@ -44,9 +44,9 @@
 
 #include "am335x-boneblack-emmc.dtsi"
 /* HDMI: with audio */
-#include "am335x-boneblack-nxp-hdmi-audio.dtsi"
+/* #include "am335x-boneblack-nxp-hdmi-audio.dtsi" */
 /* HDMI: without audio */
-/* #include "am335x-boneblack-nxp-hdmi-no-audio.dtsi" */
+#include "am335x-boneblack-nxp-hdmi-no-audio.dtsi"
 
 /* can0: P9.19, P9.20: disable: i2c2: cape eeprom */
 /* can0: peripheral */
@@ -114,7 +114,7 @@
 
 /* http://elinux.org/CircuitCo:Audio_Cape_RevB */
 /* Pins: P9.24, P9.28, P9.29, P9.31, P9.30 */
-/* #include "am335x-bone-audio-revb.dtsi" */
+#include "am335x-bone-audio-revb.dtsi"
 
 /* http://elinux.org/CircuitCo:BeagleBone_LCD3 */
 /* #include "am335x-bone-lcd3-01-00a2.dtsi" */
