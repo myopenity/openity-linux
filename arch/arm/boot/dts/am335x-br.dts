@@ -1,0 +1,358 @@
+/*
+ * Copyright (C) 2015 Openity Incorporated - http://www.openity.com
+ *   based on:
+ * Copyright (C) 2012 Texas Instruments Incorporated - http://www.ti.com/
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
+/dts-v1/;
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pwm/pwm.h>
+
+#include "am33xx.dtsi"
+#include "am335x-br-pinmux.dtsi"
+
+/ {
+	model = "BottleRocket (AM335x)";
+	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
+
+	cpus {
+		cpu@0 {
+			cpu0-supply = <&dcdc2_reg>;
+		};
+	};
+
+	memory {
+		device_type = "memory";
+		reg = <0x80000000 0x10000000>; /* 256 MB <= this is really 512MB, how does this work??? */
+	};
+
+	sound {
+		compatible = "ti,da830-evm-audio";
+		ti,model = "DA830 EVM";
+		ti,audio-codec = <&tlv320aic3x>;
+		ti,mcasp-controller = <&mcasp0>;
+		ti,codec-clock-rate = <24000000>;
+		ti,audio-routing =
+			"Headphone Jack",       "HPLOUT",
+			"Headphone Jack",       "HPROUT",
+			"Line Out",             "LLOUT",
+			"Line Out",             "RLOUT",
+			"MIC3L",                "Mic Jack",
+			"MIC3R",                "Mic Jack",
+			"LINE1L",               "Line In",
+			"LINE2L",               "Line In",
+			"LINE1R",               "Line In",
+			"LINE2R",               "Line In";
+	};
+
+	vbat: fixedregulator@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "vbat";
+		regulator-min-microvolt = <4100000>;  /* <= what to set to??? */
+		regulator-max-microvolt = <4100000>;  /* <= what to set to??? */
+		regulator-boot-on;
+	};
+
+	vmmcsd_fixed: fixedregulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "vmmcsd_fixed";
+		regulator-min-microvolt = <3300000>;  /* <= should be 1.8? */
+		regulator-max-microvolt = <3300000>;  /* <= should be 1.8? */
+	};
+
+	
+	wlcore {
+		compatible = "wlcore";
+		gpio = <&gpio2 22>;  /* irq */
+		platform-quirks = <1>;
+		board-ref-clock = <2>;
+	};
+
+	vmmc_wl: fixedregulator@2 {
+		compatible = "regulator-fixed";
+		regulator-name = "vmmc-wl";
+		regulator-min-microvolt = <1800000>;
+		regulator-max-microvolt = <1800000>;
+		gpio = <&gpio2 25 0>;  /* enable */
+		startup-delay-us = <70000>;
+		enable-active-high;
+	};
+
+};
+
+
+/* How do we handle these with px_xx assignments gone? Do we even need this ocp thingy anymore? */
+&ocp {
+	/* clkout2 */
+	P9_41_pinmux {
+		status = "disabled";
+	};
+	/* mmc1 */
+	P9_92_pinmux {
+		status = "disabled";
+	};
+};
+
+
+/* --- UARTS --- */
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_pins>;
+
+	status = "okay";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart4_pins>;
+
+	status = "okay";
+};
+
+
+/* --- USB --- */
+&usb {
+	status = "okay";
+
+	control@44e10620 {
+		status = "okay";
+	};
+
+	usb-phy@47401300 {
+		status = "okay";
+	};
+
+	usb-phy@47401b00 {
+		status = "okay";
+	};
+
+	usb@47401000 {
+		status = "okay";
+		dr_mode = "host";
+	};
+
+	usb@47401800 {
+		status = "okay";
+		dr_mode = "host";
+	};
+
+	dma-controller@47402000  {
+		status = "okay";
+	};
+};
+
+
+/* --- I2C --- */
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+
+	status = "okay";
+	clock-frequency = <400000>;
+
+	/* pmic */
+	tps: tps@24 {
+		reg = <0x24>;
+	};
+
+	/* eeprom */
+	baseboard_eeprom: baseboard_eeprom@50 {
+		compatible = "at,24c256";
+		reg = <0x50>;
+	};
+};
+
+&i2c1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c1_pins>;
+
+	status = "okay";
+	clock-frequency = <400000>;
+
+	/* rtc (wdt not used) */
+	m41t65: m41t65@68 {
+		compatible = "stm,m41t80";
+		reg = <0x68>;
+	}; 
+
+	/* TBD: FUEL GUAGE... */
+};
+
+&i2c2 {
+	/* audio */
+	tlv320aic3x: tlv320aic3x@18 {
+		compatible = "ti,tlv320aic3x";
+		reg = <0x18>;
+		ai3x-micbias-vg = <1>;
+		status = "okay";
+
+		/* Regulators */
+		AVDD-supply = <&ldo4_reg>;
+		IOVDD-supply = <&ldo4_reg>;
+		DRVDD-supply = <&ldo4_reg>;
+		DVDD-supply = <&vbat>;
+	};
+};
+
+
+/* --- PMIC --- */
+/include/ "tps65217.dtsi"
+
+&tps {
+	ti,pmic-shutdown-controller;
+
+	interrupt-parent = <&intc>;
+	interrupts = <7>;	/* NNMI */
+
+	regulators {
+		dcdc1_reg: regulator@0 {
+			regulator-always-on;
+		};
+
+		dcdc2_reg: regulator@1 {
+			/* VDD_MPU voltage limits 0.95V - 1.325V with +/-4% tolerance */
+			regulator-name = "vdd_mpu";
+			regulator-min-microvolt = <912500>;
+			regulator-max-microvolt = <1378000>;
+			regulator-boot-on;
+			regulator-always-on;
+		};
+
+		dcdc3_reg: regulator@2 {
+			/* VDD_CORE voltage limits 0.95V - 1.1V with +/-4% tolerance */
+			regulator-name = "vdd_core";
+			regulator-min-microvolt = <925000>;
+			regulator-max-microvolt = <1150000>;
+			regulator-boot-on;
+			regulator-always-on;
+		};
+
+		ldo1_reg: regulator@3 {
+			regulator-always-on;
+		};
+
+		ldo2_reg: regulator@4 {
+			regulator-always-on;
+		};
+
+		ldo3_reg: regulator@5 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			regulator-always-on;
+		};
+
+		ldo4_reg: regulator@6 {
+			regulator-always-on;
+		};
+
+		rtc@44e3e000 {
+			ti,system-power-controller;
+		};
+	};
+};
+
+
+/* --- ETHERNET --- */
+&cpsw_emac0 {
+	phy_id = <&davinci_mdio>, <0>;
+	phy-mode = "mii";
+};
+
+&mac {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&cpsw_default>;
+	pinctrl-1 = <&cpsw_sleep>;
+
+};
+
+&davinci_mdio {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&davinci_mdio_default>;
+	pinctrl-1 = <&davinci_mdio_sleep>;
+};
+
+
+/* --- MMC --- */
+/* MMC0, bad naming in Linux! */
+&mmc1 {
+	status = "okay";
+	bus-width = <0x4>;
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&mmc1_pins_default>;
+	pinctrl-1 = <&mmc1_pins_sleep>;
+	cd-gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
+	cd-inverted;
+	vmmc-supply = <&vmmcsd_fixed>;	/* <= this is currently set to 3.3! */
+};
+
+/* MMC1, bad naming in Linux! */
+/* from: #include "am335x-boneblack-emmc.dtsi" */
+&mmc2 {
+	vmmc-supply = <&vmmcsd_fixed>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&mmc2_pins>;
+	bus-width = <8>;
+	status = "okay";
+	ti,vcc-aux-disable-is-sleep;
+};
+
+/* MMC2, bad naming in Linux! */
+/* from: diff supplied by LSR: http://www.lsr.com/embedded-wireless-modules/wifi-plus-bluetooth-module/tiwi-ble#product-documents */
+&mmc3 {
+	status = "okay";
+	vmmc-supply = <&vmmc_wl>;
+	bus-width = <4>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&mmc3_pins>;
+        ti,non-removable;
+        keep-power-in-suspend;
+};
+
+
+/* --- AUDIO --- */
+&mcasp0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&mcasp0_pins_audio_revb>;
+	status = "okay";
+	op-mode = <0>;          /* MCASP_IIS_MODE */
+	tdm-slots = <2>;
+	num-serializer = <16>;
+	serial-dir = <  /* 0: INACTIVE, 1: TX, 2: RX */
+		2 0 1 0
+		0 0 0 0
+		0 0 0 0
+		0 0 0 0
+	>;
+	tx-num-evt = <1>;
+	rx-num-evt = <1>;
+};
+
+
+/* --- OTHER --- */
+&wkup_m3 {
+	ti,scale-data-fw = "am335x-bone-scale-data.bin";
+};
+
+&rtc {
+	ti,system-power-controller;
+};
+
+&aes {
+	status = "okay";
+};
+
+&sham {
+	status = "okay";
+};
+
+
+/* --- PINMUX --- */
+&am33xx_pinmux {
+	pinctrl-names = "default";
+	pinctrl-0 = <&clkout2_pin>;
+};
+
