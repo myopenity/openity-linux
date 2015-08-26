@@ -7,26 +7,6 @@
  */
 
 &am33xx_pinmux {
-	/* TBD: rework all this! */
-	user_leds_default: user_leds_default {
-		pinctrl-single,pins = <
-			0x54 (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
-			0x58 (PIN_OUTPUT_PULLUP | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
-			0x5c (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
-			0x60 (PIN_OUTPUT_PULLUP | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
-		>;
-	};
-
-	/* TBD: rework all this! */
-	user_leds_sleep: user_leds_sleep {
-		pinctrl-single,pins = <
-			0x54 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a5.gpio1_21 */
-			0x58 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a6.gpio1_22 */
-			0x5c (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a7.gpio1_23 */
-			0x60 (PIN_INPUT_PULLDOWN | MUX_MODE7)	/* gpmc_a8.gpio1_24 */
-		>;
-	};
-
 	/* --- I2C --- */
 	i2c0_pins: pinmux_i2c0_pins {
 		pinctrl-single,pins = <
@@ -37,15 +17,15 @@
 
 	i2c1_pins: pinmux_i2c1_pins {
 		pinctrl-single,pins = <
-			0x168 ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE3 )  /* (E18) uart0_ctsn.I2C1_SDA */
-			0x16c ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE3 )  /* (E17) uart0_rtsn.I2C1_SCL */
+			0x158 ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE2 )  /* 0x72 (E18) uart0_ctsn.I2C1_SDA */
+			0x15c ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE2 )  /* 0x72 (E17) uart0_rtsn.I2C1_SCL */
 		>;
 	};
 
 	i2c2_pins: pinmux_i2c2_pins {
 		pinctrl-single,pins = <
-			0x178 ( SLEWCTRL_SLOW | PIN_INPUT | MUX_MODE3 ) /* (D18) uart1_ctsn.I2C2_SDA */
-			0x17c ( SLEWCTRL_SLOW | PIN_INPUT | MUX_MODE3 ) /* (D17) uart1_rtsn.I2C2_SCL */
+			0x178 ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE3 ) /* 0x73 (D18) uart1_ctsn.I2C2_SDA */
+			0x17c ( SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE3 ) /* 0x73 (D17) uart1_rtsn.I2C2_SCL */
 		>;
 	};
 
@@ -140,13 +120,13 @@
 
 
 	/* --- MMC --- */
-	/* MMC0, bad naming in Linux! */
+	/* MMC0, bad naming in Linux = MMC1! */
 	mmc1_pins_default: pinmux_mmc1_pins {
 		pinctrl-single,pins = <
-			0x0F0 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (F17) mmc0_dat3.mmc0_dat3 */
-			0x0F4 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (F18) mmc0_dat2.mmc0_dat2 */
-			0x0F8 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G15) mmc0_dat1.mmc0_dat1 */
-			0x0FC (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G16) mmc0_dat0.mmc0_dat0 */
+			0x0f0 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (F17) mmc0_dat3.mmc0_dat3 */
+			0x0f4 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (F18) mmc0_dat2.mmc0_dat2 */
+			0x0f8 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G15) mmc0_dat1.mmc0_dat1 */
+			0x0fC (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G16) mmc0_dat0.mmc0_dat0 */
 			0x100 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G17) mmc0_clk.mmc0_clk */
 			0x104 (PIN_INPUT_PULLUP | MUX_MODE0)	/* (G18) mmc0_cmd.mmc0_cmd, TI util recommends PIN_OUTPUT */
 			0x160 (PIN_INPUT | MUX_MODE7)		/* (C15) spi0_cs1.mmc0_sdcd */
@@ -155,17 +135,17 @@
 
 	mmc1_pins_sleep: pinmux_mmc1_pins_sleep {
 		pinctrl-single,pins = <
-			0x0F0 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (F17) mmc0_dat3.mmc0_dat3 */
-			0x0F4 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (F18) mmc0_dat2.mmc0_dat2 */
-			0x0F8 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G15) mmc0_dat1.mmc0_dat1 */
-			0x0FC (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G16) mmc0_dat0.mmc0_dat0 */
+			0x0f0 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (F17) mmc0_dat3.mmc0_dat3 */
+			0x0f4 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (F18) mmc0_dat2.mmc0_dat2 */
+			0x0f8 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G15) mmc0_dat1.mmc0_dat1 */
+			0x0fC (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G16) mmc0_dat0.mmc0_dat0 */
 			0x100 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G17) mmc0_clk.mmc0_clk */
 			0x104 (PIN_INPUT_PULLDOWN | MUX_MODE7)  /* (G18) mmc0_cmd.mmc0_cmd */
 		>;
 	};
 
-	/* MMC1, bad naming in Linux! */
-	mmc2_pins: pinmux_mmc2_pins {
+	/* MMC1 (eMMC), or bad naming in Linux = MMC2! */
+	emmc_pins: pinmux_mmc2_pins {
 		pinctrl-single,pins = <
 			0x80 (PIN_INPUT_PULLUP | MUX_MODE2) /* (U9) gpmc_csn1.mmc1_clk */
 			0x84 (PIN_INPUT_PULLUP | MUX_MODE2) /* (V9) gpmc_csn2.mmc1_cmd, TI util recommends PIN_OUTPUT */
@@ -180,7 +160,7 @@
 		>;
 	};
 
-	/* MMC2, bad naming in Linux! */
+	/* MMC2, bad naming in Linux = MMC3! */
 	mmc3_pins: pinmux_mmc3_pins {
 		pinctrl-single,pins = <
 			/* control lines */
@@ -218,5 +198,58 @@
 	};
 
 
-	/* --- GPIO --- */
+	/* --- GPIOs --- */
+	gpio_pins_default: gpio_pins_default {
+		pinctrl-single,pins = <
+			/* gpio 0 */
+			0x150 ( PIN_INPUT | MUX_MODE7 ) /* (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
+			0x154 ( PIN_INPUT | MUX_MODE7 ) /* (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
+			0x164 ( PIN_INPUT | MUX_MODE7 ) /* (C18) eCAP0_in_PWM0_out.gpio0[7] ~ AUDIO_WEIRDNESS_C18 */
+			0xdc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T5) lcd_data15.gpio0[11] ~ KEY_POUND */
+			0x28 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T11) gpmc_ad10.gpio0[26] ~ KEY_3 */
+			0x2c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U12) gpmc_ad11.gpio0[27] ~ KEY_SEND */
+
+			/* gpio 1 */
+			0x168 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (E18) uart0_ctsn.gpio1[8] ~ SIGNAL_LED_B1 */
+			0x16c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (E17) uart0_rtsn.gpio1[9] ~ SIGNAL_LED_B4 */
+			0x30 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T12) gpmc_ad12.gpio1[12] ~ KEY_0 */
+			0x34 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R12) gpmc_ad13.gpio1[13] ~ KEY_CLR */
+			0x38 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V13) gpmc_ad14.gpio1[14] ~ KEY_SOFT_R */
+			0x40 ( PIN_INPUT_PULLDOWN | MUX_MODE7 ) /* (R13) gpmc_a0.gpio1[16] ~ RES_BUTTON_ACTIVE */
+			0x50 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R14) gpmc_a4.gpio1[20] ~ MMC1_RESET# */
+			0x54 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V15) gpmc_a5.gpio1[21] ~ KEY_4 */
+			0x58 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U15) gpmc_a6.gpio1[22] ~ KEY_5 */
+			0x5c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T15) gpmc_a7.gpio1[23] ~ KEY_6 */
+			0x60 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V16) gpmc_a8.gpio1[24] ~ KEY_END_PWR */
+			0x64 ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (U16) gpmc_a9.gpio1[25] ~ HIGH_CHARGE# */
+			0x68 ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (T16) gpmc_a10.gpio1[26] ~ USB0_OC# */
+			0x6c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V17) gpmc_a11.gpio1[27] ~ AUD_MCLK_EN */
+			0x7c ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (V6) gpmc_csn0.gpio1[29] ~ POWER_CONNECTED# */
+
+			/* gpio 2 */
+			0x94 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T7) gpmc_oen_ren.gpio2[3] ~ G1700_PWR_ENABLE */
+			0x98 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U6) gpmc_wen.gpio2[4] ~ G1700_EXT_ANT_EN */
+			0xa0 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R1) lcd_data0.gpio2[6] ~ KEY_STAR */
+			0xa4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R2) lcd_data1.gpio2[7] ~ KEY_9 */
+			0xb0 ( PIN_INPUT | MUX_MODE7 ) /* (T1) lcd_data4.gpio2[10] ~ SYSBOOT... */
+			0xb4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T2) lcd_data5.gpio2[11] ~ KEY_0 */
+			0xb8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T3) lcd_data6.gpio2[12] ~ KEY_1 */
+			0xbc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T4) lcd_data7.gpio2[13] ~ KEY_2 */
+			0xc0 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U1) lcd_data8.gpio2[14] ~ KEY_7 */
+			0xc4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U2) lcd_data9.gpio2[15] ~ KEY_8 */
+			0xe0 ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (U5) lcd_vsync.gpio2[22] ~ WIFI_IRQ# */
+			0xe4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R5) lcd_hsync.gpio2[23] ~ ETH0_RESET# */
+			0xe8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V5) lcd_pclk.gpio2[24] ~ BLUETOOTH_EN */
+			0xec ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R6) lcd_ac_bias_en.gpio2[25] ~ WIFI_EN */
+
+			/* gpio 3 */
+			0x1e4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (C14) EMU0.gpio3[7] ~ WIFI_PWR_ENABLE */
+			0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) /* (B14) EMU1.gpio3[8] ~ GPIO3_8 */
+			0x1a0 ( PIN_INPUT | MUX_MODE7 ) /* (B12) mcasp0_aclkr.gpio3[18] ~ AUDIO_WEIRDNESS_B12 */
+			0x1a4 ( PIN_INPUT | MUX_MODE7 ) /* (C13) mcasp0_fsr.gpio3[19] ~ AUDIO_WEIRDNESS_C13 */
+			0x1a8 ( PIN_INPUT | MUX_MODE7 ) /* (D13) mcasp0_axr1.gpio3[20] ~ AUDIO_WEIRDNESS_D13 */
+		>;
+	};
+
+
 };
