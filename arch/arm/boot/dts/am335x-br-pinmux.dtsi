@@ -249,9 +249,6 @@
 			0x68 ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (T16) gpmc_a10.gpio1[26] ~ USB0_OC# */
 			0x7c ( PIN_INPUT_PULLUP | MUX_MODE7 ) /* (V6) gpmc_csn0.gpio1[29] ~ POWER_CONNECTED# */
 
-			/* gpio 2 */
-			0xb0 ( PIN_INPUT | MUX_MODE7 ) /* (T1) lcd_data4.gpio2[10] ~ SYSBOOT... */
-
 			/* gpio 3 */
 			0x1a0 ( PIN_INPUT | MUX_MODE7 ) /* (B12) mcasp0_aclkr.gpio3[18] ~ AUDIO_WEIRDNESS_B12 */
 			0x1a4 ( PIN_INPUT | MUX_MODE7 ) /* (C13) mcasp0_fsr.gpio3[19] ~ AUDIO_WEIRDNESS_C13 */
