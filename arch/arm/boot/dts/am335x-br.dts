@@ -30,6 +30,222 @@
 		reg = <0x80000000 0x10000000>; /* 256 MB <= this is really 512MB, how does this work??? */
 	};
 
+	/* "gpio-leds" class seems to have to be used for _all_ DT OUTPUT gpios, led or not:
+	 *   https://e2e.ti.com/support/embedded/linux/f/354/t/394107
+	 */
+	leds {
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_output_pins_default>;
+
+		compatible = "gpio-leds";
+
+		/* --- INIT STUFF --- */
+		/* 0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) -- (B14) EMU1.gpio3[8] ~ GPIO3_8 */
+		gpio3-8-init {
+			label = "init:gpio3_8_init";
+			gpios = <&gpio3 8 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		/* 0x6c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (V17) gpmc_a11.gpio1[27] ~ AUD_MCLK_EN */
+		audio-clk-enable {
+			label = "audio:clk-enable";
+			gpios = <&gpio1 27 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+
+		/* --- POWER --- */
+		/* 0x1e4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (C14) EMU0.gpio3[7] ~ WIFI_PWR_ENABLE */
+		power-wifi-enable {
+			label = "power:wifi";
+			gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		/* 0x94 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T7) gpmc_oen_ren.gpio2[3] ~ G1700_PWR_ENABLE */
+		power-g1700-enable {
+			label = "power:g1700-enable";
+			gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		/* 0x98 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U6) gpmc_wen.gpio2[4] ~ G1700_EXT_ANT_EN */
+		power-g1700-ext-ant-enable {
+			label = "power:g1700-ext-ant";
+			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+
+		/* --- RESET --- */
+		/* 0x50 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R14) gpmc_a4.gpio1[20] ~ MMC1_RESET# */
+		reset-mmc1 {
+			label = "reset:mmc1";
+			gpios = <&gpio1 20 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		/* 0xe4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R5) lcd_hsync.gpio2[23] ~ ETH0_RESET# */
+		reset-eth0 {
+			label = "reset:eth0";
+			gpios = <&gpio2 23 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+
+		/* --- LEDS --- */
+		/* 0x168 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E18) uart0_ctsn.gpio1[8] ~ SIGNAL_LED_B1 */
+		led-signal-b1 {
+			label = "led:led-signal-b1";
+			gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
+		led-signal-b2 {
+			label = "led:led-signal-b2";
+			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
+		led-signal-b3 {
+			label = "led:led-signal-b3";
+			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x16c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E17) uart0_rtsn.gpio1[9] ~ SIGNAL_LED_B4 */
+		led-signal-b4 {
+			label = "led:led-signal-b4";
+			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+
+		/* --- G1700 KEYS/BUTTONS --- */
+		/* 0xb8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T3) lcd_data6.gpio2[12] ~ KEY_1 */
+		key-1 {
+			label = "key:1";
+			gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xbc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T4) lcd_data7.gpio2[13] ~ KEY_2 */
+		key-2 {
+			label = "key:2";
+			gpios = <&gpio2 13 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x28 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T11) gpmc_ad10.gpio0[26] ~ KEY_3 */
+		key-3 {
+			label = "key:3";
+			gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x54 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V15) gpmc_a5.gpio1[21] ~ KEY_4 */
+		key-4 {
+			label = "key:4";
+			gpios = <&gpio1 21 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x58 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U15) gpmc_a6.gpio1[22] ~ KEY_5 */
+		key-5 {
+			label = "key:5";
+			gpios = <&gpio1 22 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x5c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T15) gpmc_a7.gpio1[23] ~ KEY_6 */
+		key-6 {
+			label = "key:6";
+			gpios = <&gpio1 23 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xc0 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U1) lcd_data8.gpio2[14] ~ KEY_7 */
+		key-7 {
+			label = "key:7";
+			gpios = <&gpio2 14 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xc4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U2) lcd_data9.gpio2[15] ~ KEY_8 */
+		key-8 {
+			label = "key:8";
+			gpios = <&gpio2 15 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xa4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R2) lcd_data1.gpio2[7] ~ KEY_9 */
+		key-9 {
+			label = "key:9";
+			gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xb4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T2) lcd_data5.gpio2[11] ~ KEY_0 */
+		key-0 {
+			label = "key:0";
+			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x2c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U12) gpmc_ad11.gpio0[27] ~ KEY_SEND */
+		key-send {
+			label = "key:send";
+			gpios = <&gpio0 27 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+
+		/* 0x34 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R12) gpmc_ad13.gpio1[13] ~ KEY_CLR */
+		key-clr {
+			label = "key:clr";
+			gpios = <&gpio1 13 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x38 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (V13) gpmc_ad14.gpio1[14] ~ KEY_SOFT_R */
+		key-soft-r {
+			label = "key:soft-r";
+			gpios = <&gpio1 14 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x30 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T12) gpmc_ad12.gpio1[12] ~ KEY_SOFT_L */
+		key-soft-l {
+			label = "key:soft-l";
+			gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x60 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (V16) gpmc_a8.gpio1[24] ~ KEY_END_PWR */
+		key-end-pwr {
+			label = "key:end-pwr";
+			gpios = <&gpio1 24 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xdc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T5) lcd_data15.gpio0[11] ~ KEY_POUND */
+		key-pound {
+			label = "key:pound";
+			gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xa0 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R1) lcd_data0.gpio2[6] ~ KEY_STAR */
+		key-star {
+			label = "key:star";
+			gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+
 	sound {
 		compatible = "ti,da830-evm-audio";
 		ti,model = "DA830 EVM";
@@ -177,12 +393,19 @@
 	m41t65: m41t65@68 {
 		compatible = "stm,m41t80";
 		reg = <0x68>;
+		status = "okay";
 	}; 
 
 	/* TBD: FUEL GUAGE... */
 };
 
 &i2c2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c2_pins>;
+
+	status = "okay";
+	clock-frequency = <400000>;
+
 	/* audio */
 	tlv320aic3x: tlv320aic3x@18 {
 		compatible = "ti,tlv320aic3x";
@@ -358,6 +581,6 @@
 /* --- PINMUX --- */
 &am33xx_pinmux {
 	pinctrl-names = "default";
-	pinctrl-0 = <&clkout2_pin &gpio_pins_default>;
+	pinctrl-0 = <&clkout2_pin>;
 };
 
