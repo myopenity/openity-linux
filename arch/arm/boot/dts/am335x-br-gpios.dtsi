@@ -19,9 +19,9 @@
 		compatible = "gpio-leds";
 
 		/* --- INIT STUFF --- */
-		/* 0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) -- (B14) EMU1.gpio3[8] ~ GPIO3_8 */
+		/* 0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) -- (B14) EMU1.gpio3[8] ~ BT_CTS_MUX */
 		gpio3-8-init {
-			label = "init:gpio3_8_init";
+			label = "init:bt-cts-mux";
 			gpios = <&gpio3 8 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
@@ -76,31 +76,53 @@
 		/* --- LEDS --- */
 		/* 0x168 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E18) uart0_ctsn.gpio1[8] ~ SIGNAL_LED_B1 */
 		led-signal-b1 {
-			label = "led:led-signal-b1";
+			label = "led:signal-b1";
 			gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
 		led-signal-b2 {
-			label = "led:led-signal-b2";
+			label = "led:signal-b2";
 			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
 		led-signal-b3 {
-			label = "led:led-signal-b3";
+			label = "led:signal-b3";
 			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x16c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E17) uart0_rtsn.gpio1[9] ~ SIGNAL_LED_B4 */
 		led-signal-b4 {
-			label = "led:led-signal-b4";
+			label = "led:signal-b4";
 			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
+
+		/* 0x20 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U10) gpmc_ad8.gpio0[22] ~ STATUS_3LED_B */
+		led-3led-b {
+			label = "led:3led-blue";
+			gpios = <&gpio 22 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0x24 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T10) gpmc_ad9.gpio0[23] ~ STATUS_3LED_R */
+		led-3led-r {
+			label = "led:3led-red";
+			gpios = <&gpio0 23 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		/* 0xcc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U4) lcd_data11.gpio2[17] ~ STATUS_3LED_G_OVERRIDE */
+		led-3led-g-override {
+			label = "led:3led-green-override";
+			gpios = <&gpio2 17 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
 
 
 		/* --- G1700 KEYS/BUTTONS --- */

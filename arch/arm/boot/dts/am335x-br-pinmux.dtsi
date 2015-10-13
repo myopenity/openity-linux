@@ -203,6 +203,8 @@
 			0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
 			0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
 			0xdc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T5) lcd_data15.gpio0[11] ~ KEY_POUND */
+			0x20 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U10) gpmc_ad8.gpio0[22] ~ STATUS_3LED_B */
+			0x24 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T10) gpmc_ad9.gpio0[23] ~ STATUS_3LED_R */
 			0x28 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T11) gpmc_ad10.gpio0[26] ~ KEY_3 */
 			0x2c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U12) gpmc_ad11.gpio0[27] ~ KEY_SEND */
 
@@ -229,11 +231,12 @@
 			0xbc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (T4) lcd_data7.gpio2[13] ~ KEY_2 */
 			0xc0 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U1) lcd_data8.gpio2[14] ~ KEY_7 */
 			0xc4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U2) lcd_data9.gpio2[15] ~ KEY_8 */
+			0xcc ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (U4) lcd_data11.gpio2[17] ~ STATUS_3LED_G_OVERRIDE */
 			0xe4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R5) lcd_hsync.gpio2[23] ~ ETH0_RESET# */
 
 			/* gpio 3 */
 			0x1e4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (C14) EMU0.gpio3[7] ~ WIFI_PWR_ENABLE */
-			0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) /* (B14) EMU1.gpio3[8] ~ GPIO3_8 */
+			0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) /* (B14) EMU1.gpio3[8] ~ BT_CTS_MUX */
 		>;
 	};
 
