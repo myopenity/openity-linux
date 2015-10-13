@@ -20,7 +20,7 @@
 
 		/* --- INIT STUFF --- */
 		/* 0x1e8 ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) -- (B14) EMU1.gpio3[8] ~ BT_CTS_MUX */
-		gpio3-8-init {
+		bt-cts-mux {
 			label = "init:bt-cts-mux";
 			gpios = <&gpio3 8 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
@@ -105,7 +105,7 @@
 		/* 0x20 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U10) gpmc_ad8.gpio0[22] ~ STATUS_3LED_B */
 		led-3led-b {
 			label = "led:3led-blue";
-			gpios = <&gpio 22 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 22 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
