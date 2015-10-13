@@ -770,9 +770,10 @@ exit:
 
 static int m41t80_remove(struct i2c_client *client)
 {
-#ifdef CONFIG_RTC_DRV_M41T80_WDT
 	struct m41t80_data *clientdata = i2c_get_clientdata(client);
+	struct rtc_device *rtc = clientdata->rtc;
 
+#ifdef CONFIG_RTC_DRV_M41T80_WDT
 	if (clientdata->features & M41T80_FEATURE_HT) {
 		misc_deregister(&wdt_dev);
 		unregister_reboot_notifier(&wdt_notifier);
