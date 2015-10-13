@@ -348,6 +348,11 @@ static int wdt_margin = WD_TIMO;
 module_param(wdt_margin, int, 0);
 MODULE_PARM_DESC(wdt_margin, "Watchdog timeout in seconds (default 60s)");
 
+static bool nowayout = WATCHDOG_NOWAYOUT;
+module_param(nowayout, bool, 0);
+MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started "
+	"(default=" __MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
+
 static unsigned long wdt_is_open;
 static int boot_flag;
 
@@ -397,36 +402,41 @@ static void wdt_ping(void)
  */
 static void wdt_disable(void)
 {
-	unsigned char i2c_data[2], i2c_buf[0x10];
-	struct i2c_msg msgs0[2] = {
-		{
-			.addr	= save_client->addr,
-			.flags	= 0,
-			.len	= 1,
-			.buf	= i2c_data,
-		},
-		{
-			.addr	= save_client->addr,
-			.flags	= I2C_M_RD,
-			.len	= 1,
-			.buf	= i2c_buf,
-		},
-	};
-	struct i2c_msg msgs1[1] = {
-		{
-			.addr	= save_client->addr,
-			.flags	= 0,
-			.len	= 2,
-			.buf	= i2c_data,
-		},
-	};
+	if (nowayout) {
+		printk(KERN_INFO "Unexpected disable, watchdog still running!\n");
+		wdt_ping();
+	} else {
+		unsigned char i2c_data[2], i2c_buf[0x10];
+		struct i2c_msg msgs0[2] = {
+			{
+				.addr	= save_client->addr,
+				.flags	= 0,
+				.len	= 1,
+				.buf	= i2c_data,
+			},
+			{
+				.addr	= save_client->addr,
+				.flags	= I2C_M_RD,
+				.len	= 1,
+				.buf	= i2c_buf,
+			},
+		};
+		struct i2c_msg msgs1[1] = {
+			{
+				.addr	= save_client->addr,
+				.flags	= 0,
+				.len	= 2,
+				.buf	= i2c_data,
+			},
+		};
 
-	i2c_data[0] = 0x09;
-	i2c_transfer(save_client->adapter, msgs0, 2);
+		i2c_data[0] = 0x09;
+		i2c_transfer(save_client->adapter, msgs0, 2);
 
-	i2c_data[0] = 0x09;
-	i2c_data[1] = 0x00;
-	i2c_transfer(save_client->adapter, msgs1, 1);
+		i2c_data[0] = 0x09;
+		i2c_data[1] = 0x00;
+		i2c_transfer(save_client->adapter, msgs1, 1);
+	}
 }
 
 /**
@@ -477,46 +487,68 @@ static int wdt_ioctl(struct file *file, unsigned int cmd,
 		.identity = "M41T80 WTD"
 	};
 
-	switch (cmd) {
-	case WDIOC_GETSUPPORT:
-		return copy_to_user((struct watchdog_info __user *)arg, &ident,
-				    sizeof(ident)) ? -EFAULT : 0;
-
-	case WDIOC_GETSTATUS:
-	case WDIOC_GETBOOTSTATUS:
-		return put_user(boot_flag, (int __user *)arg);
-	case WDIOC_KEEPALIVE:
-		wdt_ping();
-		return 0;
-	case WDIOC_SETTIMEOUT:
-		if (get_user(new_margin, (int __user *)arg))
-			return -EFAULT;
-		/* Arbitrary, can't find the card's limits */
-		if (new_margin < 1 || new_margin > 124)
-			return -EINVAL;
-		wdt_margin = new_margin;
-		wdt_ping();
-		/* Fall */
-	case WDIOC_GETTIMEOUT:
-		return put_user(wdt_margin, (int __user *)arg);
-
-	case WDIOC_SETOPTIONS:
-		if (copy_from_user(&rv, (int __user *)arg, sizeof(int)))
-			return -EFAULT;
-
-		if (rv & WDIOS_DISABLECARD) {
-			pr_info("rtc-m41t80: disable watchdog\n");
-			wdt_disable();
+	switch (cmd)
+	{
+		case WDIOC_GETSUPPORT:
+		{
+			return copy_to_user((struct watchdog_info __user *)arg, &ident,
+					    sizeof(ident)) ? -EFAULT : 0;
+			break;
 		}
-
-		if (rv & WDIOS_ENABLECARD) {
-			pr_info("rtc-m41t80: enable watchdog\n");
+		case WDIOC_GETSTATUS:
+		case WDIOC_GETBOOTSTATUS:
+		{
+			return put_user(boot_flag, (int __user *)arg);
+			break;
+		}
+		case WDIOC_KEEPALIVE:
+		{
 			wdt_ping();
+			return 0;
+			break;
 		}
+		case WDIOC_SETTIMEOUT:
+		{
+			if (get_user(new_margin, (int __user *)arg))
+				return -EFAULT;
+			/* Arbitrary, can't find the card's limits */
+			if (new_margin < 1 || new_margin > 124)
+				return -EINVAL;
+			wdt_margin = new_margin;
+			wdt_ping();
+			/* Fall - note suggests no 'break' here I guess??? */
+		}
+		case WDIOC_GETTIMEOUT:
+		{
+			return put_user(wdt_margin, (int __user *)arg);
+		}
+		case WDIOC_SETOPTIONS:
+		{
+			int valid_opt = -EINVAL;
 
-		return -EINVAL;
+			if (copy_from_user(&rv, (int __user *)arg, sizeof(int)))
+				return -EFAULT;
+
+			if (rv & WDIOS_DISABLECARD) {
+				pr_info("rtc-m41t80: disable watchdog\n");
+				wdt_disable();
+				valid_opt = 0;
+			}
+
+			if (rv & WDIOS_ENABLECARD) {
+				pr_info("rtc-m41t80: enable watchdog\n");
+				wdt_ping();
+				valid_opt = 0;
+			}
+
+			return(valid_opt);
+		}
+		default:
+		{
+			return -ENOTTY;
+			break;
+		}
 	}
-	return -ENOTTY;
 }
 
 static long wdt_unlocked_ioctl(struct file *file, unsigned int cmd,
@@ -563,8 +595,13 @@ static int wdt_open(struct inode *inode, struct file *file)
  */
 static int wdt_release(struct inode *inode, struct file *file)
 {
-	if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
-		clear_bit(0, &wdt_is_open);
+	if (nowayout) {
+		printk(KERN_INFO "Unexpected close, watchdog still running!\n");
+		wdt_ping();
+	} else {
+		if (MINOR(inode->i_rdev) == WATCHDOG_MINOR)
+			clear_bit(0, &wdt_is_open);
+	}
 	return 0;
 }
 
@@ -698,13 +735,19 @@ static int m41t80_probe(struct i2c_client *client,
 	if (clientdata->features & M41T80_FEATURE_HT) {
 		save_client = client;
 		rc = misc_register(&wdt_dev);
-		if (rc)
+		if (rc) {
+			dev_err(&client->dev,
+				 "watchdog, failed misc_register()\n");
 			goto exit;
+		}
 		rc = register_reboot_notifier(&wdt_notifier);
 		if (rc) {
+			dev_err(&client->dev,
+				 "watchdog, failed register_reboot_notifier()\n");
 			misc_deregister(&wdt_dev);
 			goto exit;
 		}
+		dev_info(&client->dev, "watchdog registered\n");
 	}
 #endif
 	return 0;
@@ -719,6 +762,9 @@ ht_err:
 	goto exit;
 
 exit:
+	if (rtc)
+		rtc_device_unregister(rtc);
+	kfree(clientdata);
 	return rc;
 }
 
@@ -732,6 +778,9 @@ static int m41t80_remove(struct i2c_client *client)
 		unregister_reboot_notifier(&wdt_notifier);
 	}
 #endif
+	if (rtc)
+		rtc_device_unregister(rtc);
+	kfree(clientdata);
 
 	return 0;
 }
