@@ -354,7 +354,6 @@
 
 &rtc {
 	ti,system-power-controller;
-	status = "disabled";
 };
 
 &aes {
