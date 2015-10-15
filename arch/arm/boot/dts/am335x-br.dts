@@ -180,7 +180,6 @@
 	m41t65: m41t65@68 {
 		compatible = "stm,m41t80";
 		reg = <0x68>;
-		status = "okay";
 	}; 
 
 	/* TBD: FUEL GUAGE... */
