@@ -370,4 +370,3 @@
 	pinctrl-0 = <&clkout2_pin>;
 };
 
-
