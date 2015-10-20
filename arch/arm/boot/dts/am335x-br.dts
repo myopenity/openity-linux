@@ -18,7 +18,7 @@
 
 / {
 	model = "BottleRocket (AM335x)";
-	compatible = "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
+	compatible = "ti,am335x-br", "ti,am335x-bone-black", "ti,am335x-bone", "ti,am33xx";
 
 	cpus {
 		cpu@0 {
@@ -73,19 +73,6 @@
 	};
 
 	/* ~~~ GPIOS handled in "am335x-br-gpios.dtsi" include above ~~~ */
-};
-
-
-/* How do we handle these with px_xx assignments gone? Do we even need this ocp thingy anymore? */
-&ocp {
-	/* clkout2 */
-	P9_41_pinmux {
-		status = "disabled";
-	};
-	/* mmc1 */
-	P9_92_pinmux {
-		status = "disabled";
-	};
 };
 
 
@@ -305,8 +292,9 @@
 /* from: diff supplied by LSR: http://www.lsr.com/embedded-wireless-modules/wifi-plus-bluetooth-module/tiwi-ble#product-documents */
 &mmc3 {
 	/* these are on the crossbar and are outlined in the
-		xbar-event-map element */
-	dmas = <&edma 32 &edma 33>;
+	   xbar-event-map element */
+	dmas = <&edma 12
+		&edma 13>;
 	dma-names = "tx", "rx";
 	status = "okay";
 	vmmc-supply = <&wlan_en_reg>;
@@ -321,6 +309,7 @@
 
 	#address-cells = <1>;
 	#size-cells = <0>;
+	/* looks like most of the wl1271 stuff gets handled by pdata quirks - not sure about below */
 	wlcore: wlcore@0 {
 		compatible = "ti,wl1271";
 		reg = <2>;
@@ -331,7 +320,8 @@
 };
 
 &edma {
-	ti,edma-xbar-event-map = /bits/ 16 <1 32 2 33>;
+	ti,edma-xbar-event-map = /bits/ 16 <1 12
+					    2 13>;
 };
 
 /* --- AUDIO --- */
@@ -367,12 +357,5 @@
 
 &sham {
 	status = "okay";
-};
-
-
-/* --- PINMUX --- */
-&am33xx_pinmux {
-	pinctrl-names = "default";
-	pinctrl-0 = <&clkout2_pin>;
 };
 

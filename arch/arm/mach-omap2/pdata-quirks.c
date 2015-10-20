@@ -289,6 +289,11 @@ static void __init am335x_evmsk_legacy_init(void)
 {
 	legacy_init_wl12xx(WL12XX_REFCLOCK_38, 0, 31);
 }
+
+static void __init am335x_br_legacy_init(void)
+{
+	legacy_init_wl12xx(WL12XX_REFCLOCK_38, 0, 86;
+}
 #endif
 
 #ifdef CONFIG_SOC_OMAP5
@@ -489,6 +494,7 @@ static struct pdata_init pdata_quirks[] __initdata = {
 #endif
 #ifdef CONFIG_SOC_AM33XX
 	{ "ti,am335x-evmsk", am335x_evmsk_legacy_init, },
+	{ "ti,am335x-br", am335x_br_legacy_init, },
 #endif
 #ifdef CONFIG_SOC_OMAP5
 	{ "ti,omap5-uevm", omap5_uevm_legacy_init, },
