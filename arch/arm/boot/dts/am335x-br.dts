@@ -209,7 +209,7 @@
 		dcdc3_reg: regulator@2 {
 			/* VDD_CORE voltage limits 0.95V - 1.1V with +/-4% tolerance */
 			regulator-name = "vdd_core";
-			regulator-min-microvolt = <925000>;
+			regulator-min-microvolt = <912500>;  /* was: 925000 */
 			regulator-max-microvolt = <1150000>;
 			regulator-boot-on;
 			regulator-always-on;
@@ -307,9 +307,9 @@
 	cap-power-off-card;
 	keep-power-in-suspend;
 
+	/* installed 'pdata quirks' to try to help with this... */
 	#address-cells = <1>;
 	#size-cells = <0>;
-	/* looks like most of the wl1271 stuff gets handled by pdata quirks - not sure about below */
 	wlcore: wlcore@0 {
 		compatible = "ti,wl1271";
 		reg = <2>;
