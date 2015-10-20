@@ -292,7 +292,7 @@ static void __init am335x_evmsk_legacy_init(void)
 
 static void __init am335x_br_legacy_init(void)
 {
-	legacy_init_wl12xx(WL12XX_REFCLOCK_38, 0, 86;
+	legacy_init_wl12xx(WL12XX_REFCLOCK_38, 0, 86);
 }
 #endif
 
