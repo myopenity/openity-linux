@@ -66,12 +66,14 @@
 	};
 
 	wl12xx_vmmc: fixedregulator@2 {
-		pinctrl-names = "default";
-		pinctrl-0 = <&wl12xx_gpio>;
 		compatible = "regulator-fixed";
 		regulator-name = "vwl1271";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
+		/* unnecessary given 'gpio' below
+		pinctrl-names = "default";
+		pinctrl-0 = <&wl12xx_gpio>;
+		*/
 		gpio = <&gpio2 25 0>;
 		startup-delay-us = <70000>;
 		enable-active-high;
@@ -273,7 +275,7 @@
 /* MMC0, bad naming in Linux! */
 &mmc1 {
 	status = "okay";
-	bus-width = <0x4>;
+	bus-width = <4>;
 	pinctrl-names = "default", "sleep";
 	pinctrl-0 = <&mmc1_pins_default>;
 	pinctrl-1 = <&mmc1_pins_sleep>;
