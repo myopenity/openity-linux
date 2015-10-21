@@ -13,8 +13,7 @@
 #include <dt-bindings/pwm/pwm.h>
 
 #include "am33xx.dtsi"
-#include "am335x-br-pinmux.dtsi"
-#include "am335x-br-gpios.dtsi"
+
 
 / {
 	model = "BottleRocket (AM335x)";
@@ -70,18 +69,20 @@
 		regulator-name = "vwl1271";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
-		/* unnecessary given 'gpio' below
+
+		/* WLAN_EN */
+		/* do NOT fix the warning this creates as that seems to break things... */
 		pinctrl-names = "default";
 		pinctrl-0 = <&wl12xx_gpio>;
-		*/
 		gpio = <&gpio2 25 0>;
 		startup-delay-us = <70000>;
 		enable-active-high;
 	};
-
-	/* ~~~ GPIOS handled in "am335x-br-gpios.dtsi" include above ~~~ */
 };
 
+/* --- GPIOS --- */
+#include "am335x-br-pinmux.dtsi"
+#include "am335x-br-gpios.dtsi"
 
 /* --- UARTS --- */
 &uart0 {
@@ -308,6 +309,8 @@
 	ti,non-removable;
 	bus-width = <4>;
 	cap-power-off-card;
+	ti,needs-special-hs-handling;
+	keep-power-in-suspend;
 	pinctrl-names = "default";
 	pinctrl-0 = <&mmc3_pins>;
 	/* installed 'pdata quirks' handle wl12xx driver */

@@ -183,7 +183,7 @@
 		pinctrl-single,pins = <
 			/* control lines */
 			0xe8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (V5) lcd_pclk.gpio2[24] ~ BLUETOOTH_EN */
-			0xec ( PIN_OUTPUT_PULLUP | MUX_MODE7 ) /* (R6) lcd_ac_bias_en.gpio2[25] ~ WIFI_EN */
+			0xec ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) /* (R6) lcd_ac_bias_en.gpio2[25] ~ WIFI_EN */
 		>;
 	};
 
