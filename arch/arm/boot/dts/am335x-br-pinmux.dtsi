@@ -194,6 +194,14 @@
 		>;
 	};
 
+	/* These pin assignments from BBB appear WRONG, but are overriden by 'serial-dir' later.
+	 * FYI, correct assignments would likely be:
+		0x1ac 0x20	// mcasp0_ahclkx, INPUT | MODE0
+		0x194 0x20	// mcasp0_fsx, INPUT | MODE0
+		0x190 0x20	// mcasp0_aclkx, INPUT | MODE0
+		0x198 0x20	// mcasp0_axr0, INPUT | MODE0
+		0x19c 0x02	// mcasp0_axr2, OUTPUT | MODE2
+	*/
 	mcasp0_pins_audio_revb: mcasp0_pins_audio_revb {
 		pinctrl-single,pins = <
 			0x1ac 0x00	/* mcasp0_ahclkx, OUTPUT | MODE0, Codec MCLK */

@@ -120,7 +120,8 @@
 		led-3led-g-override {
 			label = "led:3led-green-override";
 			gpios = <&gpio2 17 GPIO_ACTIVE_HIGH>;
-			default-state = "off";
+			/* setup to blink for wifi activity */
+			linux,default-trigger = "mmc2";
 		};
 
 
