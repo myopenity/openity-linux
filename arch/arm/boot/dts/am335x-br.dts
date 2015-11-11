@@ -32,21 +32,15 @@
 
 	sound {
 		compatible = "ti,da830-evm-audio";
-		ti,model = "DA830 EVM";
-		ti,audio-codec = <&tlv320aic3x>;
+		ti,model = "AM335x-BR";
+		ti,audio-codec = <&tlv320aic3104>;
 		ti,mcasp-controller = <&mcasp0>;
 		ti,codec-clock-rate = <24000000>;
 		ti,audio-routing =
-			"Headphone Jack",       "HPLOUT",
-			"Headphone Jack",       "HPROUT",
-			"Line Out",             "LLOUT",
-			"Line Out",             "RLOUT",
-			"MIC3L",                "Mic Jack",
-			"MIC3R",                "Mic Jack",
-			"LINE1L",               "Line In",
-			"LINE2L",               "Line In",
-			"LINE1R",               "Line In",
-			"LINE2R",               "Line In";
+			"Line Out",	"HPLOUT",
+			"Line Out",	"HPROUT",
+			"MIC2L",	"Line In",
+			"MIC2R",	"Line In";
 	};
 
 	vbat: fixedregulator@0 {
@@ -176,10 +170,9 @@
 	clock-frequency = <400000>;
 
 	/* audio */
-	tlv320aic3x: tlv320aic3x@18 {
-		compatible = "ti,tlv320aic3x";
+	tlv320aic3104: tlv320aic3104@18 {
+		compatible = "ti,tlv320aic3104";
 		reg = <0x18>;
-		ai3x-micbias-vg = <1>;
 		status = "okay";
 
 		/* Regulators */
