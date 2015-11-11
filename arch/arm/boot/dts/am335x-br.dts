@@ -37,10 +37,12 @@
 		ti,mcasp-controller = <&mcasp0>;
 		ti,codec-clock-rate = <24000000>;
 		ti,audio-routing =
-			"Line Out",	"HPLOUT",
-			"Line Out",	"HPROUT",
-			"MIC2L",	"Line In",
-			"MIC2R",	"Line In";
+			"Headphone Jack",       "HPLOUT",
+			"Headphone Jack",       "HPROUT",
+			"Line Out",             "LLOUT",
+			"Line Out",             "RLOUT",
+			"LINE1L",               "Line In",
+			"LINE1R",               "Line In";
 	};
 
 	vbat: fixedregulator@0 {
