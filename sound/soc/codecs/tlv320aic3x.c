@@ -1489,35 +1489,38 @@ static int aic3x_init(struct snd_soc_codec *codec)
 	/* DAC to HP default volume and route to Output mixer */
 	snd_soc_write(codec, DACL1_2_HPLOUT_VOL, DEFAULT_VOL | ROUTE_ON);
 	snd_soc_write(codec, DACR1_2_HPROUT_VOL, DEFAULT_VOL | ROUTE_ON);
-	snd_soc_write(codec, DACL1_2_HPLCOM_VOL, DEFAULT_VOL | ROUTE_ON);
-	snd_soc_write(codec, DACR1_2_HPRCOM_VOL, DEFAULT_VOL | ROUTE_ON);
+//	snd_soc_write(codec, DACL1_2_HPLCOM_VOL, DEFAULT_VOL | ROUTE_ON);
+//	snd_soc_write(codec, DACR1_2_HPRCOM_VOL, DEFAULT_VOL | ROUTE_ON);
 	/* DAC to Line Out default volume and route to Output mixer */
-	snd_soc_write(codec, DACL1_2_LLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
-	snd_soc_write(codec, DACR1_2_RLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
+//	snd_soc_write(codec, DACL1_2_LLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
+//	snd_soc_write(codec, DACR1_2_RLOPM_VOL, DEFAULT_VOL | ROUTE_ON);
 
 	/* unmute all outputs */
-	snd_soc_update_bits(codec, LLOPM_CTRL, UNMUTE, UNMUTE);
-	snd_soc_update_bits(codec, RLOPM_CTRL, UNMUTE, UNMUTE);
+//	snd_soc_update_bits(codec, LLOPM_CTRL, UNMUTE, UNMUTE);
+//	snd_soc_update_bits(codec, RLOPM_CTRL, UNMUTE, UNMUTE);
 	snd_soc_update_bits(codec, HPLOUT_CTRL, UNMUTE, UNMUTE);
 	snd_soc_update_bits(codec, HPROUT_CTRL, UNMUTE, UNMUTE);
-	snd_soc_update_bits(codec, HPLCOM_CTRL, UNMUTE, UNMUTE);
-	snd_soc_update_bits(codec, HPRCOM_CTRL, UNMUTE, UNMUTE);
+//	snd_soc_update_bits(codec, HPLCOM_CTRL, UNMUTE, UNMUTE);
+//	snd_soc_update_bits(codec, HPRCOM_CTRL, UNMUTE, UNMUTE);
 
 	/* ADC default volume and unmute */
 	snd_soc_write(codec, LADC_VOL, DEFAULT_GAIN);
 	snd_soc_write(codec, RADC_VOL, DEFAULT_GAIN);
 	/* By default route Line1 to ADC PGA mixer */
-	snd_soc_write(codec, LINE1L_2_LADC_CTRL, 0x0);
-	snd_soc_write(codec, LINE1R_2_RADC_CTRL, 0x0);
+//	snd_soc_write(codec, LINE1L_2_LADC_CTRL, 0x0);
+//	snd_soc_write(codec, LINE1R_2_RADC_CTRL, 0x0);
+	/* By default route Mic2/Line2 (called "Mic3" here) to respective ADC PGA mixer */
+	snd_soc_write(codec, MIC3LR_2_LADC_CTRL, 0xf0);
+	snd_soc_write(codec, MIC3LR_2_RADC_CTRL, 0x0f);
 
 	/* PGA to HP Bypass default volume, disconnect from Output Mixer */
-	snd_soc_write(codec, PGAL_2_HPLOUT_VOL, DEFAULT_VOL);
-	snd_soc_write(codec, PGAR_2_HPROUT_VOL, DEFAULT_VOL);
-	snd_soc_write(codec, PGAL_2_HPLCOM_VOL, DEFAULT_VOL);
-	snd_soc_write(codec, PGAR_2_HPRCOM_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAL_2_HPLOUT_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAR_2_HPROUT_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAL_2_HPLCOM_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAR_2_HPRCOM_VOL, DEFAULT_VOL);
 	/* PGA to Line Out default volume, disconnect from Output Mixer */
-	snd_soc_write(codec, PGAL_2_LLOPM_VOL, DEFAULT_VOL);
-	snd_soc_write(codec, PGAR_2_RLOPM_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAL_2_LLOPM_VOL, DEFAULT_VOL);
+//	snd_soc_write(codec, PGAR_2_RLOPM_VOL, DEFAULT_VOL);
 
 	/* On tlv320aic3104, these registers are reserved and must not be written */
 	if (aic3x->model != AIC3X_MODEL_3104) {
@@ -1538,6 +1541,8 @@ static int aic3x_init(struct snd_soc_codec *codec)
 		break;
 	case AIC3X_MODEL_3007:
 		snd_soc_write(codec, CLASSD_CTRL, 0);
+		break;
+	case AIC3X_MODEL_3104:
 		break;
 	}
 
