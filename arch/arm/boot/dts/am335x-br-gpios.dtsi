@@ -26,9 +26,23 @@
 			default-state = "on";
 		};
 
+		/* 0x50 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R14) gpmc_a4.gpio1[20] ~ MMC1_RESET# */
+		reset-mmc1 {
+			label = "init:mmc1-reset";
+			gpios = <&gpio1 20 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
+		/* 0xe4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R5) lcd_hsync.gpio2[23] ~ ETH0_RESET# */
+		reset-eth0 {
+			label = "init:eth0-reset";
+			gpios = <&gpio2 23 GPIO_ACTIVE_LOW>;
+			default-state = "off";
+		};
+
 		/* 0x6c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (V17) gpmc_a11.gpio1[27] ~ AUD_MCLK_EN */
 		audio-clk-enable {
-			label = "audio:clk-enable";
+			label = "init:audio-clk-enable";
 			gpios = <&gpio1 27 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
@@ -36,68 +50,54 @@
 
 		/* --- POWER --- */
 		/* 0x1e4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (C14) EMU0.gpio3[7] ~ WIFI_PWR_ENABLE */
-		power-wifi-enable {
+		power-wifi {
 			label = "power:wifi";
 			gpios = <&gpio3 7 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 
 		/* 0x94 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T7) gpmc_oen_ren.gpio2[3] ~ G1700_PWR_ENABLE */
-		power-g1700-enable {
-			label = "power:g1700-enable";
+		power-g1700 {
+			label = "power:g1700";
 			gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
 		};
 
+
+		/* --- CONTROLS --- */
 		/* 0x98 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (U6) gpmc_wen.gpio2[4] ~ G1700_EXT_ANT_EN */
-		power-g1700-ext-ant-enable {
-			label = "power:g1700-ext-ant";
+		control-g1700-ext-ant {
+			label = "ctrl:g1700-ext-ant";
 			gpios = <&gpio2 4 GPIO_ACTIVE_HIGH>;
-			default-state = "off";
-		};
-
-
-		/* --- RESET --- */
-		/* 0x50 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R14) gpmc_a4.gpio1[20] ~ MMC1_RESET# */
-		reset-mmc1 {
-			label = "reset:mmc1";
-			gpios = <&gpio1 20 GPIO_ACTIVE_LOW>;
-			default-state = "off";
-		};
-
-		/* 0xe4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (R5) lcd_hsync.gpio2[23] ~ ETH0_RESET# */
-		reset-eth0 {
-			label = "reset:eth0";
-			gpios = <&gpio2 23 GPIO_ACTIVE_LOW>;
 			default-state = "off";
 		};
 
 
 		/* --- LEDS --- */
 		/* 0x168 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E18) uart0_ctsn.gpio1[8] ~ SIGNAL_LED_B1 */
-		led-signal-b1 {
-			label = "led:signal-b1";
+		led-signal1 {
+			label = "led:signal1";
 			gpios = <&gpio1 8 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
-		led-signal-b2 {
-			label = "led:signal-b2";
+		led-signal2 {
+			label = "led:signal2";
 			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
-		led-signal-b3 {
-			label = "led:signal-b3";
+		led-signal3 {
+			label = "led:signal3";
 			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
 		/* 0x16c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E17) uart0_rtsn.gpio1[9] ~ SIGNAL_LED_B4 */
-		led-signal-b4 {
-			label = "led:signal-b4";
+		led-signal4 {
+			label = "led:signal4";
 			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
@@ -121,7 +121,7 @@
 			label = "led:3led-green-override";
 			gpios = <&gpio2 17 GPIO_ACTIVE_HIGH>;
 			/* setup to blink for wifi activity */
-			linux,default-trigger = "mmc2";
+			/*linux,default-trigger = "mmc2"; */
 		};
 
 
