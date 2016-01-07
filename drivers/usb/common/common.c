@@ -114,6 +114,33 @@ enum usb_dr_mode of_usb_get_dr_mode(struct device_node *np)
 EXPORT_SYMBOL_GPL(of_usb_get_dr_mode);
 
 /**
+ * of_usb_get_dr_mode_by_phy - Get dual role mode for the controller device
+ * which is associated with the given phy device_node
+ * @np:	Pointer to the given phy device_node
+ *
+ * In dts a usb controller associates with a phy device.  The function gets
+ * the string from property 'dr_mode' of the controller associated with the
+ * given phy device node, and returns the correspondig enum usb_dr_mode.
+ */
+enum usb_dr_mode of_usb_get_dr_mode_by_phy(struct device_node *phy_np)
+{
+	struct device_node *controller;
+	struct device_node *phy;
+
+	controller = of_get_parent(phy_np);
+	do {
+		controller = of_find_node_with_property(controller, "phys");
+		if (!controller)
+			return USB_DR_MODE_UNKNOWN;
+
+		phy = of_parse_phandle(controller, "phys", 0);
+	} while (phy != phy_np);
+
+	return of_usb_get_dr_mode(controller);
+}
+EXPORT_SYMBOL_GPL(of_usb_get_dr_mode_by_phy);
+
+/**
  * of_usb_get_maximum_speed - Get maximum requested speed for a given USB
  * controller.
  * @np: Pointer to the given device_node
