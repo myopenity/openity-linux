@@ -73,6 +73,14 @@
 		};
 
 
+		/* 0x9c ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T6) gpmc_be0n_cle.gpio2[5] ~ LED_COLOUR_SELECT */
+		control-signal-color-yellow {
+			label = "ctrl:signal-color-yellow";
+			gpios = <&gpio2 5 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+
 		/* --- LEDS --- */
 		/* 0x168 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (E18) uart0_ctsn.gpio1[8] ~ SIGNAL_LED_B1 */
 		led-signal1 {
@@ -81,17 +89,17 @@
 			default-state = "off";
 		};
 
-		/* 0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (A17) spi0_sclk.gpio0[2] ~ SIGNAL_LED_B2 */
+		/* 0xb8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T3) lcd_data6.gpio2[12] ~ SIGNAL_LED_B2 */
 		led-signal2 {
 			label = "led:signal2";
-			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
-		/* 0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (B17) spi0_d0.gpio0[3] ~ SIGNAL_LED_B3 */
+		/* 0xb4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T2) lcd_data5.gpio2[11] ~ SIGNAL_LED_B3 */
 		led-signal3 {
 			label = "led:signal3";
-			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
@@ -127,10 +135,10 @@
 
 
 		/* --- G1700 KEYS/BUTTONS --- */
-		/* 0xb8 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T3) lcd_data6.gpio2[12] ~ KEY_1 */
+		/* 0x150 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (A17) spi0_sclk.gpio0[2] ~ KEY_1 */
 		key-1 {
 			label = "key:1";
-			gpios = <&gpio2 12 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
@@ -190,10 +198,10 @@
 			default-state = "off";
 		};
 
-		/* 0xb4 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (T2) lcd_data5.gpio2[11] ~ KEY_0 */
+		/* 0x154 ( PIN_OUTPUT_PULLDOWN | MUX_MODE7 ) -- (B17) spi0_d0.gpio0[3] ~ KEY_0 */
 		key-0 {
 			label = "key:0";
-			gpios = <&gpio2 11 GPIO_ACTIVE_HIGH>;
+			gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
 			default-state = "off";
 		};
 
