@@ -203,9 +203,7 @@ SECTIONS
 		INIT_CALLS
 		CON_INITCALL
 		SECURITY_INITCALL
-#ifdef NORMAL_INIT_RAM_FS
 		INIT_RAM_FS
-#endif
 	}
 #ifndef CONFIG_XIP_KERNEL
 	.exit.data : {
@@ -257,11 +255,6 @@ SECTIONS
 
 		_edata = .;
 	}
-#ifndef NORMAL_INIT_RAM_FS
-	.initramfs : {
-		INIT_RAM_FS
-	}
-#endif
 	_edata_loc = __data_loc + SIZEOF(.data);
 
 #ifdef CONFIG_HAVE_TCM
