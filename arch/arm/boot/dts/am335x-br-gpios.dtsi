@@ -257,26 +257,22 @@
 	};
 
 
-	/* "gpio-keys" class seems to have to be used for _all_ DT INPUT gpios, keys or not:
-	 *   https://e2e.ti.com/support/embedded/linux/f/354/t/394107
-
-	gpio_keys {
-		compatible = "gpio-keys";
+	/* Based on gpio-of-helper defined here: https://www.mail-archive.com/linux-gpio@vger.kernel.org/msg04361.html
+	 * NOTE:  This 'gpio-of-helper' driver looks about half-baked!  It does NOT set active low/high, nor create
+     *   string-based names.  USE WITH CAUTION!!!
+     */
+	gpio_inputs {
+		compatible = "gpio-of-helper";
 		pinctrl-names = "default";
 		pinctrl-0 = <&gpio_input_pins_default>;
+		status = "okay";
 
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		button@1 {
-			debounce_interval = <50>;
-			linux,code = <105>;
-			label = "left";
-			gpios = <&gpio1 16 0x1>;
-			gpio-key,wakeup;
-			autorepeat;
+		/* 0x7c ( PIN_INPUT_PULLUP | MUX_MODE7 ) -- (V6) gpmc_csn0.gpio1[29] ~ POWER_CONNECTED# */
+		power_connected {
+			gpio-name = "power:ac_connected";
+			gpio = <&gpio1 29 GPIO_ACTIVE_LOW>;
+			input;
 		};
 	};
-	*/
 
 };
