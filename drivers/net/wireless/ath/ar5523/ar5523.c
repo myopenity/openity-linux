@@ -25,7 +25,6 @@
  * that and only has minimal functionality.
  */
 #include <linux/compiler.h>
-#include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/list.h>
@@ -780,8 +779,6 @@ static void ar5523_tx(struct ieee80211_hw *hw,
 		ieee80211_stop_queues(hw);
 	}
 
-	data->skb = skb;
-
 	spin_lock_irqsave(&ar->tx_data_list_lock, flags);
 	list_add_tail(&data->list, &ar->tx_queue_pending);
 	spin_unlock_irqrestore(&ar->tx_data_list_lock, flags);
@@ -818,10 +815,13 @@ static void ar5523_tx_work_locked(struct ar5523 *ar)
 		if (!data)
 			break;
 
-		skb = data->skb;
+		txi = container_of((void *)data, struct ieee80211_tx_info,
+				   driver_data);
 		txqid = 0;
-		txi = IEEE80211_SKB_CB(skb);
+
+		skb = container_of((void *)txi, struct sk_buff, cb);
 		paylen = skb->len;
+
 		urb = usb_alloc_urb(0, GFP_KERNEL);
 		if (!urb) {
 			ar5523_err(ar, "Failed to allocate TX urb\n");
@@ -1091,7 +1091,8 @@ static int ar5523_set_rts_threshold(struct ieee80211_hw *hw, u32 value)
 	return ret;
 }
 
-static void ar5523_flush(struct ieee80211_hw *hw, u32 queues, bool drop)
+static void ar5523_flush(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+			 u32 queues, bool drop)
 {
 	struct ar5523 *ar = hw->priv;
 
@@ -1762,9 +1763,10 @@ static struct usb_device_id ar5523_id_table[] = {
 	AR5523_DEVICE_UX(0x2001, 0x3a00),	/* Dlink / DWLAG132 */
 	AR5523_DEVICE_UG(0x2001, 0x3a02),	/* Dlink / DWLG132 */
 	AR5523_DEVICE_UX(0x2001, 0x3a04),	/* Dlink / DWLAG122 */
+	AR5523_DEVICE_UG(0x07d1, 0x3a07),	/* D-Link / WUA-2340 rev A1 */
 	AR5523_DEVICE_UG(0x1690, 0x0712),	/* Gigaset / AR5523 */
 	AR5523_DEVICE_UG(0x1690, 0x0710),	/* Gigaset / SMCWUSBTG */
-	AR5523_DEVICE_UG(0x129b, 0x160c),	/* Gigaset / USB stick 108
+	AR5523_DEVICE_UG(0x129b, 0x160b),	/* Gigaset / USB stick 108
 						   (CyberTAN Technology) */
 	AR5523_DEVICE_UG(0x16ab, 0x7801),	/* Globalsun / AR5523_1 */
 	AR5523_DEVICE_UX(0x16ab, 0x7811),	/* Globalsun / AR5523_2 */

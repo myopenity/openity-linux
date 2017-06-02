@@ -1,5 +1,5 @@
 /*
- * Linux network driver for Brocade Converged Network Adapter.
+ * Linux network driver for QLogic BR-series Converged Network Adapter.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License (GPL) Version 2 as
@@ -11,9 +11,10 @@
  * General Public License for more details.
  */
 /*
- * Copyright (c) 2005-2010 Brocade Communications Systems, Inc.
+ * Copyright (c) 2005-2014 Brocade Communications Systems, Inc.
+ * Copyright (c) 2014-2015 QLogic Corporation
  * All rights reserved
- * www.brocade.com
+ * www.qlogic.com
  */
 
 #ifndef __BFA_IOC_H__
@@ -215,6 +216,13 @@ struct bfa_ioc_hwif {
 	void		(*ioc_sync_ack)		(struct bfa_ioc *ioc);
 	bool		(*ioc_sync_complete)	(struct bfa_ioc *ioc);
 	bool		(*ioc_lpu_read_stat)	(struct bfa_ioc *ioc);
+	void		(*ioc_set_fwstate)	(struct bfa_ioc *ioc,
+					enum bfi_ioc_state fwstate);
+	enum bfi_ioc_state (*ioc_get_fwstate) (struct bfa_ioc *ioc);
+	void		(*ioc_set_alt_fwstate)	(struct bfa_ioc *ioc,
+					enum bfi_ioc_state fwstate);
+	enum bfi_ioc_state (*ioc_get_alt_fwstate) (struct bfa_ioc *ioc);
+
 };
 
 #define bfa_ioc_pcifn(__ioc)		((__ioc)->pcidev.pci_func)
@@ -291,6 +299,7 @@ void bfa_nw_ioc_error_isr(struct bfa_ioc *ioc);
 bool bfa_nw_ioc_is_disabled(struct bfa_ioc *ioc);
 bool bfa_nw_ioc_is_operational(struct bfa_ioc *ioc);
 void bfa_nw_ioc_get_attr(struct bfa_ioc *ioc, struct bfa_ioc_attr *ioc_attr);
+enum bfa_status bfa_nw_ioc_fwsig_invalidate(struct bfa_ioc *ioc);
 void bfa_nw_ioc_notify_register(struct bfa_ioc *ioc,
 	struct bfa_ioc_notify *notify);
 bool bfa_nw_ioc_sem_get(void __iomem *sem_reg);

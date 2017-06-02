@@ -1,5 +1,5 @@
 /*
- * Linux network driver for Brocade Converged Network Adapter.
+ * Linux network driver for QLogic BR-series Converged Network Adapter.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License (GPL) Version 2 as
@@ -11,9 +11,10 @@
  * General Public License for more details.
  */
 /*
- * Copyright (c) 2005-2010 Brocade Communications Systems, Inc.
+ * Copyright (c) 2005-2014 Brocade Communications Systems, Inc.
+ * Copyright (c) 2014-2015 QLogic Corporation
  * All rights reserved
- * www.brocade.com
+ * www.qlogic.com
  */
 #ifndef __BFI_H__
 #define __BFI_H__
@@ -25,6 +26,7 @@
 /* BFI FW image type */
 #define	BFI_FLASH_CHUNK_SZ			256	/*!< Flash chunk size */
 #define	BFI_FLASH_CHUNK_SZ_WORDS	(BFI_FLASH_CHUNK_SZ/sizeof(u32))
+#define BFI_FLASH_IMAGE_SZ		0x100000
 
 /* Msg header common to all msgs */
 struct bfi_mhdr {
@@ -157,8 +159,8 @@ enum bfi_asic_gen {
 };
 
 enum bfi_asic_mode {
-	BFI_ASIC_MODE_FC	= 1,	/* FC upto 8G speed		*/
-	BFI_ASIC_MODE_FC16	= 2,	/* FC upto 16G speed		*/
+	BFI_ASIC_MODE_FC	= 1,	/* FC up to 8G speed		*/
+	BFI_ASIC_MODE_FC16	= 2,	/* FC up to 16G speed		*/
 	BFI_ASIC_MODE_ETH	= 3,	/* Ethernet ports		*/
 	BFI_ASIC_MODE_COMBO	= 4,	/* FC 16G and Ethernet 10G port	*/
 };
@@ -233,7 +235,29 @@ struct bfi_ioc_getattr_reply {
 #define BFI_IOC_TRC_HDR_SZ	32
 
 #define BFI_IOC_FW_SIGNATURE	(0xbfadbfad)
+#define BFI_IOC_FW_INV_SIGN	(0xdeaddead)
 #define BFI_IOC_MD5SUM_SZ	4
+
+struct bfi_ioc_fwver {
+#ifdef __BIG_ENDIAN
+	u8 patch;
+	u8 maint;
+	u8 minor;
+	u8 major;
+	u8 rsvd[2];
+	u8 build;
+	u8 phase;
+#else
+	u8 major;
+	u8 minor;
+	u8 maint;
+	u8 patch;
+	u8 phase;
+	u8 build;
+	u8 rsvd[2];
+#endif
+};
+
 struct bfi_ioc_image_hdr {
 	u32	signature;	/*!< constant signature */
 	u8	asic_gen;	/*!< asic generation */
@@ -242,8 +266,16 @@ struct bfi_ioc_image_hdr {
 	u8	port1_mode;	/*!< device mode for port 1 */
 	u32	exec;		/*!< exec vector	*/
 	u32	bootenv;	/*!< firmware boot env */
-	u32	rsvd_b[4];
+	u32	rsvd_b[2];
+	struct bfi_ioc_fwver fwver;
 	u32	md5sum[BFI_IOC_MD5SUM_SZ];
+};
+
+enum bfi_ioc_img_ver_cmp {
+	BFI_IOC_IMG_VER_INCOMP,
+	BFI_IOC_IMG_VER_OLD,
+	BFI_IOC_IMG_VER_SAME,
+	BFI_IOC_IMG_VER_BETTER
 };
 
 #define BFI_FWBOOT_DEVMODE_OFF		4

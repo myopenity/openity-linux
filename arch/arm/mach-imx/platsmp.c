@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Freescale Semiconductor, Inc.
+ * Copyright 2011-2015 Freescale Semiconductor, Inc.
  * Copyright 2011 Linaro Ltd.
  *
  * The code contained herein is licensed under the GNU General Public
@@ -11,7 +11,10 @@
  */
 
 #include <linux/init.h>
+#include <linux/of_address.h>
+#include <linux/of.h>
 #include <linux/smp.h>
+
 #include <asm/cacheflush.h>
 #include <asm/page.h>
 #include <asm/smp_scu.h>
@@ -20,10 +23,8 @@
 #include "common.h"
 #include "hardware.h"
 
-#define SCU_STANDBY_ENABLE	(1 << 5)
-
 u32 g_diag_reg;
-static void __iomem *scu_base;
+void __iomem *imx_scu_base;
 
 static struct map_desc scu_io_desc __initdata = {
 	/* .virtual and .pfn are run-time assigned */
@@ -42,15 +43,7 @@ void __init imx_scu_map_io(void)
 	scu_io_desc.pfn = __phys_to_pfn(base);
 	iotable_init(&scu_io_desc, 1);
 
-	scu_base = IMX_IO_ADDRESS(base);
-}
-
-void imx_scu_standby_enable(void)
-{
-	u32 val = readl_relaxed(scu_base);
-
-	val |= SCU_STANDBY_ENABLE;
-	writel_relaxed(val, scu_base);
+	imx_scu_base = IMX_IO_ADDRESS(base);
 }
 
 static int imx_boot_secondary(unsigned int cpu, struct task_struct *idle)
@@ -67,8 +60,25 @@ static int imx_boot_secondary(unsigned int cpu, struct task_struct *idle)
 static void __init imx_smp_init_cpus(void)
 {
 	int i, ncores;
+	unsigned long arch_type;
 
-	ncores = scu_get_core_count(scu_base);
+	asm volatile(
+		".align 4\n"
+		"mrc p15, 0, %0, c0, c0, 0\n"
+		: "=r" (arch_type)
+	);
+	/* MIDR[15:4] defines ARCH type */
+	mxc_set_arch_type((arch_type >> 4) & 0xfff);
+
+	if (arm_is_ca7()) {
+		unsigned long val;
+
+		/* CA7 core number, [25:24] of CP15 L2CTLR */
+		asm volatile("mrc p15, 1, %0, c9, c0, 2" : "=r" (val));
+		ncores = ((val >> 24) & 0x3) + 1;
+	} else {
+		ncores = scu_get_core_count(imx_scu_base);
+	}
 
 	for (i = ncores; i < NR_CPUS; i++)
 		set_cpu_possible(i, false);
@@ -76,11 +86,15 @@ static void __init imx_smp_init_cpus(void)
 
 void imx_smp_prepare(void)
 {
-	scu_enable(scu_base);
+	if (arm_is_ca7())
+		return;
+	scu_enable(imx_scu_base);
 }
 
 static void __init imx_smp_prepare_cpus(unsigned int max_cpus)
 {
+	if (arm_is_ca7())
+		return;
 	imx_smp_prepare();
 
 	/*
@@ -92,8 +106,7 @@ static void __init imx_smp_prepare_cpus(unsigned int max_cpus)
 	 * secondary cores when booting them.
 	 */
 	asm("mrc p15, 0, %0, c15, c0, 1" : "=r" (g_diag_reg) : : "cc");
-	__cpuc_flush_dcache_area(&g_diag_reg, sizeof(g_diag_reg));
-	outer_clean_range(__pa(&g_diag_reg), __pa(&g_diag_reg + 1));
+	sync_cache_w(&g_diag_reg);
 }
 
 struct smp_operations  imx_smp_ops __initdata = {
@@ -104,4 +117,34 @@ struct smp_operations  imx_smp_ops __initdata = {
 	.cpu_die		= imx_cpu_die,
 	.cpu_kill		= imx_cpu_kill,
 #endif
+};
+
+#define DCFG_CCSR_SCRATCHRW1	0x200
+
+static int ls1021a_boot_secondary(unsigned int cpu, struct task_struct *idle)
+{
+	arch_send_wakeup_ipi_mask(cpumask_of(cpu));
+
+	return 0;
+}
+
+static void __init ls1021a_smp_prepare_cpus(unsigned int max_cpus)
+{
+	struct device_node *np;
+	void __iomem *dcfg_base;
+	unsigned long paddr;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,ls1021a-dcfg");
+	dcfg_base = of_iomap(np, 0);
+	BUG_ON(!dcfg_base);
+
+	paddr = virt_to_phys(secondary_startup);
+	writel_relaxed(cpu_to_be32(paddr), dcfg_base + DCFG_CCSR_SCRATCHRW1);
+
+	iounmap(dcfg_base);
+}
+
+struct smp_operations  ls1021a_smp_ops __initdata = {
+	.smp_prepare_cpus	= ls1021a_smp_prepare_cpus,
+	.smp_boot_secondary	= ls1021a_boot_secondary,
 };

@@ -46,7 +46,6 @@
 #include <linux/skbuff.h>
 #include <net/pkt_sched.h>
 #include <net/inet_ecn.h>
-#include <linux/reciprocal_div.h>
 
 /* Controlling Queue Delay (CoDel) algorithm
  * =========================================
@@ -67,15 +66,26 @@ typedef s32 codel_tdiff_t;
 
 static inline codel_time_t codel_get_time(void)
 {
-	u64 ns = ktime_to_ns(ktime_get());
+	u64 ns = ktime_get_ns();
 
 	return ns >> CODEL_SHIFT;
 }
 
-#define codel_time_after(a, b)		((s32)(a) - (s32)(b) > 0)
-#define codel_time_after_eq(a, b)	((s32)(a) - (s32)(b) >= 0)
-#define codel_time_before(a, b)		((s32)(a) - (s32)(b) < 0)
-#define codel_time_before_eq(a, b)	((s32)(a) - (s32)(b) <= 0)
+/* Dealing with timer wrapping, according to RFC 1982, as desc in wikipedia:
+ *  https://en.wikipedia.org/wiki/Serial_number_arithmetic#General_Solution
+ * codel_time_after(a,b) returns true if the time a is after time b.
+ */
+#define codel_time_after(a, b)						\
+	(typecheck(codel_time_t, a) &&					\
+	 typecheck(codel_time_t, b) &&					\
+	 ((s32)((a) - (b)) > 0))
+#define codel_time_before(a, b) 	codel_time_after(b, a)
+
+#define codel_time_after_eq(a, b)					\
+	(typecheck(codel_time_t, a) &&					\
+	 typecheck(codel_time_t, b) &&					\
+	 ((s32)((a) - (b)) >= 0))
+#define codel_time_before_eq(a, b)	codel_time_after_eq(b, a)
 
 /* Qdiscs using codel plugin must use codel_skb_cb in their own cb[] */
 struct codel_skb_cb {
@@ -110,11 +120,13 @@ static inline u32 codel_time_to_us(codel_time_t val)
  * struct codel_params - contains codel parameters
  * @target:	target queue size (in time units)
  * @interval:	width of moving time window
+ * @mtu:	device mtu, or minimal queue backlog in bytes.
  * @ecn:	is Explicit Congestion Notification enabled
  */
 struct codel_params {
 	codel_time_t	target;
 	codel_time_t	interval;
+	u32		mtu;
 	bool		ecn;
 };
 
@@ -156,10 +168,12 @@ struct codel_stats {
 	u32		ecn_mark;
 };
 
-static void codel_params_init(struct codel_params *params)
+static void codel_params_init(struct codel_params *params,
+			      const struct Qdisc *sch)
 {
 	params->interval = MS2TIME(100);
 	params->target = MS2TIME(5);
+	params->mtu = psched_mtu(qdisc_dev(sch));
 	params->ecn = false;
 }
 
@@ -170,7 +184,7 @@ static void codel_vars_init(struct codel_vars *vars)
 
 static void codel_stats_init(struct codel_stats *stats)
 {
-	stats->maxpacket = 256;
+	stats->maxpacket = 0;
 }
 
 /*
@@ -200,9 +214,8 @@ static codel_time_t codel_control_law(codel_time_t t,
 				      codel_time_t interval,
 				      u32 rec_inv_sqrt)
 {
-	return t + reciprocal_divide(interval, rec_inv_sqrt << REC_INV_SQRT_SHIFT);
+	return t + reciprocal_scale(interval, rec_inv_sqrt << REC_INV_SQRT_SHIFT);
 }
-
 
 static bool codel_should_drop(const struct sk_buff *skb,
 			      struct Qdisc *sch,
@@ -225,7 +238,7 @@ static bool codel_should_drop(const struct sk_buff *skb,
 		stats->maxpacket = qdisc_pkt_len(skb);
 
 	if (codel_time_before(vars->ldelay, params->target) ||
-	    sch->qstats.backlog <= stats->maxpacket) {
+	    sch->qstats.backlog <= params->mtu) {
 		/* went below - stay below for at least interval */
 		vars->first_above_time = 0;
 		return false;

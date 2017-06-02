@@ -1,7 +1,7 @@
 /*******************************************************************
  * This file is part of the Emulex Linux Device Driver for         *
  * Fibre Channel Host Bus Adapters.                                *
- * Copyright (C) 2009-2013 Emulex.  All rights reserved.                *
+ * Copyright (C) 2009-2015 Emulex.  All rights reserved.                *
  * EMULEX and SLI are trademarks of Emulex.                        *
  * www.emulex.com                                                  *
  *                                                                 *
@@ -233,6 +233,9 @@ struct ulp_bde64 {
 	uint32_t addrLow;
 	uint32_t addrHigh;
 };
+
+/* Maximun size of immediate data that can fit into a 128 byte WQE */
+#define LPFC_MAX_BDE_IMM_SIZE	64
 
 struct lpfc_sli4_flags {
 	uint32_t word0;
@@ -2585,6 +2588,9 @@ struct lpfc_sli4_parameters {
 #define cfg_mqv_WORD				word6
 	uint32_t word7;
 	uint32_t word8;
+#define cfg_wqsize_SHIFT			8
+#define cfg_wqsize_MASK				0x0000000f
+#define cfg_wqsize_WORD				word8
 #define cfg_wqv_SHIFT				14
 #define cfg_wqv_MASK				0x00000003
 #define cfg_wqv_WORD				word8
@@ -2610,6 +2616,9 @@ struct lpfc_sli4_parameters {
 #define cfg_phwq_SHIFT				15
 #define cfg_phwq_MASK				0x00000001
 #define cfg_phwq_WORD				word12
+#define cfg_oas_SHIFT				25
+#define cfg_oas_MASK				0x00000001
+#define cfg_oas_WORD				word12
 #define cfg_loopbk_scope_SHIFT			28
 #define cfg_loopbk_scope_MASK			0x0000000f
 #define cfg_loopbk_scope_WORD			word12
@@ -3076,6 +3085,9 @@ struct lpfc_acqe_link {
 #define LPFC_ASYNC_LINK_SPEED_100MBPS		0x2
 #define LPFC_ASYNC_LINK_SPEED_1GBPS		0x3
 #define LPFC_ASYNC_LINK_SPEED_10GBPS		0x4
+#define LPFC_ASYNC_LINK_SPEED_20GBPS		0x5
+#define LPFC_ASYNC_LINK_SPEED_25GBPS		0x6
+#define LPFC_ASYNC_LINK_SPEED_40GBPS		0x7
 #define lpfc_acqe_link_duplex_SHIFT		16
 #define lpfc_acqe_link_duplex_MASK		0x000000FF
 #define lpfc_acqe_link_duplex_WORD		word0
@@ -3157,7 +3169,7 @@ struct lpfc_acqe_fc_la {
 #define lpfc_acqe_fc_la_speed_SHIFT		24
 #define lpfc_acqe_fc_la_speed_MASK		0x000000FF
 #define lpfc_acqe_fc_la_speed_WORD		word0
-#define LPFC_FC_LA_SPEED_UNKOWN		0x0
+#define LPFC_FC_LA_SPEED_UNKNOWN		0x0
 #define LPFC_FC_LA_SPEED_1G		0x1
 #define LPFC_FC_LA_SPEED_2G		0x2
 #define LPFC_FC_LA_SPEED_4G		0x4
@@ -3235,6 +3247,7 @@ struct lpfc_acqe_sli {
 #define LPFC_SLI_EVENT_TYPE_NVLOG_POST		0x4
 #define LPFC_SLI_EVENT_TYPE_DIAG_DUMP		0x5
 #define LPFC_SLI_EVENT_TYPE_MISCONFIGURED	0x9
+#define LPFC_SLI_EVENT_TYPE_REMOTE_DPORT	0xA
 };
 
 /*
@@ -3316,6 +3329,9 @@ struct wqe_common {
 #define wqe_ebde_cnt_SHIFT    0
 #define wqe_ebde_cnt_MASK     0x0000000f
 #define wqe_ebde_cnt_WORD     word10
+#define wqe_oas_SHIFT         6
+#define wqe_oas_MASK          0x00000001
+#define wqe_oas_WORD          word10
 #define wqe_lenloc_SHIFT      7
 #define wqe_lenloc_MASK       0x00000003
 #define wqe_lenloc_WORD       word10
@@ -3433,7 +3449,8 @@ struct els_request64_wqe {
 #define els_req64_hopcnt_SHIFT      24
 #define els_req64_hopcnt_MASK       0x000000ff
 #define els_req64_hopcnt_WORD       word13
-	uint32_t reserved[2];
+	uint32_t word14;
+	uint32_t max_response_payload_len;
 };
 
 struct xmit_els_rsp64_wqe {
@@ -3548,7 +3565,8 @@ struct gen_req64_wqe {
 	uint32_t relative_offset;
 	struct wqe_rctl_dfctl wge_ctl; /* word 5 */
 	struct wqe_common wqe_com;     /* words 6-11 */
-	uint32_t rsvd_12_15[4];
+	uint32_t rsvd_12_14[3];
+	uint32_t max_response_payload_len;
 };
 
 struct create_xri_wqe {
@@ -3578,7 +3596,13 @@ struct abort_cmd_wqe {
 
 struct fcp_iwrite64_wqe {
 	struct ulp_bde64 bde;
-	uint32_t payload_offset_len;
+	uint32_t word3;
+#define	cmd_buff_len_SHIFT  16
+#define	cmd_buff_len_MASK  0x00000ffff
+#define	cmd_buff_len_WORD  word3
+#define payload_offset_len_SHIFT 0
+#define payload_offset_len_MASK 0x0000ffff
+#define payload_offset_len_WORD word3
 	uint32_t total_xfer_len;
 	uint32_t initial_xfer_len;
 	struct wqe_common wqe_com;     /* words 6-11 */
@@ -3588,7 +3612,13 @@ struct fcp_iwrite64_wqe {
 
 struct fcp_iread64_wqe {
 	struct ulp_bde64 bde;
-	uint32_t payload_offset_len;   /* word 3 */
+	uint32_t word3;
+#define	cmd_buff_len_SHIFT  16
+#define	cmd_buff_len_MASK  0x00000ffff
+#define	cmd_buff_len_WORD  word3
+#define payload_offset_len_SHIFT 0
+#define payload_offset_len_MASK 0x0000ffff
+#define payload_offset_len_WORD word3
 	uint32_t total_xfer_len;       /* word 4 */
 	uint32_t rsrvd5;               /* word 5 */
 	struct wqe_common wqe_com;     /* words 6-11 */
@@ -3598,7 +3628,13 @@ struct fcp_iread64_wqe {
 
 struct fcp_icmnd64_wqe {
 	struct ulp_bde64 bde;          /* words 0-2 */
-	uint32_t rsrvd3;               /* word 3 */
+	uint32_t word3;
+#define	cmd_buff_len_SHIFT  16
+#define	cmd_buff_len_MASK  0x00000ffff
+#define	cmd_buff_len_WORD  word3
+#define payload_offset_len_SHIFT 0
+#define payload_offset_len_MASK 0x0000ffff
+#define payload_offset_len_WORD word3
 	uint32_t rsrvd4;               /* word 4 */
 	uint32_t rsrvd5;               /* word 5 */
 	struct wqe_common wqe_com;     /* words 6-11 */
@@ -3619,6 +3655,13 @@ union lpfc_wqe {
 	struct xmit_bls_rsp64_wqe xmit_bls_rsp;
 	struct xmit_els_rsp64_wqe xmit_els_rsp;
 	struct els_request64_wqe els_req;
+	struct gen_req64_wqe gen_req;
+};
+
+union lpfc_wqe128 {
+	uint32_t words[32];
+	struct lpfc_wqe_generic generic;
+	struct xmit_seq64_wqe xmit_sequence;
 	struct gen_req64_wqe gen_req;
 };
 

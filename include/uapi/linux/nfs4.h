@@ -150,7 +150,7 @@
 #define NFS4_SECINFO_STYLE4_CURRENT_FH	0
 #define NFS4_SECINFO_STYLE4_PARENT	1
 
-#define NFS4_MAX_UINT64	(~(u64)0)
+#define NFS4_MAX_UINT64	(~(__u64)0)
 
 /* An NFS4 sessions server must support at least NFS4_MAX_OPS operations.
  * If a compound requires more operations, adjust NFS4_MAX_OPS accordingly.
@@ -161,13 +161,6 @@
  * actual operation per compound
  */
 #define NFS4_MAX_BACK_CHANNEL_OPS 2
-
-enum nfs4_acl_whotype {
-	NFS4_ACL_WHO_NAMED = 0,
-	NFS4_ACL_WHO_OWNER,
-	NFS4_ACL_WHO_GROUP,
-	NFS4_ACL_WHO_EVERYONE,
-};
 
 #endif /* _UAPI_LINUX_NFS4_H */
 

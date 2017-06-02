@@ -44,10 +44,10 @@
 #define __LST_CONSOLE_H__
 
 
-#include <linux/libcfs/libcfs.h>
-#include <linux/lnet/lnet.h>
-#include <linux/lnet/lib-types.h>
-#include <linux/lnet/lnetst.h>
+#include "../../include/linux/libcfs/libcfs.h"
+#include "../../include/linux/lnet/lnet.h"
+#include "../../include/linux/lnet/lib-types.h"
+#include "../../include/linux/lnet/lnetst.h"
 #include "selftest.h"
 #include "conrpc.h"
 
@@ -56,7 +56,7 @@ typedef struct lstcon_node {
 	int		  nd_ref;	 /* reference count */
 	int		  nd_state;       /* state of the node */
 	int		  nd_timeout;     /* session timeout */
-	cfs_time_t	   nd_stamp;       /* timestamp of last replied RPC */
+	unsigned long	   nd_stamp;       /* timestamp of last replied RPC */
 	struct lstcon_rpc    nd_ping;	/* ping rpc */
 } lstcon_node_t;				/*** node descriptor */
 
@@ -100,7 +100,7 @@ typedef struct {
 	struct list_head	     *bat_cli_hash;   /* hash table of client nodes */
 	struct list_head	      bat_srv_list;   /* list head of server nodes */
 	struct list_head	     *bat_srv_hash;   /* hash table of server nodes */
-} lstcon_batch_t;			     /*** (tests ) batch descritptor */
+} lstcon_batch_t;			     /*** (tests ) batch descriptor */
 
 typedef struct lstcon_test {
 	lstcon_tsb_hdr_t      tes_hdr;	/* test batch header */
@@ -182,6 +182,9 @@ lstcon_id2hash (lnet_process_id_t id, struct list_head *hash)
 	return &hash[idx];
 }
 
+int lstcon_console_init(void);
+int lstcon_ioctl_entry(unsigned int cmd, struct libcfs_ioctl_data *data);
+int lstcon_console_fini(void);
 extern int lstcon_session_match(lst_sid_t sid);
 extern int lstcon_session_new(char *name, int key, unsigned version,
 			      int timeout, int flags, lst_sid_t *sid_up);
@@ -224,9 +227,9 @@ extern int lstcon_group_stat(char *grp_name, int timeout,
 			     struct list_head *result_up);
 extern int lstcon_nodes_stat(int count, lnet_process_id_t *ids_up,
 			     int timeout, struct list_head *result_up);
-extern int lstcon_test_add(char *name, int type, int loop, int concur,
-			   int dist, int span, char *src_name, char * dst_name,
+extern int lstcon_test_add(char *batch_name, int type, int loop,
+			   int concur, int dist, int span,
+			   char *src_name, char *dst_name,
 			   void *param, int paramlen, int *retp,
 			   struct list_head *result_up);
-
 #endif

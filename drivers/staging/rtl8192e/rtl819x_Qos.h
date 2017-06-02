@@ -19,8 +19,6 @@
 #ifndef __INC_QOS_TYPE_H
 #define __INC_QOS_TYPE_H
 
-#include "rtllib_endianfree.h"
-
 #define BIT0		    0x00000001
 #define BIT1		    0x00000002
 #define BIT2		    0x00000004
@@ -201,43 +199,6 @@ enum qos_ie_source {
 
 #define AC_PARAM_SIZE	4
 
-#define GET_WMM_AC_PARAM_AIFSN(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 0, 4))
-#define SET_WMM_AC_PARAM_AIFSN(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 0, 4, _val)
-
-#define GET_WMM_AC_PARAM_ACM(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 4, 1))
-#define SET_WMM_AC_PARAM_ACM(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 4, 1, _val)
-
-#define GET_WMM_AC_PARAM_ACI(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 5, 2))
-#define SET_WMM_AC_PARAM_ACI(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 5, 2, _val)
-
-#define GET_WMM_AC_PARAM_ACI_AIFSN(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 0, 8))
-#define SET_WMM_AC_PARAM_ACI_AIFSN(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 0, 8, _val)
-
-#define GET_WMM_AC_PARAM_ECWMIN(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 8, 4))
-#define SET_WMM_AC_PARAM_ECWMIN(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 8, 4, _val)
-
-#define GET_WMM_AC_PARAM_ECWMAX(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 12, 4))
-#define SET_WMM_AC_PARAM_ECWMAX(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 12, 4, _val)
-
-#define GET_WMM_AC_PARAM_TXOP_LIMIT(_pStart) \
-	((u8)LE_BITS_TO_4BYTE(_pStart, 16, 16))
-#define SET_WMM_AC_PARAM_TXOP_LIMIT(_pStart, _val) \
-	SET_BITS_TO_LE_4BYTE(_pStart, 16, 16, _val)
-
-
-
 #define WMM_PARAM_ELEMENT_SIZE	(8+(4*AC_PARAM_SIZE))
 
 enum qos_ele_subtype {
@@ -377,18 +338,6 @@ struct sta_qos {
 };
 
 #define QBSS_LOAD_SIZE				5
-#define GET_QBSS_LOAD_STA_COUNT(__pStart)	\
-		ReadEF2Byte(__pStart)
-#define SET_QBSS_LOAD_STA_COUNT(__pStart, __Value)	\
-		WriteEF2Byte(__pStart, __Value)
-#define GET_QBSS_LOAD_CHNL_UTILIZATION(__pStart)	\
-		ReadEF1Byte((u8 *)(__pStart) + 2)
-#define SET_QBSS_LOAD_CHNL_UTILIZATION(__pStart, __Value)	\
-		WriteEF1Byte((u8 *)(__pStart) + 2, __Value)
-#define GET_QBSS_LOAD_AVAILABLE_CAPACITY(__pStart)	\
-		ReadEF2Byte((u8 *)(__pStart) + 3)
-#define SET_QBSS_LOAD_AVAILABLE_CAPACITY(__pStart, __Value) \
-		WriteEF2Byte((u8 *)(__pStart) + 3, __Value)
 
 struct bss_qos {
 	QOS_MODE bdQoSMode;
@@ -403,10 +352,6 @@ struct bss_qos {
 	u8 QBssLoad[QBSS_LOAD_SIZE];
 	bool bQBssLoadValid;
 };
-
-#define sQoSCtlLng	2
-#define QOS_CTRL_LEN(_QosMode)	((_QosMode > QOS_DISABLE) ? sQoSCtlLng : 0)
-
 
 #define IsACValid(ac)		((ac >= 0 && ac <= 7) ? true : false)
 

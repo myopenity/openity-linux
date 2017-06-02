@@ -34,6 +34,7 @@
 #define MLX4_QP_H
 
 #include <linux/types.h>
+#include <linux/if_ether.h>
 
 #include <linux/mlx4/device.h>
 
@@ -55,7 +56,8 @@ enum mlx4_qp_optpar {
 	MLX4_QP_OPTPAR_RNR_RETRY		= 1 << 13,
 	MLX4_QP_OPTPAR_ACK_TIMEOUT		= 1 << 14,
 	MLX4_QP_OPTPAR_SCHED_QUEUE		= 1 << 16,
-	MLX4_QP_OPTPAR_COUNTER_INDEX		= 1 << 20
+	MLX4_QP_OPTPAR_COUNTER_INDEX		= 1 << 20,
+	MLX4_QP_OPTPAR_VLAN_STRIPPING		= 1 << 21,
 };
 
 enum mlx4_qp_state {
@@ -94,6 +96,7 @@ enum {
 	MLX4_QP_BIT_RRE				= 1 << 15,
 	MLX4_QP_BIT_RWE				= 1 << 14,
 	MLX4_QP_BIT_RAE				= 1 << 13,
+	MLX4_QP_BIT_FPP				= 1 <<	3,
 	MLX4_QP_BIT_RIC				= 1 <<	4,
 };
 
@@ -108,11 +111,17 @@ enum {
 	MLX4_RSS_TCP_IPV4			= 1 << 4,
 	MLX4_RSS_IPV4				= 1 << 5,
 
+	MLX4_RSS_BY_OUTER_HEADERS		= 0 << 6,
+	MLX4_RSS_BY_INNER_HEADERS		= 2 << 6,
+	MLX4_RSS_BY_INNER_HEADERS_IPONLY	= 3 << 6,
+
 	/* offset of mlx4_rss_context within mlx4_qp_context.pri_path */
 	MLX4_RSS_OFFSET_IN_QPC_PRI_PATH		= 0x24,
 	/* offset of being RSS indirection QP within mlx4_qp_context.flags */
 	MLX4_RSS_QPC_FLAG_OFFSET		= 13,
 };
+
+#define MLX4_EN_RSS_KEY_SIZE 40
 
 struct mlx4_rss_context {
 	__be32			base_qpn;
@@ -120,7 +129,7 @@ struct mlx4_rss_context {
 	u16			reserved;
 	u8			hash_fn;
 	u8			flags;
-	__be32			rss_key[10];
+	__be32			rss_key[MLX4_EN_RSS_KEY_SIZE / sizeof(__be32)];
 	__be32			base_qpn_udp;
 };
 
@@ -143,7 +152,7 @@ struct mlx4_qp_path {
 	u8			feup;
 	u8			fvl_rx;
 	u8			reserved4[2];
-	u8			dmac[6];
+	u8			dmac[ETH_ALEN];
 };
 
 enum { /* fl */
@@ -198,14 +207,17 @@ struct mlx4_qp_context {
 	__be32			msn;
 	__be16			rq_wqe_counter;
 	__be16			sq_wqe_counter;
-	u32			reserved3[2];
+	u32			reserved3;
+	__be16			rate_limit_params;
+	u8			reserved4;
+	u8			qos_vport;
 	__be32			param3;
 	__be32			nummmcpeers_basemkey;
 	u8			log_page_size;
-	u8			reserved4[2];
+	u8			reserved5[2];
 	u8			mtt_base_addr_h;
 	__be32			mtt_base_addr_l;
-	u32			reserved5[10];
+	u32			reserved6[10];
 };
 
 struct mlx4_update_qp_context {
@@ -220,6 +232,8 @@ struct mlx4_update_qp_context {
 enum {
 	MLX4_UPD_QP_MASK_PM_STATE	= 32,
 	MLX4_UPD_QP_MASK_VSD		= 33,
+	MLX4_UPD_QP_MASK_QOS_VPP	= 34,
+	MLX4_UPD_QP_MASK_RATE_LIMIT	= 35,
 };
 
 enum {
@@ -251,6 +265,8 @@ enum { /* param3 */
 
 enum {
 	MLX4_WQE_CTRL_NEC		= 1 << 29,
+	MLX4_WQE_CTRL_IIP		= 1 << 28,
+	MLX4_WQE_CTRL_ILP		= 1 << 27,
 	MLX4_WQE_CTRL_FENCE		= 1 << 6,
 	MLX4_WQE_CTRL_CQ_UPDATE		= 3 << 2,
 	MLX4_WQE_CTRL_SOLICITED		= 1 << 1,
@@ -263,9 +279,14 @@ enum {
 
 struct mlx4_wqe_ctrl_seg {
 	__be32			owner_opcode;
-	__be16			vlan_tag;
-	u8			ins_vlan;
-	u8			fence_size;
+	union {
+		struct {
+			__be16			vlan_tag;
+			u8			ins_vlan;
+			u8			fence_size;
+		};
+		__be32			bf_qpn;
+	};
 	/*
 	 * High 24 bits are SRC remote buffer; low 8 bits are flags:
 	 * [7]   SO (strong ordering)
@@ -318,7 +339,7 @@ struct mlx4_wqe_datagram_seg {
 	__be32			dqpn;
 	__be32			qkey;
 	__be16			vlan;
-	u8			mac[6];
+	u8			mac[ETH_ALEN];
 };
 
 struct mlx4_wqe_lso_seg {
@@ -409,6 +430,29 @@ struct mlx4_wqe_inline_seg {
 	__be32			byte_count;
 };
 
+enum mlx4_update_qp_attr {
+	MLX4_UPDATE_QP_SMAC		= 1 << 0,
+	MLX4_UPDATE_QP_VSD		= 1 << 1,
+	MLX4_UPDATE_QP_RATE_LIMIT	= 1 << 2,
+	MLX4_UPDATE_QP_QOS_VPORT	= 1 << 3,
+	MLX4_UPDATE_QP_SUPPORTED_ATTRS	= (1 << 4) - 1
+};
+
+enum mlx4_update_qp_params_flags {
+	MLX4_UPDATE_QP_PARAMS_FLAGS_VSD_ENABLE		= 1 << 0,
+};
+
+struct mlx4_update_qp_params {
+	u8	smac_index;
+	u8	qos_vport;
+	u32	flags;
+	u16	rate_unit;
+	u16	rate_val;
+};
+
+int mlx4_update_qp(struct mlx4_dev *dev, u32 qpn,
+		   enum mlx4_update_qp_attr attr,
+		   struct mlx4_update_qp_params *params);
 int mlx4_qp_modify(struct mlx4_dev *dev, struct mlx4_mtt *mtt,
 		   enum mlx4_qp_state cur_state, enum mlx4_qp_state new_state,
 		   struct mlx4_qp_context *context, enum mlx4_qp_optpar optpar,

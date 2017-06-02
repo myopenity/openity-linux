@@ -43,9 +43,10 @@ MODULE_LICENSE("GPL");
 
 #define PRIV_VMA_LOCKED ((void *)1)
 
-#ifndef HAVE_ARCH_PRIVCMD_MMAP
-static int privcmd_enforce_singleshot_mapping(struct vm_area_struct *vma);
-#endif
+static int privcmd_vma_range_is_mapped(
+               struct vm_area_struct *vma,
+               unsigned long addr,
+               unsigned long nr_pages);
 
 static long privcmd_ioctl_hypercall(void __user *udata)
 {
@@ -55,10 +56,12 @@ static long privcmd_ioctl_hypercall(void __user *udata)
 	if (copy_from_user(&hypercall, udata, sizeof(hypercall)))
 		return -EFAULT;
 
+	xen_preemptible_hcall_begin();
 	ret = privcmd_call(hypercall.op,
 			   hypercall.arg[0], hypercall.arg[1],
 			   hypercall.arg[2], hypercall.arg[3],
 			   hypercall.arg[4]);
+	xen_preemptible_hcall_end();
 
 	return ret;
 }
@@ -156,6 +159,40 @@ static int traverse_pages(unsigned nelem, size_t size,
 	return ret;
 }
 
+/*
+ * Similar to traverse_pages, but use each page as a "block" of
+ * data to be processed as one unit.
+ */
+static int traverse_pages_block(unsigned nelem, size_t size,
+				struct list_head *pos,
+				int (*fn)(void *data, int nr, void *state),
+				void *state)
+{
+	void *pagedata;
+	unsigned pageidx;
+	int ret = 0;
+
+	BUG_ON(size > PAGE_SIZE);
+
+	pageidx = PAGE_SIZE;
+
+	while (nelem) {
+		int nr = (PAGE_SIZE/size);
+		struct page *page;
+		if (nr > nelem)
+			nr = nelem;
+		pos = pos->next;
+		page = list_entry(pos, struct page, lru);
+		pagedata = page_address(page);
+		ret = (*fn)(pagedata, nr, state);
+		if (ret)
+			break;
+		nelem -= nr;
+	}
+
+	return ret;
+}
+
 struct mmap_mfn_state {
 	unsigned long va;
 	struct vm_area_struct *vma;
@@ -225,9 +262,9 @@ static long privcmd_ioctl_mmap(void __user *udata)
 		vma = find_vma(mm, msg->va);
 		rc = -EINVAL;
 
-		if (!vma || (msg->va != vma->vm_start) ||
-		    !privcmd_enforce_singleshot_mapping(vma))
+		if (!vma || (msg->va != vma->vm_start) || vma->vm_private_data)
 			goto out_up;
+		vma->vm_private_data = PRIV_VMA_LOCKED;
 	}
 
 	state.va = vma->vm_start;
@@ -271,39 +308,25 @@ struct mmap_batch_state {
 /* auto translated dom0 note: if domU being created is PV, then mfn is
  * mfn(addr on bus). If it's auto xlated, then mfn is pfn (input to HAP).
  */
-static int mmap_batch_fn(void *data, void *state)
+static int mmap_batch_fn(void *data, int nr, void *state)
 {
 	xen_pfn_t *mfnp = data;
 	struct mmap_batch_state *st = state;
 	struct vm_area_struct *vma = st->vma;
 	struct page **pages = vma->vm_private_data;
-	struct page *cur_page = NULL;
+	struct page **cur_pages = NULL;
 	int ret;
 
 	if (xen_feature(XENFEAT_auto_translated_physmap))
-		cur_page = pages[st->index++];
+		cur_pages = &pages[st->index];
 
-	ret = xen_remap_domain_mfn_range(st->vma, st->va & PAGE_MASK, *mfnp, 1,
-					 st->vma->vm_page_prot, st->domain,
-					 &cur_page);
+	BUG_ON(nr < 0);
+	ret = xen_remap_domain_mfn_array(st->vma, st->va & PAGE_MASK, mfnp, nr,
+					 (int *)mfnp, st->vma->vm_page_prot,
+					 st->domain, cur_pages);
 
-	/* Store error code for second pass. */
-	if (st->version == 1) {
-		if (ret < 0) {
-			/*
-			 * V1 encodes the error codes in the 32bit top nibble of the
-			 * mfn (with its known limitations vis-a-vis 64 bit callers).
-			 */
-			*mfnp |= (ret == -ENOENT) ?
-						PRIVCMD_MMAPBATCH_PAGED_ERROR :
-						PRIVCMD_MMAPBATCH_MFN_ERROR;
-		}
-	} else { /* st->version == 2 */
-		*((int *) mfnp) = ret;
-	}
-
-	/* And see if it affects the global_error. */
-	if (ret < 0) {
+	/* Adjust the global_error? */
+	if (ret != nr) {
 		if (ret == -ENOENT)
 			st->global_error = -ENOENT;
 		else {
@@ -312,29 +335,56 @@ static int mmap_batch_fn(void *data, void *state)
 				st->global_error = 1;
 		}
 	}
-	st->va += PAGE_SIZE;
+	st->va += PAGE_SIZE * nr;
+	st->index += nr;
 
 	return 0;
 }
 
-static int mmap_return_errors(void *data, void *state)
+static int mmap_return_error(int err, struct mmap_batch_state *st)
 {
-	struct mmap_batch_state *st = state;
+	int ret;
 
 	if (st->version == 1) {
-		xen_pfn_t mfnp = *((xen_pfn_t *) data);
-		if (mfnp & PRIVCMD_MMAPBATCH_MFN_ERROR)
-			return __put_user(mfnp, st->user_mfn++);
-		else
+		if (err) {
+			xen_pfn_t mfn;
+
+			ret = get_user(mfn, st->user_mfn);
+			if (ret < 0)
+				return ret;
+			/*
+			 * V1 encodes the error codes in the 32bit top
+			 * nibble of the mfn (with its known
+			 * limitations vis-a-vis 64 bit callers).
+			 */
+			mfn |= (err == -ENOENT) ?
+				PRIVCMD_MMAPBATCH_PAGED_ERROR :
+				PRIVCMD_MMAPBATCH_MFN_ERROR;
+			return __put_user(mfn, st->user_mfn++);
+		} else
 			st->user_mfn++;
 	} else { /* st->version == 2 */
-		int err = *((int *) data);
 		if (err)
 			return __put_user(err, st->user_err++);
 		else
 			st->user_err++;
 	}
 
+	return 0;
+}
+
+static int mmap_return_errors(void *data, int nr, void *state)
+{
+	struct mmap_batch_state *st = state;
+	int *errs = data;
+	int i;
+	int ret;
+
+	for (i = 0; i < nr; i++) {
+		ret = mmap_return_error(errs[i], st);
+		if (ret < 0)
+			return ret;
+	}
 	return 0;
 }
 
@@ -358,7 +408,7 @@ static int alloc_empty_pages(struct vm_area_struct *vma, int numpgs)
 		kfree(pages);
 		return -ENOMEM;
 	}
-	BUG_ON(vma->vm_private_data != PRIV_VMA_LOCKED);
+	BUG_ON(vma->vm_private_data != NULL);
 	vma->vm_private_data = pages;
 
 	return 0;
@@ -421,19 +471,43 @@ static long privcmd_ioctl_mmap_batch(void __user *udata, int version)
 
 	vma = find_vma(mm, m.addr);
 	if (!vma ||
-	    vma->vm_ops != &privcmd_vm_ops ||
-	    (m.addr != vma->vm_start) ||
-	    ((m.addr + (nr_pages << PAGE_SHIFT)) != vma->vm_end) ||
-	    !privcmd_enforce_singleshot_mapping(vma)) {
-		up_write(&mm->mmap_sem);
+	    vma->vm_ops != &privcmd_vm_ops) {
 		ret = -EINVAL;
-		goto out;
+		goto out_unlock;
 	}
-	if (xen_feature(XENFEAT_auto_translated_physmap)) {
-		ret = alloc_empty_pages(vma, m.num);
-		if (ret < 0) {
-			up_write(&mm->mmap_sem);
-			goto out;
+
+	/*
+	 * Caller must either:
+	 *
+	 * Map the whole VMA range, which will also allocate all the
+	 * pages required for the auto_translated_physmap case.
+	 *
+	 * Or
+	 *
+	 * Map unmapped holes left from a previous map attempt (e.g.,
+	 * because those foreign frames were previously paged out).
+	 */
+	if (vma->vm_private_data == NULL) {
+		if (m.addr != vma->vm_start ||
+		    m.addr + (nr_pages << PAGE_SHIFT) != vma->vm_end) {
+			ret = -EINVAL;
+			goto out_unlock;
+		}
+		if (xen_feature(XENFEAT_auto_translated_physmap)) {
+			ret = alloc_empty_pages(vma, m.num);
+			if (ret < 0)
+				goto out_unlock;
+		} else
+			vma->vm_private_data = PRIV_VMA_LOCKED;
+	} else {
+		if (m.addr < vma->vm_start ||
+		    m.addr + (nr_pages << PAGE_SHIFT) > vma->vm_end) {
+			ret = -EINVAL;
+			goto out_unlock;
+		}
+		if (privcmd_vma_range_is_mapped(vma, m.addr, nr_pages)) {
+			ret = -EINVAL;
+			goto out_unlock;
 		}
 	}
 
@@ -445,8 +519,8 @@ static long privcmd_ioctl_mmap_batch(void __user *udata, int version)
 	state.version       = version;
 
 	/* mmap_batch_fn guarantees ret == 0 */
-	BUG_ON(traverse_pages(m.num, sizeof(xen_pfn_t),
-			     &pagelist, mmap_batch_fn, &state));
+	BUG_ON(traverse_pages_block(m.num, sizeof(xen_pfn_t),
+				    &pagelist, mmap_batch_fn, &state));
 
 	up_write(&mm->mmap_sem);
 
@@ -454,8 +528,8 @@ static long privcmd_ioctl_mmap_batch(void __user *udata, int version)
 		/* Write back errors in second pass. */
 		state.user_mfn = (xen_pfn_t *)m.arr;
 		state.user_err = m.err;
-		ret = traverse_pages(m.num, sizeof(xen_pfn_t),
-							 &pagelist, mmap_return_errors, &state);
+		ret = traverse_pages_block(m.num, sizeof(xen_pfn_t),
+					   &pagelist, mmap_return_errors, &state);
 	} else
 		ret = 0;
 
@@ -466,8 +540,11 @@ static long privcmd_ioctl_mmap_batch(void __user *udata, int version)
 
 out:
 	free_page_list(&pagelist);
-
 	return ret;
+
+out_unlock:
+	up_write(&mm->mmap_sem);
+	goto out;
 }
 
 static long privcmd_ioctl(struct file *file,
@@ -505,12 +582,17 @@ static void privcmd_close(struct vm_area_struct *vma)
 {
 	struct page **pages = vma->vm_private_data;
 	int numpgs = (vma->vm_end - vma->vm_start) >> PAGE_SHIFT;
+	int rc;
 
 	if (!xen_feature(XENFEAT_auto_translated_physmap) || !numpgs || !pages)
 		return;
 
-	xen_unmap_domain_mfn_range(vma, numpgs, pages);
-	free_xenballooned_pages(numpgs, pages);
+	rc = xen_unmap_domain_mfn_range(vma, numpgs, pages);
+	if (rc == 0)
+		free_xenballooned_pages(numpgs, pages);
+	else
+		pr_crit("unable to unmap MFN range: leaking %d pages. rc=%d\n",
+			numpgs, rc);
 	kfree(pages);
 }
 
@@ -540,9 +622,24 @@ static int privcmd_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-static int privcmd_enforce_singleshot_mapping(struct vm_area_struct *vma)
+/*
+ * For MMAPBATCH*. This allows asserting the singleshot mapping
+ * on a per pfn/pte basis. Mapping calls that fail with ENOENT
+ * can be then retried until success.
+ */
+static int is_mapped_fn(pte_t *pte, struct page *pmd_page,
+	                unsigned long addr, void *data)
 {
-	return !cmpxchg(&vma->vm_private_data, NULL, PRIV_VMA_LOCKED);
+	return pte_none(*pte) ? 0 : -EBUSY;
+}
+
+static int privcmd_vma_range_is_mapped(
+	           struct vm_area_struct *vma,
+	           unsigned long addr,
+	           unsigned long nr_pages)
+{
+	return apply_to_page_range(vma->vm_mm, addr, nr_pages << PAGE_SHIFT,
+				   is_mapped_fn, NULL) != 0;
 }
 
 const struct file_operations xen_privcmd_fops = {

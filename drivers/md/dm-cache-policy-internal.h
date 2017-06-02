@@ -16,9 +16,10 @@
  */
 static inline int policy_map(struct dm_cache_policy *p, dm_oblock_t oblock,
 			     bool can_block, bool can_migrate, bool discarded_oblock,
-			     struct bio *bio, struct policy_result *result)
+			     struct bio *bio, struct policy_locker *locker,
+			     struct policy_result *result)
 {
-	return p->map(p, oblock, can_block, can_migrate, discarded_oblock, bio, result);
+	return p->map(p, oblock, can_block, can_migrate, discarded_oblock, bio, locker, result);
 }
 
 static inline int policy_lookup(struct dm_cache_policy *p, dm_oblock_t oblock, dm_cblock_t *cblock)
@@ -61,7 +62,12 @@ static inline int policy_writeback_work(struct dm_cache_policy *p,
 
 static inline void policy_remove_mapping(struct dm_cache_policy *p, dm_oblock_t oblock)
 {
-	return p->remove_mapping(p, oblock);
+	p->remove_mapping(p, oblock);
+}
+
+static inline int policy_remove_cblock(struct dm_cache_policy *p, dm_cblock_t cblock)
+{
+	return p->remove_cblock(p, cblock);
 }
 
 static inline void policy_force_mapping(struct dm_cache_policy *p,

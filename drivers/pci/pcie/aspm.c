@@ -548,7 +548,7 @@ static struct pcie_link_state *alloc_pcie_link_state(struct pci_dev *pdev)
 
 /*
  * pcie_aspm_init_link_state: Initiate PCI express link state.
- * It is called after the pcie and its children devices are scaned.
+ * It is called after the pcie and its children devices are scanned.
  * @pdev: the root port or switch downstream port
  */
 void pcie_aspm_init_link_state(struct pci_dev *pdev)
@@ -782,24 +782,6 @@ void pci_disable_link_state(struct pci_dev *pdev, int state)
 }
 EXPORT_SYMBOL(pci_disable_link_state);
 
-void pcie_clear_aspm(struct pci_bus *bus)
-{
-	struct pci_dev *child;
-
-	if (aspm_force)
-		return;
-
-	/*
-	 * Clear any ASPM setup that the firmware has carried out on this bus
-	 */
-	list_for_each_entry(child, &bus->devices, bus_list) {
-		__pci_disable_link_state(child, PCIE_LINK_STATE_L0S |
-					 PCIE_LINK_STATE_L1 |
-					 PCIE_LINK_STATE_CLKPM,
-					 false, true);
-	}
-}
-
 static int pcie_aspm_set_policy(const char *val, struct kernel_param *kp)
 {
 	int i;
@@ -859,7 +841,10 @@ static ssize_t link_state_store(struct device *dev,
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct pcie_link_state *link, *root = pdev->link_state->root;
-	u32 val = buf[0] - '0', state = 0;
+	u32 val, state = 0;
+
+	if (kstrtouint(buf, 10, &val))
+		return -EINVAL;
 
 	if (aspm_disabled)
 		return -EPERM;
@@ -900,15 +885,14 @@ static ssize_t clk_ctl_store(struct device *dev,
 		size_t n)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
-	int state;
+	bool state;
 
-	if (n < 1)
+	if (strtobool(buf, &state))
 		return -EINVAL;
-	state = buf[0]-'0';
 
 	down_read(&pci_bus_sem);
 	mutex_lock(&aspm_lock);
-	pcie_set_clkpm_nocheck(pdev->link_state, !!state);
+	pcie_set_clkpm_nocheck(pdev->link_state, state);
 	mutex_unlock(&aspm_lock);
 	up_read(&pci_bus_sem);
 
@@ -983,18 +967,6 @@ void pcie_no_aspm(void)
 		aspm_disabled = 1;
 	}
 }
-
-/**
- * pcie_aspm_enabled - is PCIe ASPM enabled?
- *
- * Returns true if ASPM has not been disabled by the command-line option
- * pcie_aspm=off.
- **/
-int pcie_aspm_enabled(void)
-{
-       return !aspm_disabled;
-}
-EXPORT_SYMBOL(pcie_aspm_enabled);
 
 bool pcie_aspm_support_enabled(void)
 {

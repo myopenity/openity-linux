@@ -1,7 +1,7 @@
 /*
  * CAAM control-plane driver backend public-level include definitions
  *
- * Copyright 2012 Freescale Semiconductor, Inc.
+ * Copyright (C) 2015 Freescale Semiconductor, Inc.
  */
 
 #ifndef CTRL_H

@@ -42,7 +42,7 @@ void die(const char *str, struct pt_regs *regs, unsigned long address)
  *  -for kernel, chk if due to copy_(to|from)_user, otherwise die()
  */
 static noinline int
-handle_exception(const char *str, struct pt_regs *regs, siginfo_t *info)
+unhandled_exception(const char *str, struct pt_regs *regs, siginfo_t *info)
 {
 	if (user_mode(regs)) {
 		struct task_struct *tsk = current;
@@ -71,7 +71,7 @@ int name(unsigned long address, struct pt_regs *regs) \
 		.si_code  = sicode,		\
 		.si_addr = (void __user *)address,	\
 	};					\
-	return handle_exception(str, regs, &info);\
+	return unhandled_exception(str, regs, &info);\
 }
 
 /*
@@ -84,19 +84,18 @@ DO_ERROR_INFO(SIGBUS, "Invalid Mem Access", do_memory_error, BUS_ADRERR)
 DO_ERROR_INFO(SIGTRAP, "Breakpoint Set", trap_is_brkpt, TRAP_BRKPT)
 DO_ERROR_INFO(SIGBUS, "Misaligned Access", do_misaligned_error, BUS_ADRALN)
 
-#ifdef CONFIG_ARC_MISALIGN_ACCESS
 /*
  * Entry Point for Misaligned Data access Exception, for emulating in software
  */
 int do_misaligned_access(unsigned long address, struct pt_regs *regs,
 			 struct callee_regs *cregs)
 {
+	/* If emulation not enabled, or failed, kill the task */
 	if (misaligned_fixup(address, regs, cregs) != 0)
 		return do_misaligned_error(address, regs);
 
 	return 0;
 }
-#endif
 
 /*
  * Entry point for miscll errors such as Nested Exceptions

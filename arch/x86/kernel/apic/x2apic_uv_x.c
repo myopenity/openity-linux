@@ -5,7 +5,7 @@
  *
  * SGI UV APIC functions (note: not an Intel compatible APIC)
  *
- * Copyright (C) 2007-2013 Silicon Graphics, Inc. All rights reserved.
+ * Copyright (C) 2007-2014 Silicon Graphics, Inc. All rights reserved.
  */
 #include <linux/cpumask.h>
 #include <linux/hardirq.h>
@@ -39,12 +39,6 @@
 #include <asm/x86_init.h>
 #include <asm/nmi.h>
 
-/* BMC sets a bit this MMR non-zero before sending an NMI */
-#define UVH_NMI_MMR				UVH_SCRATCH5
-#define UVH_NMI_MMR_CLEAR			(UVH_NMI_MMR + 8)
-#define UV_NMI_PENDING_MASK			(1UL << 63)
-DEFINE_PER_CPU(unsigned long, cpu_last_nmi_count);
-
 DEFINE_PER_CPU(int, x2apic_extra_bits);
 
 #define PR_DEVEL(fmt, args...)	pr_devel("%s: " fmt, __func__, args)
@@ -58,7 +52,6 @@ int uv_min_hub_revision_id;
 EXPORT_SYMBOL_GPL(uv_min_hub_revision_id);
 unsigned int uv_apicid_hibits;
 EXPORT_SYMBOL_GPL(uv_apicid_hibits);
-static DEFINE_SPINLOCK(uv_nmi_lock);
 
 static struct apic apic_x2apic_uv_x;
 
@@ -113,7 +106,7 @@ static int __init early_get_pnodeid(void)
 		break;
 	case UV3_HUB_PART_NUMBER:
 	case UV3_HUB_PART_NUMBER_X:
-		uv_min_hub_revision_id += UV3_HUB_REVISION_BASE - 1;
+		uv_min_hub_revision_id += UV3_HUB_REVISION_BASE;
 		break;
 	}
 
@@ -151,33 +144,60 @@ static void __init uv_set_apicid_hibit(void)
 
 static int __init uv_acpi_madt_oem_check(char *oem_id, char *oem_table_id)
 {
-	int pnodeid, is_uv1, is_uv2, is_uv3;
+	int pnodeid;
+	int uv_apic;
 
-	is_uv1 = !strcmp(oem_id, "SGI");
-	is_uv2 = !strcmp(oem_id, "SGI2");
-	is_uv3 = !strncmp(oem_id, "SGI3", 4);	/* there are varieties of UV3 */
-	if (is_uv1 || is_uv2 || is_uv3) {
-		uv_hub_info->hub_revision =
-			(is_uv1 ? UV1_HUB_REVISION_BASE :
-			(is_uv2 ? UV2_HUB_REVISION_BASE :
-				  UV3_HUB_REVISION_BASE));
-		pnodeid = early_get_pnodeid();
-		early_get_apic_pnode_shift();
-		x86_platform.is_untracked_pat_range =  uv_is_untracked_pat_range;
-		x86_platform.nmi_init = uv_nmi_init;
-		if (!strcmp(oem_table_id, "UVL"))
-			uv_system_type = UV_LEGACY_APIC;
-		else if (!strcmp(oem_table_id, "UVX"))
-			uv_system_type = UV_X2APIC;
-		else if (!strcmp(oem_table_id, "UVH")) {
-			__this_cpu_write(x2apic_extra_bits,
-				pnodeid << uvh_apicid.s.pnode_shift);
-			uv_system_type = UV_NON_UNIQUE_APIC;
-			uv_set_apicid_hibit();
-			return 1;
-		}
+	if (strncmp(oem_id, "SGI", 3) != 0)
+		return 0;
+
+	/*
+	 * Determine UV arch type.
+	 *   SGI: UV100/1000
+	 *   SGI2: UV2000/3000
+	 *   SGI3: UV300 (truncated to 4 chars because of different varieties)
+	 */
+	uv_hub_info->hub_revision =
+		!strncmp(oem_id, "SGI3", 4) ? UV3_HUB_REVISION_BASE :
+		!strcmp(oem_id, "SGI2") ? UV2_HUB_REVISION_BASE :
+		!strcmp(oem_id, "SGI") ? UV1_HUB_REVISION_BASE : 0;
+
+	if (uv_hub_info->hub_revision == 0)
+		goto badbios;
+
+	pnodeid = early_get_pnodeid();
+	early_get_apic_pnode_shift();
+	x86_platform.is_untracked_pat_range =  uv_is_untracked_pat_range;
+	x86_platform.nmi_init = uv_nmi_init;
+
+	if (!strcmp(oem_table_id, "UVX")) {		/* most common */
+		uv_system_type = UV_X2APIC;
+		uv_apic = 0;
+
+	} else if (!strcmp(oem_table_id, "UVH")) {	/* only UV1 systems */
+		uv_system_type = UV_NON_UNIQUE_APIC;
+		__this_cpu_write(x2apic_extra_bits,
+			pnodeid << uvh_apicid.s.pnode_shift);
+		uv_set_apicid_hibit();
+		uv_apic = 1;
+
+	} else	if (!strcmp(oem_table_id, "UVL")) {	/* only used for */
+		uv_system_type = UV_LEGACY_APIC;	/* very small systems */
+		uv_apic = 0;
+
+	} else {
+		goto badbios;
 	}
-	return 0;
+
+	pr_info("UV: OEM IDs %s/%s, System/HUB Types %d/%d, uv_apic %d\n",
+		oem_id, oem_table_id, uv_system_type,
+		uv_min_hub_revision_id, uv_apic);
+
+	return uv_apic;
+
+badbios:
+	pr_err("UV: OEM_ID:%s OEM_TABLE_ID:%s\n", oem_id, oem_table_id);
+	pr_err("Current BIOS not supported, update kernel and/or BIOS\n");
+	BUG();
 }
 
 enum uv_system_type get_uv_system_type(void)
@@ -211,7 +231,6 @@ EXPORT_SYMBOL(sn_rtc_cycles_per_second);
 
 static int uv_wakeup_secondary(int phys_apicid, unsigned long start_rip)
 {
-#ifdef CONFIG_SMP
 	unsigned long val;
 	int pnode;
 
@@ -230,7 +249,6 @@ static int uv_wakeup_secondary(int phys_apicid, unsigned long start_rip)
 	uv_write_global_mmr64(pnode, UVH_IPI_INT, val);
 
 	atomic_set(&init_deasserted, 1);
-#endif
 	return 0;
 }
 
@@ -372,21 +390,16 @@ static struct apic __refdata apic_x2apic_uv_x = {
 	.disable_esr			= 0,
 	.dest_logical			= APIC_DEST_LOGICAL,
 	.check_apicid_used		= NULL,
-	.check_apicid_present		= NULL,
 
 	.vector_allocation_domain	= default_vector_allocation_domain,
 	.init_apic_ldr			= uv_init_apic_ldr,
 
 	.ioapic_phys_id_map		= NULL,
 	.setup_apic_routing		= NULL,
-	.multi_timer_check		= NULL,
 	.cpu_present_to_apicid		= default_cpu_present_to_apicid,
 	.apicid_to_cpu_present		= NULL,
-	.setup_portio_remap		= NULL,
 	.check_phys_apicid_present	= default_check_phys_apicid_present,
-	.enable_apic_mode		= NULL,
 	.phys_pkg_id			= uv_phys_pkg_id,
-	.mps_oem_check			= NULL,
 
 	.get_apic_id			= x2apic_get_apic_id,
 	.set_apic_id			= set_apic_id,
@@ -401,10 +414,7 @@ static struct apic __refdata apic_x2apic_uv_x = {
 	.send_IPI_self			= uv_send_IPI_self,
 
 	.wakeup_secondary_cpu		= uv_wakeup_secondary,
-	.trampoline_phys_low		= DEFAULT_TRAMPOLINE_PHYS_LOW,
-	.trampoline_phys_high		= DEFAULT_TRAMPOLINE_PHYS_HIGH,
-	.wait_for_init_deassert		= NULL,
-	.smp_callin_clear_local_apic	= NULL,
+	.wait_for_init_deassert		= false,
 	.inquire_remote_apic		= NULL,
 
 	.read				= native_apic_msr_read,
@@ -446,6 +456,20 @@ static __initdata struct redir_addr redir_addrs[] = {
 	{UVH_RH_GAM_ALIAS210_REDIRECT_CONFIG_1_MMR, UVH_RH_GAM_ALIAS210_OVERLAY_CONFIG_1_MMR},
 	{UVH_RH_GAM_ALIAS210_REDIRECT_CONFIG_2_MMR, UVH_RH_GAM_ALIAS210_OVERLAY_CONFIG_2_MMR},
 };
+
+static unsigned char get_n_lshift(int m_val)
+{
+	union uv3h_gr0_gam_gr_config_u m_gr_config;
+
+	if (is_uv1_hub())
+		return m_val;
+
+	if (is_uv2_hub())
+		return m_val == 40 ? 40 : 39;
+
+	m_gr_config.v = uv_read_local_mmr(UV3H_GR0_GAM_GR_CONFIG);
+	return m_gr_config.s3.m_skt;
+}
 
 static __init void get_lowmem_redirect(unsigned long *base, unsigned long *size)
 {
@@ -847,68 +871,6 @@ void uv_cpu_init(void)
 		set_x2apic_extra_bits(uv_hub_info->pnode);
 }
 
-/*
- * When NMI is received, print a stack trace.
- */
-int uv_handle_nmi(unsigned int reason, struct pt_regs *regs)
-{
-	unsigned long real_uv_nmi;
-	int bid;
-
-	/*
-	 * Each blade has an MMR that indicates when an NMI has been sent
-	 * to cpus on the blade. If an NMI is detected, atomically
-	 * clear the MMR and update a per-blade NMI count used to
-	 * cause each cpu on the blade to notice a new NMI.
-	 */
-	bid = uv_numa_blade_id();
-	real_uv_nmi = (uv_read_local_mmr(UVH_NMI_MMR) & UV_NMI_PENDING_MASK);
-
-	if (unlikely(real_uv_nmi)) {
-		spin_lock(&uv_blade_info[bid].nmi_lock);
-		real_uv_nmi = (uv_read_local_mmr(UVH_NMI_MMR) & UV_NMI_PENDING_MASK);
-		if (real_uv_nmi) {
-			uv_blade_info[bid].nmi_count++;
-			uv_write_local_mmr(UVH_NMI_MMR_CLEAR, UV_NMI_PENDING_MASK);
-		}
-		spin_unlock(&uv_blade_info[bid].nmi_lock);
-	}
-
-	if (likely(__get_cpu_var(cpu_last_nmi_count) == uv_blade_info[bid].nmi_count))
-		return NMI_DONE;
-
-	__get_cpu_var(cpu_last_nmi_count) = uv_blade_info[bid].nmi_count;
-
-	/*
-	 * Use a lock so only one cpu prints at a time.
-	 * This prevents intermixed output.
-	 */
-	spin_lock(&uv_nmi_lock);
-	pr_info("UV NMI stack dump cpu %u:\n", smp_processor_id());
-	dump_stack();
-	spin_unlock(&uv_nmi_lock);
-
-	return NMI_HANDLED;
-}
-
-void uv_register_nmi_notifier(void)
-{
-	if (register_nmi_handler(NMI_UNKNOWN, uv_handle_nmi, 0, "uv"))
-		printk(KERN_WARNING "UV NMI handler failed to register\n");
-}
-
-void uv_nmi_init(void)
-{
-	unsigned int value;
-
-	/*
-	 * Unmask NMI on all cpus
-	 */
-	value = apic_read(APIC_LVT1) | APIC_DM_NMI;
-	value &= ~APIC_LVT_MASKED;
-	apic_write(APIC_LVT1, value);
-}
-
 void __init uv_system_init(void)
 {
 	union uvh_rh_gam_config_mmr_u  m_n_config;
@@ -918,10 +880,15 @@ void __init uv_system_init(void)
 	int gnode_extra, min_pnode = 999999, max_pnode = -1;
 	unsigned long mmr_base, present, paddr;
 	unsigned short pnode_mask;
-	char *hub = (is_uv1_hub() ? "UV1" :
-		    (is_uv2_hub() ? "UV2" :
-				    "UV3"));
+	unsigned char n_lshift;
+	char *hub = (is_uv1_hub() ? "UV100/1000" :
+		    (is_uv2_hub() ? "UV2000/3000" :
+		    (is_uv3_hub() ? "UV300" : NULL)));
 
+	if (!hub) {
+		pr_err("UV: Unknown/unsupported UV hub\n");
+		return;
+	}
 	pr_info("UV: Found %s hub\n", hub);
 	map_low_mmrs();
 
@@ -929,6 +896,7 @@ void __init uv_system_init(void)
 	m_val = m_n_config.s.m_skt;
 	n_val = m_n_config.s.n_skt;
 	pnode_mask = (1 << n_val) - 1;
+	n_lshift = get_n_lshift(m_val);
 	mmr_base =
 	    uv_read_local_mmr(UVH_RH_GAM_MMR_OVERLAY_CONFIG_MMR) &
 	    ~UV_MMR_ENABLE;
@@ -936,8 +904,9 @@ void __init uv_system_init(void)
 	node_id.v = uv_read_local_mmr(UVH_NODE_ID);
 	gnode_extra = (node_id.s.node_id & ~((1 << n_val) - 1)) >> 1;
 	gnode_upper = ((unsigned long)gnode_extra  << m_val);
-	pr_info("UV: N:%d M:%d pnode_mask:0x%x gnode_upper/extra:0x%lx/0x%x\n",
-			n_val, m_val, pnode_mask, gnode_upper, gnode_extra);
+	pr_info("UV: N:%d M:%d pnode_mask:0x%x gnode_upper/extra:0x%lx/0x%x n_lshift 0x%x\n",
+			n_val, m_val, pnode_mask, gnode_upper, gnode_extra,
+			n_lshift);
 
 	pr_info("UV: global MMR base 0x%lx\n", mmr_base);
 
@@ -1004,8 +973,7 @@ void __init uv_system_init(void)
 		uv_cpu_hub_info(cpu)->hub_revision = uv_hub_info->hub_revision;
 
 		uv_cpu_hub_info(cpu)->m_shift = 64 - m_val;
-		uv_cpu_hub_info(cpu)->n_lshift = is_uv2_1_hub() ?
-				(m_val == 40 ? 40 : 39) : m_val;
+		uv_cpu_hub_info(cpu)->n_lshift = n_lshift;
 
 		pnode = uv_apicid_to_pnode(apicid);
 		blade = boot_pnode_to_blade(pnode);
@@ -1046,9 +1014,9 @@ void __init uv_system_init(void)
 	map_mmr_high(max_pnode);
 	map_mmioh_high(min_pnode, max_pnode);
 
+	uv_nmi_setup();
 	uv_cpu_init();
 	uv_scir_register_cpu_notifier();
-	uv_register_nmi_notifier();
 	proc_mkdir("sgi_uv", NULL);
 
 	/* register Legacy VGA I/O redirection handler */

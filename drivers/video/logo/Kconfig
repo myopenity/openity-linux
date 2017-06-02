@@ -27,6 +27,10 @@ config LOGO_LINUX_CLUT224
 	bool "Standard 224-color Linux logo"
 	default y
 
+config LOGO_VARISCITE_CLUT224
+	bool "224-color Variscite Linux logo"
+	default y
+
 config LOGO_BLACKFIN_VGA16
 	bool "16-colour Blackfin Processor Linux logo"
 	depends on BLACKFIN
@@ -54,7 +58,7 @@ config LOGO_PARISC_CLUT224
 
 config LOGO_SGI_CLUT224
 	bool "224-color SGI Linux logo"
-	depends on SGI_IP22 || SGI_IP27 || SGI_IP32 || X86_VISWS
+	depends on SGI_IP22 || SGI_IP27 || SGI_IP32
 	default y
 
 config LOGO_SUN_CLUT224

@@ -114,7 +114,7 @@ static int misc_open(struct inode * inode, struct file * file)
 	int minor = iminor(inode);
 	struct miscdevice *c;
 	int err = -ENODEV;
-	const struct file_operations *old_fops, *new_fops = NULL;
+	const struct file_operations *new_fops = NULL;
 
 	mutex_lock(&misc_mtx);
 	
@@ -140,18 +140,17 @@ static int misc_open(struct inode * inode, struct file * file)
 			goto fail;
 	}
 
+	/*
+	 * Place the miscdevice in the file's
+	 * private_data so it can be used by the
+	 * file operations, including f_op->open below
+	 */
+	file->private_data = c;
+
 	err = 0;
-	old_fops = file->f_op;
-	file->f_op = new_fops;
-	if (file->f_op->open) {
-		file->private_data = c;
-		err=file->f_op->open(inode,file);
-		if (err) {
-			fops_put(file->f_op);
-			file->f_op = fops_get(old_fops);
-		}
-	}
-	fops_put(old_fops);
+	replace_fops(file, new_fops);
+	if (file->f_op->open)
+		err = file->f_op->open(inode,file);
 fail:
 	mutex_unlock(&misc_mtx);
 	return err;
@@ -175,7 +174,9 @@ static const struct file_operations misc_fops = {
  *	the minor number requested is used.
  *
  *	The structure passed is linked into the kernel and may not be
- *	destroyed until it has been unregistered.
+ *	destroyed until it has been unregistered. By default, an open()
+ *	syscall to the device sets file->private_data to point to the
+ *	structure. Drivers don't need open in fops for this.
  *
  *	A zero is returned on success and a negative errno code for
  *	failure.
@@ -193,8 +194,8 @@ int misc_register(struct miscdevice * misc)
 	if (misc->minor == MISC_DYNAMIC_MINOR) {
 		int i = find_first_zero_bit(misc_minors, DYNAMIC_MINORS);
 		if (i >= DYNAMIC_MINORS) {
-			mutex_unlock(&misc_mtx);
-			return -EBUSY;
+			err = -EBUSY;
+			goto out;
 		}
 		misc->minor = DYNAMIC_MINORS - i - 1;
 		set_bit(i, misc_minors);
@@ -203,16 +204,17 @@ int misc_register(struct miscdevice * misc)
 
 		list_for_each_entry(c, &misc_list, list) {
 			if (c->minor == misc->minor) {
-				mutex_unlock(&misc_mtx);
-				return -EBUSY;
+				err = -EBUSY;
+				goto out;
 			}
 		}
 	}
 
 	dev = MKDEV(MISC_MAJOR, misc->minor);
 
-	misc->this_device = device_create(misc_class, misc->parent, dev,
-					  misc, "%s", misc->name);
+	misc->this_device =
+		device_create_with_groups(misc_class, misc->parent, dev,
+					  misc, misc->groups, "%s", misc->name);
 	if (IS_ERR(misc->this_device)) {
 		int i = DYNAMIC_MINORS - misc->minor - 1;
 		if (i < DYNAMIC_MINORS && i >= 0)

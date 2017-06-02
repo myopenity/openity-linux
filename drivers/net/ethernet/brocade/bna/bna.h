@@ -1,5 +1,5 @@
 /*
- * Linux network driver for Brocade Converged Network Adapter.
+ * Linux network driver for QLogic BR-series Converged Network Adapter.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License (GPL) Version 2 as
@@ -11,9 +11,10 @@
  * General Public License for more details.
  */
 /*
- * Copyright (c) 2005-2011 Brocade Communications Systems, Inc.
+ * Copyright (c) 2005-2014 Brocade Communications Systems, Inc.
+ * Copyright (c) 2014-2015 QLogic Corporation
  * All rights reserved
- * www.brocade.com
+ * www.qlogic.com
  */
 #ifndef __BNA_H__
 #define __BNA_H__
@@ -354,6 +355,14 @@ do {									\
 	}								\
 } while (0)
 
+#define bna_mcam_mod_free_q(_bna) (&(_bna)->mcam_mod.free_q)
+
+#define bna_mcam_mod_del_q(_bna) (&(_bna)->mcam_mod.del_q)
+
+#define bna_ucam_mod_free_q(_bna) (&(_bna)->ucam_mod.free_q)
+
+#define bna_ucam_mod_del_q(_bna) (&(_bna)->ucam_mod.del_q)
+
 /*  Inline functions  */
 
 static inline struct bna_mac *bna_mac_find(struct list_head *q, u8 *addr)
@@ -391,12 +400,8 @@ int bna_num_rxp_set(struct bna *bna, int num_rxp);
 void bna_hw_stats_get(struct bna *bna);
 
 /* APIs for RxF */
-struct bna_mac *bna_ucam_mod_mac_get(struct bna_ucam_mod *ucam_mod);
-void bna_ucam_mod_mac_put(struct bna_ucam_mod *ucam_mod,
-			  struct bna_mac *mac);
-struct bna_mac *bna_mcam_mod_mac_get(struct bna_mcam_mod *mcam_mod);
-void bna_mcam_mod_mac_put(struct bna_mcam_mod *mcam_mod,
-			  struct bna_mac *mac);
+struct bna_mac *bna_cam_mod_mac_get(struct list_head *head);
+void bna_cam_mod_mac_put(struct list_head *tail, struct bna_mac *mac);
 struct bna_mcam_handle *bna_mcam_mod_handle_get(struct bna_mcam_mod *mod);
 void bna_mcam_mod_handle_put(struct bna_mcam_mod *mcam_mod,
 			  struct bna_mcam_handle *handle);
@@ -493,11 +498,17 @@ enum bna_cb_status
 bna_rx_ucast_del(struct bna_rx *rx, u8 *ucmac,
 		 void (*cbfn)(struct bnad *, struct bna_rx *));
 enum bna_cb_status
+bna_rx_ucast_listset(struct bna_rx *rx, int count, u8 *uclist,
+		     void (*cbfn)(struct bnad *, struct bna_rx *));
+enum bna_cb_status
 bna_rx_mcast_add(struct bna_rx *rx, u8 *mcmac,
 		 void (*cbfn)(struct bnad *, struct bna_rx *));
 enum bna_cb_status
 bna_rx_mcast_listset(struct bna_rx *rx, int count, u8 *mcmac,
 		     void (*cbfn)(struct bnad *, struct bna_rx *));
+void
+bna_rx_mcast_delall(struct bna_rx *rx,
+		    void (*cbfn)(struct bnad *, struct bna_rx *));
 enum bna_cb_status
 bna_rx_mode_set(struct bna_rx *rx, enum bna_rxmode rxmode,
 		enum bna_rxmode bitmask,
@@ -505,6 +516,8 @@ bna_rx_mode_set(struct bna_rx *rx, enum bna_rxmode rxmode,
 void bna_rx_vlan_add(struct bna_rx *rx, int vlan_id);
 void bna_rx_vlan_del(struct bna_rx *rx, int vlan_id);
 void bna_rx_vlanfilter_enable(struct bna_rx *rx);
+void bna_rx_vlan_strip_enable(struct bna_rx *rx);
+void bna_rx_vlan_strip_disable(struct bna_rx *rx);
 /* ENET */
 
 /* API for RX */

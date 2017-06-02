@@ -42,6 +42,7 @@ dra752_core_temp_sensor_registers = {
 	.mask_hot_mask = DRA752_BANDGAP_CTRL_1_MASK_HOT_CORE_MASK,
 	.mask_cold_mask = DRA752_BANDGAP_CTRL_1_MASK_COLD_CORE_MASK,
 	.mask_sidlemode_mask = DRA752_BANDGAP_CTRL_1_SIDLEMODE_MASK,
+	.mask_counter_delay_mask = DRA752_BANDGAP_CTRL_1_COUNTER_DELAY_MASK,
 	.mask_freeze_mask = DRA752_BANDGAP_CTRL_1_FREEZE_CORE_MASK,
 	.mask_clear_mask = DRA752_BANDGAP_CTRL_1_CLEAR_CORE_MASK,
 	.mask_clear_accum_mask = DRA752_BANDGAP_CTRL_1_CLEAR_ACCUM_CORE_MASK,
@@ -77,6 +78,7 @@ dra752_iva_temp_sensor_registers = {
 	.mask_hot_mask = DRA752_BANDGAP_CTRL_2_MASK_HOT_IVA_MASK,
 	.mask_cold_mask = DRA752_BANDGAP_CTRL_2_MASK_COLD_IVA_MASK,
 	.mask_sidlemode_mask = DRA752_BANDGAP_CTRL_1_SIDLEMODE_MASK,
+	.mask_counter_delay_mask = DRA752_BANDGAP_CTRL_1_COUNTER_DELAY_MASK,
 	.mask_freeze_mask = DRA752_BANDGAP_CTRL_2_FREEZE_IVA_MASK,
 	.mask_clear_mask = DRA752_BANDGAP_CTRL_2_CLEAR_IVA_MASK,
 	.mask_clear_accum_mask = DRA752_BANDGAP_CTRL_2_CLEAR_ACCUM_IVA_MASK,
@@ -112,6 +114,7 @@ dra752_mpu_temp_sensor_registers = {
 	.mask_hot_mask = DRA752_BANDGAP_CTRL_1_MASK_HOT_MPU_MASK,
 	.mask_cold_mask = DRA752_BANDGAP_CTRL_1_MASK_COLD_MPU_MASK,
 	.mask_sidlemode_mask = DRA752_BANDGAP_CTRL_1_SIDLEMODE_MASK,
+	.mask_counter_delay_mask = DRA752_BANDGAP_CTRL_1_COUNTER_DELAY_MASK,
 	.mask_freeze_mask = DRA752_BANDGAP_CTRL_1_FREEZE_MPU_MASK,
 	.mask_clear_mask = DRA752_BANDGAP_CTRL_1_CLEAR_MPU_MASK,
 	.mask_clear_accum_mask = DRA752_BANDGAP_CTRL_1_CLEAR_ACCUM_MPU_MASK,
@@ -147,6 +150,7 @@ dra752_dspeve_temp_sensor_registers = {
 	.mask_hot_mask = DRA752_BANDGAP_CTRL_2_MASK_HOT_DSPEVE_MASK,
 	.mask_cold_mask = DRA752_BANDGAP_CTRL_2_MASK_COLD_DSPEVE_MASK,
 	.mask_sidlemode_mask = DRA752_BANDGAP_CTRL_1_SIDLEMODE_MASK,
+	.mask_counter_delay_mask = DRA752_BANDGAP_CTRL_1_COUNTER_DELAY_MASK,
 	.mask_freeze_mask = DRA752_BANDGAP_CTRL_2_FREEZE_DSPEVE_MASK,
 	.mask_clear_mask = DRA752_BANDGAP_CTRL_2_CLEAR_DSPEVE_MASK,
 	.mask_clear_accum_mask = DRA752_BANDGAP_CTRL_2_CLEAR_ACCUM_DSPEVE_MASK,
@@ -182,6 +186,7 @@ dra752_gpu_temp_sensor_registers = {
 	.mask_hot_mask = DRA752_BANDGAP_CTRL_1_MASK_HOT_GPU_MASK,
 	.mask_cold_mask = DRA752_BANDGAP_CTRL_1_MASK_COLD_GPU_MASK,
 	.mask_sidlemode_mask = DRA752_BANDGAP_CTRL_1_SIDLEMODE_MASK,
+	.mask_counter_delay_mask = DRA752_BANDGAP_CTRL_1_COUNTER_DELAY_MASK,
 	.mask_freeze_mask = DRA752_BANDGAP_CTRL_1_FREEZE_GPU_MASK,
 	.mask_clear_mask = DRA752_BANDGAP_CTRL_1_CLEAR_GPU_MASK,
 	.mask_clear_accum_mask = DRA752_BANDGAP_CTRL_1_CLEAR_ACCUM_GPU_MASK,
@@ -415,7 +420,8 @@ const struct ti_bandgap_data dra752_data = {
 			TI_BANDGAP_FEATURE_FREEZE_BIT |
 			TI_BANDGAP_FEATURE_TALERT |
 			TI_BANDGAP_FEATURE_COUNTER_DELAY |
-			TI_BANDGAP_FEATURE_HISTORY_BUFFER,
+			TI_BANDGAP_FEATURE_HISTORY_BUFFER |
+			TI_BANDGAP_FEATURE_ERRATA_814,
 	.fclock_name = "l3instr_ts_gclk_div",
 	.div_ck_name = "l3instr_ts_gclk_div",
 	.conv_table = dra752_adc_to_temp,

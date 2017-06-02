@@ -63,7 +63,6 @@ static struct {
 enum ipi_message_type {
 	IPI_RESCHEDULE,
 	IPI_CALL_FUNC,
-	IPI_CALL_FUNC_SINGLE,
 	IPI_CPU_STOP,
 };
 
@@ -138,9 +137,11 @@ smp_callin(void)
 
 	/* Get our local ticker going. */
 	smp_setup_percpu_timer(cpuid);
+	init_clockevent();
 
 	/* Call platform-specific callin, if specified */
-	if (alpha_mv.smp_callin) alpha_mv.smp_callin();
+	if (alpha_mv.smp_callin)
+		alpha_mv.smp_callin();
 
 	/* All kernel threads share the same mm context.  */
 	atomic_inc(&init_mm.mm_count);
@@ -498,42 +499,12 @@ smp_cpus_done(unsigned int max_cpus)
 	       ((bogosum + 2500) / (5000/HZ)) % 100);
 }
 
-
-void
-smp_percpu_timer_interrupt(struct pt_regs *regs)
-{
-	struct pt_regs *old_regs;
-	int cpu = smp_processor_id();
-	unsigned long user = user_mode(regs);
-	struct cpuinfo_alpha *data = &cpu_data[cpu];
-
-	old_regs = set_irq_regs(regs);
-
-	/* Record kernel PC.  */
-	profile_tick(CPU_PROFILING);
-
-	if (!--data->prof_counter) {
-		/* We need to make like a normal interrupt -- otherwise
-		   timer interrupts ignore the global interrupt lock,
-		   which would be a Bad Thing.  */
-		irq_enter();
-
-		update_process_times(user);
-
-		data->prof_counter = data->prof_multiplier;
-
-		irq_exit();
-	}
-	set_irq_regs(old_regs);
-}
-
 int
 setup_profiling_timer(unsigned int multiplier)
 {
 	return -EINVAL;
 }
 
-
 static void
 send_ipi_message(const struct cpumask *to_whom, enum ipi_message_type operation)
 {
@@ -577,10 +548,6 @@ handle_ipi(struct pt_regs *regs)
 
 		case IPI_CALL_FUNC:
 			generic_smp_call_function_interrupt();
-			break;
-
-		case IPI_CALL_FUNC_SINGLE:
-			generic_smp_call_function_single_interrupt();
 			break;
 
 		case IPI_CPU_STOP:
@@ -633,7 +600,7 @@ void arch_send_call_function_ipi_mask(const struct cpumask *mask)
 
 void arch_send_call_function_single_ipi(int cpu)
 {
-	send_ipi_message(cpumask_of(cpu), IPI_CALL_FUNC_SINGLE);
+	send_ipi_message(cpumask_of(cpu), IPI_CALL_FUNC);
 }
 
 static void

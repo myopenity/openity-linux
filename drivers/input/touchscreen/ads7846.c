@@ -19,7 +19,6 @@
  */
 #include <linux/types.h>
 #include <linux/hwmon.h>
-#include <linux/init.h>
 #include <linux/err.h>
 #include <linux/sched.h>
 #include <linux/delay.h>
@@ -101,8 +100,7 @@ struct ads7846 {
 	struct spi_device	*spi;
 	struct regulator	*reg;
 
-#if defined(CONFIG_HWMON) || defined(CONFIG_HWMON_MODULE)
-	struct attribute_group	*attr_group;
+#if IS_ENABLED(CONFIG_HWMON)
 	struct device		*hwmon;
 #endif
 
@@ -421,13 +419,13 @@ static int ads7845_read12_ser(struct device *dev, unsigned command)
 	return status;
 }
 
-#if defined(CONFIG_HWMON) || defined(CONFIG_HWMON_MODULE)
+#if IS_ENABLED(CONFIG_HWMON)
 
 #define SHOW(name, var, adjust) static ssize_t \
 name ## _show(struct device *dev, struct device_attribute *attr, char *buf) \
 { \
 	struct ads7846 *ts = dev_get_drvdata(dev); \
-	ssize_t v = ads7846_read12_ser(dev, \
+	ssize_t v = ads7846_read12_ser(&ts->spi->dev, \
 			READ_12BIT_SER(var)); \
 	if (v < 0) \
 		return v; \
@@ -479,42 +477,36 @@ static inline unsigned vbatt_adjust(struct ads7846 *ts, ssize_t v)
 SHOW(in0_input, vaux, vaux_adjust)
 SHOW(in1_input, vbatt, vbatt_adjust)
 
+static umode_t ads7846_is_visible(struct kobject *kobj, struct attribute *attr,
+				  int index)
+{
+	struct device *dev = container_of(kobj, struct device, kobj);
+	struct ads7846 *ts = dev_get_drvdata(dev);
+
+	if (ts->model == 7843 && index < 2)	/* in0, in1 */
+		return 0;
+	if (ts->model == 7845 && index != 2)	/* in0 */
+		return 0;
+
+	return attr->mode;
+}
+
 static struct attribute *ads7846_attributes[] = {
-	&dev_attr_temp0.attr,
-	&dev_attr_temp1.attr,
-	&dev_attr_in0_input.attr,
-	&dev_attr_in1_input.attr,
+	&dev_attr_temp0.attr,		/* 0 */
+	&dev_attr_temp1.attr,		/* 1 */
+	&dev_attr_in0_input.attr,	/* 2 */
+	&dev_attr_in1_input.attr,	/* 3 */
 	NULL,
 };
 
 static struct attribute_group ads7846_attr_group = {
 	.attrs = ads7846_attributes,
+	.is_visible = ads7846_is_visible,
 };
-
-static struct attribute *ads7843_attributes[] = {
-	&dev_attr_in0_input.attr,
-	&dev_attr_in1_input.attr,
-	NULL,
-};
-
-static struct attribute_group ads7843_attr_group = {
-	.attrs = ads7843_attributes,
-};
-
-static struct attribute *ads7845_attributes[] = {
-	&dev_attr_in0_input.attr,
-	NULL,
-};
-
-static struct attribute_group ads7845_attr_group = {
-	.attrs = ads7845_attributes,
-};
+__ATTRIBUTE_GROUPS(ads7846_attr);
 
 static int ads784x_hwmon_register(struct spi_device *spi, struct ads7846 *ts)
 {
-	struct device *hwmon;
-	int err;
-
 	/* hwmon sensors need a reference voltage */
 	switch (ts->model) {
 	case 7846:
@@ -535,43 +527,19 @@ static int ads784x_hwmon_register(struct spi_device *spi, struct ads7846 *ts)
 		break;
 	}
 
-	/* different chips have different sensor groups */
-	switch (ts->model) {
-	case 7846:
-		ts->attr_group = &ads7846_attr_group;
-		break;
-	case 7845:
-		ts->attr_group = &ads7845_attr_group;
-		break;
-	case 7843:
-		ts->attr_group = &ads7843_attr_group;
-		break;
-	default:
-		dev_dbg(&spi->dev, "ADS%d not recognized\n", ts->model);
-		return 0;
-	}
+	ts->hwmon = hwmon_device_register_with_groups(&spi->dev, spi->modalias,
+						      ts, ads7846_attr_groups);
+	if (IS_ERR(ts->hwmon))
+		return PTR_ERR(ts->hwmon);
 
-	err = sysfs_create_group(&spi->dev.kobj, ts->attr_group);
-	if (err)
-		return err;
-
-	hwmon = hwmon_device_register(&spi->dev);
-	if (IS_ERR(hwmon)) {
-		sysfs_remove_group(&spi->dev.kobj, ts->attr_group);
-		return PTR_ERR(hwmon);
-	}
-
-	ts->hwmon = hwmon;
 	return 0;
 }
 
 static void ads784x_hwmon_unregister(struct spi_device *spi,
 				     struct ads7846 *ts)
 {
-	if (ts->hwmon) {
-		sysfs_remove_group(&spi->dev.kobj, ts->attr_group);
+	if (ts->hwmon)
 		hwmon_device_unregister(ts->hwmon);
-	}
 }
 
 #else
@@ -700,18 +668,22 @@ static int ads7846_no_filter(void *ads, int data_idx, int *val)
 
 static int ads7846_get_value(struct ads7846 *ts, struct spi_message *m)
 {
+	int value;
 	struct spi_transfer *t =
 		list_entry(m->transfers.prev, struct spi_transfer, transfer_list);
 
 	if (ts->model == 7845) {
-		return be16_to_cpup((__be16 *)&(((char*)t->rx_buf)[1])) >> 3;
+		value = be16_to_cpup((__be16 *)&(((char *)t->rx_buf)[1]));
 	} else {
 		/*
 		 * adjust:  on-wire is a must-ignore bit, a BE12 value, then
 		 * padding; built from two 8 bit values written msb-first.
 		 */
-		return be16_to_cpup((__be16 *)t->rx_buf) >> 3;
+		value = be16_to_cpup((__be16 *)t->rx_buf);
 	}
+
+	/* enforce ADC output is 12 bits width */
+	return (value >> 3) & 0xfff;
 }
 
 static void ads7846_update_value(struct spi_message *m, int val)
@@ -738,7 +710,7 @@ static void ads7846_read_state(struct ads7846 *ts)
 		m = &ts->msg[msg_idx];
 		error = spi_sync(ts->spi, m);
 		if (error) {
-			dev_err(&ts->spi->dev, "spi_async --> %d\n", error);
+			dev_err(&ts->spi->dev, "spi_sync --> %d\n", error);
 			packet->tc.ignore = true;
 			return;
 		}
@@ -915,8 +887,7 @@ static irqreturn_t ads7846_irq(int irq, void *handle)
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_PM_SLEEP
-static int ads7846_suspend(struct device *dev)
+static int __maybe_unused ads7846_suspend(struct device *dev)
 {
 	struct ads7846 *ts = dev_get_drvdata(dev);
 
@@ -938,7 +909,7 @@ static int ads7846_suspend(struct device *dev)
 	return 0;
 }
 
-static int ads7846_resume(struct device *dev)
+static int __maybe_unused ads7846_resume(struct device *dev)
 {
 	struct ads7846 *ts = dev_get_drvdata(dev);
 
@@ -959,7 +930,6 @@ static int ads7846_resume(struct device *dev)
 
 	return 0;
 }
-#endif
 
 static SIMPLE_DEV_PM_OPS(ads7846_pm, ads7846_suspend, ads7846_resume);
 
@@ -1220,6 +1190,7 @@ static const struct ads7846_platform_data *ads7846_probe_dt(struct device *dev)
 	struct ads7846_platform_data *pdata;
 	struct device_node *node = dev->of_node;
 	const struct of_device_id *match;
+	int ret;
 
 	if (!node) {
 		dev_err(dev, "Device does not have associated DT data\n");
@@ -1265,8 +1236,11 @@ static const struct ads7846_platform_data *ads7846_probe_dt(struct device *dev)
 	of_property_read_u16(node, "ti,debounce-tol", &pdata->debounce_tol);
 	of_property_read_u16(node, "ti,debounce-rep", &pdata->debounce_rep);
 
-	of_property_read_u32(node, "ti,pendown-gpio-debounce",
+	ret = of_property_read_u32(node, "ti,pendown-gpio-debounce",
 			     &pdata->gpio_pendown_debounce);
+	if (!ret)
+		dev_info(dev, "Set pendown gpio debounce time to %d microseconds\n",
+			 pdata->gpio_pendown_debounce);
 
 	pdata->wakeup = of_property_read_bool(node, "linux,wakeup");
 
@@ -1334,8 +1308,10 @@ static int ads7846_probe(struct spi_device *spi)
 	pdata = dev_get_platdata(&spi->dev);
 	if (!pdata) {
 		pdata = ads7846_probe_dt(&spi->dev);
-		if (IS_ERR(pdata))
-			return PTR_ERR(pdata);
+		if (IS_ERR(pdata)) {
+			err = PTR_ERR(pdata);
+			goto err_free_mem;
+		}
 	}
 
 	ts->model = pdata->model ? : 7846;

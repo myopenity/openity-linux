@@ -21,10 +21,25 @@
 
 #include <asm/types.h>
 
+struct mpidr_hash {
+	u64	mask;
+	u32	shift_aff[4];
+	u32	bits;
+};
+
+extern struct mpidr_hash mpidr_hash;
+
+static inline u32 mpidr_hash_size(void)
+{
+	return 1 << mpidr_hash.bits;
+}
+
 /*
  * Logical CPU mapping.
  */
 extern u64 __cpu_logical_map[NR_CPUS];
 #define cpu_logical_map(cpu)    __cpu_logical_map[cpu]
+
+void __init do_post_cpus_up_work(void);
 
 #endif /* __ASM_SMP_PLAT_H */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2004-2007 Freescale Semiconductor, Inc. All Rights Reserved.
+ * Copyright 2004-2007, 2014-2015 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2008 Juergen Beisert, kernel@pengutronix.de
  *
  * This program is free software; you can redistribute it and/or
@@ -20,7 +20,9 @@
 #ifndef __ASM_ARCH_MXC_HARDWARE_H__
 #define __ASM_ARCH_MXC_HARDWARE_H__
 
+#ifndef __ASSEMBLY__
 #include <asm/io.h>
+#endif
 #include <asm/sizes.h>
 
 #define addr_in_module(addr, mod) \
@@ -91,20 +93,21 @@
  *	CCM	0x020c4000+0x004000	->	0xf42c4000+0x004000
  *	ANATOP	0x020c8000+0x004000	->	0xf42c8000+0x004000
  *	UART4	0x021f0000+0x004000	->	0xf42f0000+0x004000
+ * mx7d:
+ *     CCM	0x30380000+0x010000	->	0xf5380000+0x010000
+ *     ANATOP	0x30360000+0x010000	->	0xf5360000+0x010000
+ *     UART1	0x30860000+0x010000	->	0xf5860000+0x010000
  */
 #define IMX_IO_P2V(x)	(						\
-			(((x) & 0x80000000) >> 7) |			\
 			(0xf4000000 +					\
-			(((x) & 0x50000000) >> 6) +			\
-			(((x) & 0x0b000000) >> 4) +			\
-			(((x) & 0x000fffff))))
+			(((x) & 0x50000000) >> 4) +			\
+			(((x) & 0x0a000000) >> 4) +			\
+			(((x) & 0x00ffffff))))
 
 #define IMX_IO_ADDRESS(x)	IOMEM(IMX_IO_P2V(x))
 
 #include "mxc.h"
 
-#include "mx51.h"
-#include "mx53.h"
 #include "mx3x.h"
 #include "mx31.h"
 #include "mx35.h"
@@ -112,7 +115,8 @@
 #include "mx21.h"
 #include "mx27.h"
 #include "mx1.h"
-#include "mx25.h"
+#include "mx6.h"
+#include "mx7.h"
 
 #define imx_map_entry(soc, name, _type)	{				\
 	.virtual = soc ## _IO_P2V(soc ## _ ## name ## _BASE_ADDR),	\

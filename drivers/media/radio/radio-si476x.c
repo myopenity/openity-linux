@@ -268,8 +268,8 @@ struct si476x_radio;
  *
  * @tune_freq: Tune chip to a specific frequency
  * @seek_start: Star station seeking
- * @rsq_status: Get Recieved Signal Quality(RSQ) status
- * @rds_blckcnt: Get recived RDS blocks count
+ * @rsq_status: Get Received Signal Quality(RSQ) status
+ * @rds_blckcnt: Get received RDS blocks count
  * @phase_diversity: Change phase diversity mode of the tuner
  * @phase_div_status: Get phase diversity mode status
  * @acf_status: Get the status of Automatically Controlled
@@ -775,7 +775,8 @@ static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
 			rangelow = si476x_to_v4l2(radio->core, rangelow);
 		else
 			goto unlock;
-	}
+	} else
+		rangelow = seek->rangelow;
 	if (!seek->rangehigh) {
 		err = regmap_read(radio->core->regmap,
 				  SI476X_PROP_SEEK_BAND_TOP,
@@ -784,7 +785,8 @@ static int si476x_radio_s_hw_freq_seek(struct file *file, void *priv,
 			rangehigh = si476x_to_v4l2(radio->core, rangehigh);
 		else
 			goto unlock;
-	}
+	} else
+		rangehigh = seek->rangehigh;
 
 	if (rangelow > rangehigh) {
 		err = -EINVAL;
@@ -1008,6 +1010,14 @@ static int si476x_radio_s_ctrl(struct v4l2_ctrl *ctrl)
 		}
 		break;
 
+	case V4L2_CID_AUDIO_MUTE:
+		if (ctrl->val)
+			retval = regmap_write(radio->core->regmap,
+					      SI476X_PROP_AUDIO_MUTE, 3);
+		else
+			retval = regmap_write(radio->core->regmap,
+					      SI476X_PROP_AUDIO_MUTE, 0);
+		break;
 	default:
 		retval = -EINVAL;
 		break;
@@ -1470,7 +1480,6 @@ static int si476x_radio_probe(struct platform_device *pdev)
 	video_set_drvdata(&radio->videodev, radio);
 	platform_set_drvdata(pdev, radio);
 
-	set_bit(V4L2_FL_USE_FH_PRIO, &radio->videodev.flags);
 
 	radio->v4l2dev.ctrl_handler = &radio->ctrl_handler;
 	v4l2_ctrl_handler_init(&radio->ctrl_handler,
@@ -1528,14 +1537,24 @@ static int si476x_radio_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
+	ctrl = v4l2_ctrl_new_std(&radio->ctrl_handler, &si476x_ctrl_ops,
+				 V4L2_CID_AUDIO_MUTE,
+				 0, 1, 1, 0);
+	rval = radio->ctrl_handler.error;
+	if (ctrl == NULL && rval) {
+		dev_err(&pdev->dev, "Could not initialize V4L2_CID_AUDIO_MUTE control %d\n",
+			rval);
+		goto exit;
+	}
+
 	if (si476x_core_has_diversity(radio->core)) {
 		si476x_ctrls[SI476X_IDX_DIVERSITY_MODE].def =
 			si476x_phase_diversity_mode_to_idx(radio->core->diversity_mode);
-		si476x_radio_add_new_custom(radio, SI476X_IDX_DIVERSITY_MODE);
+		rval = si476x_radio_add_new_custom(radio, SI476X_IDX_DIVERSITY_MODE);
 		if (rval < 0)
 			goto exit;
 
-		si476x_radio_add_new_custom(radio, SI476X_IDX_INTERCHIP_LINK);
+		rval = si476x_radio_add_new_custom(radio, SI476X_IDX_INTERCHIP_LINK);
 		if (rval < 0)
 			goto exit;
 	}
@@ -1576,7 +1595,6 @@ MODULE_ALIAS("platform:si476x-radio");
 static struct platform_driver si476x_radio_driver = {
 	.driver		= {
 		.name	= DRIVER_NAME,
-		.owner	= THIS_MODULE,
 	},
 	.probe		= si476x_radio_probe,
 	.remove		= si476x_radio_remove,

@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2013, Intel Corp.
+ * Copyright (C) 2000 - 2015, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -114,7 +114,18 @@ acpi_status acpi_ex_opcode_3A_0T_0R(struct acpi_walk_state *walk_state)
 		/* Might return while OS is shutting down, just continue */
 
 		ACPI_FREE(fatal);
-		break;
+		goto cleanup;
+
+	case AML_EXTERNAL_OP:
+		/*
+		 * If the interpreter sees this opcode, just ignore it. The External
+		 * op is intended for use by disassemblers in order to properly
+		 * disassemble control method invocations. The opcode or group of
+		 * opcodes should be surrounded by an "if (0)" clause to ensure that
+		 * AML interpreters never see the opcode.
+		 */
+		status = AE_OK;
+		goto cleanup;
 
 	default:
 
@@ -124,7 +135,7 @@ acpi_status acpi_ex_opcode_3A_0T_0R(struct acpi_walk_state *walk_state)
 		goto cleanup;
 	}
 
-      cleanup:
+cleanup:
 
 	return_ACPI_STATUS(status);
 }
@@ -252,7 +263,7 @@ acpi_status acpi_ex_opcode_3A_1T_1R(struct acpi_walk_state *walk_state)
 
 	status = acpi_ex_store(return_desc, operand[3], walk_state);
 
-      cleanup:
+cleanup:
 
 	/* Delete return object on error */
 

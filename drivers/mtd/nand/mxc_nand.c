@@ -32,6 +32,7 @@
 #include <linux/io.h>
 #include <linux/irq.h>
 #include <linux/completion.h>
+#include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_mtd.h>
 
@@ -266,7 +267,7 @@ static struct nand_ecclayout nandv2_hw_eccoob_4k = {
 	}
 };
 
-static const char const *part_probes[] = {
+static const char * const part_probes[] = {
 	"cmdlinepart", "RedBoot", "ofpart", NULL };
 
 static void memcpy32_fromio(void *trg, const void __iomem  *src, size_t size)
@@ -279,14 +280,10 @@ static void memcpy32_fromio(void *trg, const void __iomem  *src, size_t size)
 		*t++ = __raw_readl(s++);
 }
 
-static void memcpy32_toio(void __iomem *trg, const void *src, int size)
+static inline void memcpy32_toio(void __iomem *trg, const void *src, int size)
 {
-	int i;
-	u32 __iomem *t = trg;
-	const u32 *s = src;
-
-	for (i = 0; i < (size >> 2); i++)
-		__raw_writel(*s++, t++);
+	/* __iowrite32_copy use 32bit size values so divide by 4 */
+	__iowrite32_copy(trg, src, size / 4);
 }
 
 static int check_int_v3(struct mxc_nand_host *host)
@@ -389,26 +386,51 @@ static irqreturn_t mxc_nfc_irq(int irq, void *dev_id)
 /* This function polls the NANDFC to wait for the basic operation to
  * complete by checking the INT bit of config2 register.
  */
-static void wait_op_done(struct mxc_nand_host *host, int useirq)
+static int wait_op_done(struct mxc_nand_host *host, int useirq)
 {
-	int max_retries = 8000;
+	int ret = 0;
+
+	/*
+	 * If operation is already complete, don't bother to setup an irq or a
+	 * loop.
+	 */
+	if (host->devtype_data->check_int(host))
+		return 0;
 
 	if (useirq) {
-		if (!host->devtype_data->check_int(host)) {
-			INIT_COMPLETION(host->op_completion);
-			irq_control(host, 1);
-			wait_for_completion(&host->op_completion);
+		unsigned long timeout;
+
+		reinit_completion(&host->op_completion);
+
+		irq_control(host, 1);
+
+		timeout = wait_for_completion_timeout(&host->op_completion, HZ);
+		if (!timeout && !host->devtype_data->check_int(host)) {
+			dev_dbg(host->dev, "timeout waiting for irq\n");
+			ret = -ETIMEDOUT;
 		}
 	} else {
-		while (max_retries-- > 0) {
-			if (host->devtype_data->check_int(host))
+		int max_retries = 8000;
+		int done;
+
+		do {
+			udelay(1);
+
+			done = host->devtype_data->check_int(host);
+			if (done)
 				break;
 
-			udelay(1);
+		} while (--max_retries);
+
+		if (!done) {
+			dev_dbg(host->dev, "timeout polling for completion\n");
+			ret = -ETIMEDOUT;
 		}
-		if (max_retries < 0)
-			pr_debug("%s: INT not set\n", __func__);
 	}
+
+	WARN_ONCE(ret < 0, "timeout! useirq=%d\n", useirq);
+
+	return ret;
 }
 
 static void send_cmd_v3(struct mxc_nand_host *host, uint16_t cmd, int useirq)
@@ -530,30 +552,17 @@ static void send_page_v1(struct mtd_info *mtd, unsigned int ops)
 
 static void send_read_id_v3(struct mxc_nand_host *host)
 {
-	struct nand_chip *this = &host->nand;
-
 	/* Read ID into main buffer */
 	writel(NFC_ID, NFC_V3_LAUNCH);
 
 	wait_op_done(host, true);
 
 	memcpy32_fromio(host->data_buf, host->main_area0, 16);
-
-	if (this->options & NAND_BUSWIDTH_16) {
-		/* compress the ID info */
-		host->data_buf[1] = host->data_buf[2];
-		host->data_buf[2] = host->data_buf[4];
-		host->data_buf[3] = host->data_buf[6];
-		host->data_buf[4] = host->data_buf[8];
-		host->data_buf[5] = host->data_buf[10];
-	}
 }
 
 /* Request the NANDFC to perform a read of the NAND device ID. */
 static void send_read_id_v1_v2(struct mxc_nand_host *host)
 {
-	struct nand_chip *this = &host->nand;
-
 	/* NANDFC buffer 0 is used for device ID output */
 	writew(host->active_cs << 4, NFC_V1_V2_BUF_ADDR);
 
@@ -563,15 +572,6 @@ static void send_read_id_v1_v2(struct mxc_nand_host *host)
 	wait_op_done(host, true);
 
 	memcpy32_fromio(host->data_buf, host->main_area0, 16);
-
-	if (this->options & NAND_BUSWIDTH_16) {
-		/* compress the ID info */
-		host->data_buf[1] = host->data_buf[2];
-		host->data_buf[2] = host->data_buf[4];
-		host->data_buf[3] = host->data_buf[6];
-		host->data_buf[4] = host->data_buf[8];
-		host->data_buf[5] = host->data_buf[10];
-	}
 }
 
 static uint16_t get_dev_status_v3(struct mxc_nand_host *host)
@@ -676,7 +676,6 @@ static int mxc_nand_correct_data_v2_v3(struct mtd_info *mtd, u_char *dat,
 		ecc_stat >>= 4;
 	} while (--no_subpages);
 
-	mtd->ecc_stats.corrected += ret;
 	pr_debug("%d Symbol Correctable RS-ECC Error\n", ret);
 
 	return ret;
@@ -698,9 +697,17 @@ static u_char mxc_nand_read_byte(struct mtd_info *mtd)
 	if (host->status_request)
 		return host->devtype_data->get_dev_status(host) & 0xFF;
 
-	ret = *(uint8_t *)(host->data_buf + host->buf_start);
-	host->buf_start++;
+	if (nand_chip->options & NAND_BUSWIDTH_16) {
+		/* only take the lower byte of each word */
+		ret = *(uint16_t *)(host->data_buf + host->buf_start);
 
+		host->buf_start += 2;
+	} else {
+		ret = *(uint8_t *)(host->data_buf + host->buf_start);
+		host->buf_start++;
+	}
+
+	pr_debug("%s: ret=0x%hhx (start=%u)\n", __func__, ret, host->buf_start);
 	return ret;
 }
 
@@ -829,6 +836,12 @@ static void copy_spare(struct mtd_info *mtd, bool bfrom)
 	}
 }
 
+/*
+ * MXC NANDFC can only perform full page+spare or spare-only read/write.  When
+ * the upper layers perform a read/write buf operation, the saved column address
+ * is used to index into the full page. So usually this function is called with
+ * column == 0 (unless no column cycle is needed indicated by column == -1)
+ */
 static void mxc_do_addr_cycle(struct mtd_info *mtd, int column, int page_addr)
 {
 	struct nand_chip *nand_chip = mtd->priv;
@@ -836,16 +849,13 @@ static void mxc_do_addr_cycle(struct mtd_info *mtd, int column, int page_addr)
 
 	/* Write out column address, if necessary */
 	if (column != -1) {
-		/*
-		 * MXC NANDFC can only perform full page+spare or
-		 * spare-only read/write.  When the upper layers
-		 * perform a read/write buf operation, the saved column
-		  * address is used to index into the full page.
-		 */
-		host->devtype_data->send_addr(host, 0, page_addr == -1);
+		host->devtype_data->send_addr(host, column & 0xff,
+					      page_addr == -1);
 		if (mtd->writesize > 512)
 			/* another col addr cycle for 2k page */
-			host->devtype_data->send_addr(host, 0, false);
+			host->devtype_data->send_addr(host,
+						      (column >> 8) & 0xff,
+						      false);
 	}
 
 	/* Write out page address, if necessary */
@@ -907,7 +917,7 @@ static void preset_v1(struct mtd_info *mtd)
 	struct mxc_nand_host *host = nand_chip->priv;
 	uint16_t config1 = 0;
 
-	if (nand_chip->ecc.mode == NAND_ECC_HW)
+	if (nand_chip->ecc.mode == NAND_ECC_HW && mtd->writesize)
 		config1 |= NFC_V1_V2_CONFIG1_ECC_EN;
 
 	if (!host->devtype_data->irqpending_quirk)
@@ -935,9 +945,6 @@ static void preset_v2(struct mtd_info *mtd)
 	struct mxc_nand_host *host = nand_chip->priv;
 	uint16_t config1 = 0;
 
-	if (nand_chip->ecc.mode == NAND_ECC_HW)
-		config1 |= NFC_V1_V2_CONFIG1_ECC_EN;
-
 	config1 |= NFC_V2_CONFIG1_FP_INT;
 
 	if (!host->devtype_data->irqpending_quirk)
@@ -945,6 +952,9 @@ static void preset_v2(struct mtd_info *mtd)
 
 	if (mtd->writesize) {
 		uint16_t pages_per_block = mtd->erasesize / mtd->writesize;
+
+		if (nand_chip->ecc.mode == NAND_ECC_HW)
+			config1 |= NFC_V1_V2_CONFIG1_ECC_EN;
 
 		host->eccsize = get_eccsize(mtd);
 		if (host->eccsize == 4)
@@ -1003,9 +1013,6 @@ static void preset_v3(struct mtd_info *mtd)
 		NFC_V3_CONFIG2_INT_MSK |
 		NFC_V3_CONFIG2_NUM_ADDR_PHASE0;
 
-	if (chip->ecc.mode == NAND_ECC_HW)
-		config2 |= NFC_V3_CONFIG2_ECC_EN;
-
 	addr_phases = fls(chip->pagemask) >> 3;
 
 	if (mtd->writesize == 2048) {
@@ -1020,6 +1027,9 @@ static void preset_v3(struct mtd_info *mtd)
 	}
 
 	if (mtd->writesize) {
+		if (chip->ecc.mode == NAND_ECC_HW)
+			config2 |= NFC_V3_CONFIG2_ECC_EN;
+
 		config2 |= NFC_V3_CONFIG2_PPB(
 				ffs(mtd->erasesize / mtd->writesize) - 6,
 				host->devtype_data->ppb_shift);
@@ -1070,6 +1080,9 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		host->status_request = true;
 
 		host->devtype_data->send_cmd(host, command, true);
+		WARN_ONCE(column != -1 || page_addr != -1,
+			  "Unexpected column/row value (cmd=%u, col=%d, row=%d)\n",
+			  command, column, page_addr);
 		mxc_do_addr_cycle(mtd, column, page_addr);
 		break;
 
@@ -1083,7 +1096,10 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		command = NAND_CMD_READ0; /* only READ0 is valid */
 
 		host->devtype_data->send_cmd(host, command, false);
-		mxc_do_addr_cycle(mtd, column, page_addr);
+		WARN_ONCE(column < 0,
+			  "Unexpected column/row value (cmd=%u, col=%d, row=%d)\n",
+			  command, column, page_addr);
+		mxc_do_addr_cycle(mtd, 0, page_addr);
 
 		if (mtd->writesize > 512)
 			host->devtype_data->send_cmd(host,
@@ -1104,7 +1120,10 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		host->buf_start = column;
 
 		host->devtype_data->send_cmd(host, command, false);
-		mxc_do_addr_cycle(mtd, column, page_addr);
+		WARN_ONCE(column < -1,
+			  "Unexpected column/row value (cmd=%u, col=%d, row=%d)\n",
+			  command, column, page_addr);
+		mxc_do_addr_cycle(mtd, 0, page_addr);
 		break;
 
 	case NAND_CMD_PAGEPROG:
@@ -1112,6 +1131,9 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		copy_spare(mtd, false);
 		host->devtype_data->send_page(mtd, NFC_INPUT);
 		host->devtype_data->send_cmd(host, command, true);
+		WARN_ONCE(column != -1 || page_addr != -1,
+			  "Unexpected column/row value (cmd=%u, col=%d, row=%d)\n",
+			  command, column, page_addr);
 		mxc_do_addr_cycle(mtd, column, page_addr);
 		break;
 
@@ -1119,14 +1141,28 @@ static void mxc_nand_command(struct mtd_info *mtd, unsigned command,
 		host->devtype_data->send_cmd(host, command, true);
 		mxc_do_addr_cycle(mtd, column, page_addr);
 		host->devtype_data->send_read_id(host);
-		host->buf_start = column;
+		host->buf_start = 0;
 		break;
 
 	case NAND_CMD_ERASE1:
 	case NAND_CMD_ERASE2:
 		host->devtype_data->send_cmd(host, command, false);
+		WARN_ONCE(column != -1,
+			  "Unexpected column value (cmd=%u, col=%d)\n",
+			  command, column);
 		mxc_do_addr_cycle(mtd, column, page_addr);
 
+		break;
+	case NAND_CMD_PARAM:
+		host->devtype_data->send_cmd(host, command, false);
+		mxc_do_addr_cycle(mtd, column, page_addr);
+		host->devtype_data->send_page(mtd, NFC_OUTPUT);
+		memcpy32_fromio(host->data_buf, host->main_area0, 512);
+		host->buf_start = 0;
+		break;
+	default:
+		WARN_ONCE(1, "Unimplemented command (cmd=%u)\n",
+			  command);
 		break;
 	}
 }
@@ -1399,12 +1435,15 @@ static int mxcnd_probe(struct platform_device *pdev)
 	int err = 0;
 
 	/* Allocate memory for MTD device structure and private data */
-	host = devm_kzalloc(&pdev->dev, sizeof(struct mxc_nand_host) +
-			NAND_MAX_PAGESIZE + NAND_MAX_OOBSIZE, GFP_KERNEL);
+	host = devm_kzalloc(&pdev->dev, sizeof(struct mxc_nand_host),
+			GFP_KERNEL);
 	if (!host)
 		return -ENOMEM;
 
-	host->data_buf = (uint8_t *)(host + 1);
+	/* allocate a temporary buffer for the nand_scan_ident() */
+	host->data_buf = devm_kzalloc(&pdev->dev, PAGE_SIZE, GFP_KERNEL);
+	if (!host->data_buf)
+		return -ENOMEM;
 
 	host->dev = &pdev->dev;
 	/* structures must be linked */
@@ -1432,7 +1471,8 @@ static int mxcnd_probe(struct platform_device *pdev)
 
 	err = mxcnd_probe_dt(host);
 	if (err > 0) {
-		struct mxc_nand_platform_data *pdata = pdev->dev.platform_data;
+		struct mxc_nand_platform_data *pdata =
+					dev_get_platdata(&pdev->dev);
 		if (pdata) {
 			host->pdata = *pdata;
 			host->devtype_data = (struct mxc_nand_devtype_data *)
@@ -1446,8 +1486,6 @@ static int mxcnd_probe(struct platform_device *pdev)
 
 	if (host->devtype_data->needs_ip) {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res)
-			return -ENODEV;
 		host->regs_ip = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(host->regs_ip))
 			return PTR_ERR(host->regs_ip);
@@ -1456,9 +1494,6 @@ static int mxcnd_probe(struct platform_device *pdev)
 	} else {
 		res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	}
-
-	if (!res)
-		return -ENODEV;
 
 	host->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(host->base))
@@ -1502,6 +1537,8 @@ static int mxcnd_probe(struct platform_device *pdev)
 	init_completion(&host->op_completion);
 
 	host->irq = platform_get_irq(pdev, 0);
+	if (host->irq < 0)
+		return host->irq;
 
 	/*
 	 * Use host->devtype_data->irq_control() here instead of irq_control()
@@ -1511,11 +1548,13 @@ static int mxcnd_probe(struct platform_device *pdev)
 	host->devtype_data->irq_control(host, 0);
 
 	err = devm_request_irq(&pdev->dev, host->irq, mxc_nfc_irq,
-			IRQF_DISABLED, DRIVER_NAME, host);
+			0, DRIVER_NAME, host);
 	if (err)
 		return err;
 
-	clk_prepare_enable(host->clk);
+	err = clk_prepare_enable(host->clk);
+	if (err)
+		return err;
 	host->clk_act = 1;
 
 	/*
@@ -1531,6 +1570,15 @@ static int mxcnd_probe(struct platform_device *pdev)
 	/* first scan to find the device and get the page size */
 	if (nand_scan_ident(mtd, is_imx25_nfc(host) ? 4 : 1, NULL)) {
 		err = -ENXIO;
+		goto escan;
+	}
+
+	/* allocate the right size buffer now */
+	devm_kfree(&pdev->dev, (void *)host->data_buf);
+	host->data_buf = devm_kzalloc(&pdev->dev, mtd->writesize + mtd->oobsize,
+					GFP_KERNEL);
+	if (!host->data_buf) {
+		err = -ENOMEM;
 		goto escan;
 	}
 
@@ -1578,9 +1626,9 @@ static int mxcnd_remove(struct platform_device *pdev)
 {
 	struct mxc_nand_host *host = platform_get_drvdata(pdev);
 
-	platform_set_drvdata(pdev, NULL);
-
 	nand_release(&host->mtd);
+	if (host->clk_act)
+		clk_disable_unprepare(host->clk);
 
 	return 0;
 }
@@ -1588,7 +1636,6 @@ static int mxcnd_remove(struct platform_device *pdev)
 static struct platform_driver mxcnd_driver = {
 	.driver = {
 		   .name = DRIVER_NAME,
-		   .owner = THIS_MODULE,
 		   .of_match_table = of_match_ptr(mxcnd_dt_ids),
 	},
 	.id_table = mxcnd_devtype,

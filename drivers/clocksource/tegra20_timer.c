@@ -27,6 +27,7 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/sched_clock.h>
+#include <linux/delay.h>
 
 #include <asm/mach/time.h>
 #include <asm/smp_twd.h>
@@ -50,13 +51,15 @@
 static void __iomem *timer_reg_base;
 static void __iomem *rtc_base;
 
-static struct timespec persistent_ts;
+static struct timespec64 persistent_ts;
 static u64 persistent_ms, last_persistent_ms;
 
+static struct delay_timer tegra_delay_timer;
+
 #define timer_writel(value, reg) \
-	__raw_writel(value, timer_reg_base + (reg))
+	writel_relaxed(value, timer_reg_base + (reg))
 #define timer_readl(reg) \
-	__raw_readl(timer_reg_base + (reg))
+	readl_relaxed(timer_reg_base + (reg))
 
 static int tegra_timer_set_next_event(unsigned long cycles,
 					 struct clock_event_device *evt)
@@ -98,7 +101,7 @@ static struct clock_event_device tegra_clockevent = {
 	.set_mode	= tegra_timer_set_mode,
 };
 
-static u32 notrace tegra_read_sched_clock(void)
+static u64 notrace tegra_read_sched_clock(void)
 {
 	return timer_readl(TIMERUS_CNTR_1US);
 }
@@ -117,26 +120,30 @@ static u64 tegra_rtc_read_ms(void)
 }
 
 /*
- * tegra_read_persistent_clock -  Return time from a persistent clock.
+ * tegra_read_persistent_clock64 -  Return time from a persistent clock.
  *
  * Reads the time from a source which isn't disabled during PM, the
  * 32k sync timer.  Convert the cycles elapsed since last read into
- * nsecs and adds to a monotonically increasing timespec.
+ * nsecs and adds to a monotonically increasing timespec64.
  * Care must be taken that this funciton is not called while the
  * tegra_rtc driver could be executing to avoid race conditions
  * on the RTC shadow register
  */
-static void tegra_read_persistent_clock(struct timespec *ts)
+static void tegra_read_persistent_clock64(struct timespec64 *ts)
 {
 	u64 delta;
-	struct timespec *tsp = &persistent_ts;
 
 	last_persistent_ms = persistent_ms;
 	persistent_ms = tegra_rtc_read_ms();
 	delta = persistent_ms - last_persistent_ms;
 
-	timespec_add_ns(tsp, delta * NSEC_PER_MSEC);
-	*ts = *tsp;
+	timespec64_add_ns(&persistent_ts, delta * NSEC_PER_MSEC);
+	*ts = persistent_ts;
+}
+
+static unsigned long tegra_delay_timer_read_counter_long(void)
+{
+	return readl(timer_reg_base + TIMERUS_CNTR_1US);
 }
 
 static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
@@ -149,7 +156,7 @@ static irqreturn_t tegra_timer_interrupt(int irq, void *dev_id)
 
 static struct irqaction tegra_timer_irq = {
 	.name		= "timer0",
-	.flags		= IRQF_DISABLED | IRQF_TIMER | IRQF_TRIGGER_HIGH,
+	.flags		= IRQF_TIMER | IRQF_TRIGGER_HIGH,
 	.handler	= tegra_timer_interrupt,
 	.dev_id		= &tegra_clockevent,
 };
@@ -181,8 +188,6 @@ static void __init tegra20_init_timer(struct device_node *np)
 		rate = clk_get_rate(clk);
 	}
 
-	of_node_put(np);
-
 	switch (rate) {
 	case 12000000:
 		timer_writel(0x000b, TIMERUS_USEC_CFG);
@@ -200,13 +205,18 @@ static void __init tegra20_init_timer(struct device_node *np)
 		WARN(1, "Unknown clock rate");
 	}
 
-	setup_sched_clock(tegra_read_sched_clock, 32, 1000000);
+	sched_clock_register(tegra_read_sched_clock, 32, 1000000);
 
 	if (clocksource_mmio_init(timer_reg_base + TIMERUS_CNTR_1US,
 		"timer_us", 1000000, 300, 32, clocksource_mmio_readl_up)) {
 		pr_err("Failed to register clocksource\n");
 		BUG();
 	}
+
+	tegra_delay_timer.read_current_timer =
+			tegra_delay_timer_read_counter_long;
+	tegra_delay_timer.freq = 1000000;
+	register_current_timer_delay(&tegra_delay_timer);
 
 	ret = setup_irq(tegra_timer_irq.irq, &tegra_timer_irq);
 	if (ret) {
@@ -241,9 +251,7 @@ static void __init tegra20_init_rtc(struct device_node *np)
 	else
 		clk_prepare_enable(clk);
 
-	of_node_put(np);
-
-	register_persistent_clock(NULL, tegra_read_persistent_clock);
+	register_persistent_clock(NULL, tegra_read_persistent_clock64);
 }
 CLOCKSOURCE_OF_DECLARE(tegra20_rtc, "nvidia,tegra20-rtc", tegra20_init_rtc);
 

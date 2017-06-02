@@ -39,6 +39,7 @@
 
 #include "common.h"
 #include "devices-imx35.h"
+#include "ehci.h"
 #include "eukrea-baseboards.h"
 #include "hardware.h"
 #include "iomux-mx35.h"
@@ -53,7 +54,7 @@ static const struct imxi2c_platform_data
 };
 
 #define TSC2007_IRQGPIO		IMX_GPIO_NR(3, 2)
-static int tsc2007_get_pendown_state(void)
+static int tsc2007_get_pendown_state(struct device *dev)
 {
 	return !gpio_get_value(TSC2007_IRQGPIO);
 }
@@ -74,7 +75,7 @@ static struct i2c_board_info eukrea_cpuimx35_i2c_devices[] = {
 	},
 };
 
-static iomux_v3_cfg_t eukrea_cpuimx35_pads[] = {
+static const iomux_v3_cfg_t eukrea_cpuimx35_pads[] __initconst = {
 	/* UART1 */
 	MX35_PAD_CTS1__UART1_CTS,
 	MX35_PAD_RTS1__UART1_RTS,
@@ -199,7 +200,6 @@ MACHINE_START(EUKREA_CPUIMX35SD, "Eukrea CPUIMX35")
 	.map_io = mx35_map_io,
 	.init_early = imx35_init_early,
 	.init_irq = mx35_init_irq,
-	.handle_irq = imx35_handle_irq,
 	.init_time	= eukrea_cpuimx35_timer_init,
 	.init_machine = eukrea_cpuimx35_init,
 	.restart	= mxc_restart,

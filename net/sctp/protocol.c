@@ -23,16 +23,12 @@
  * See the GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with GNU CC; see the file COPYING.  If not, write to
- * the Free Software Foundation, 59 Temple Place - Suite 330,
- * Boston, MA 02111-1307, USA.
+ * along with GNU CC; see the file COPYING.  If not, see
+ * <http://www.gnu.org/licenses/>.
  *
  * Please send any bug reports or fixes you make to the
  * email address(es):
- *    lksctp developers <lksctp-developers@lists.sourceforge.net>
- *
- * Or submit a bug report through the following website:
- *    http://www.sf.net/projects/lksctp
+ *    lksctp developers <linux-sctp@vger.kernel.org>
  *
  * Written or modified by:
  *    La Monte H.P. Yarroll <piggy@acm.org>
@@ -41,9 +37,6 @@
  *    Sridhar Samudrala <sri@us.ibm.com>
  *    Daisy Chang <daisyc@us.ibm.com>
  *    Ardelle Fan <ardelle.fan@intel.com>
- *
- * Any bugs reported given to us we will try to fix... any fixes shared will
- * be incorporated into the next SCTP release.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -373,7 +366,7 @@ static int sctp_v4_available(union sctp_addr *addr, struct sctp_sock *sp)
 	if (addr->v4.sin_addr.s_addr != htonl(INADDR_ANY) &&
 	   ret != RTN_LOCAL &&
 	   !sp->inet.freebind &&
-	   !sysctl_ip_nonlocal_bind)
+	   !net->ipv4.sysctl_ip_nonlocal_bind)
 		return 0;
 
 	if (ipv6_only_sock(sctp_opt2sk(sp)))
@@ -498,8 +491,13 @@ static void sctp_v4_get_dst(struct sctp_transport *t, union sctp_addr *saddr,
 			continue;
 		if ((laddr->state == SCTP_ADDR_SRC) &&
 		    (AF_INET == laddr->a.sa.sa_family)) {
-			fl4->saddr = laddr->a.v4.sin_addr.s_addr;
 			fl4->fl4_sport = laddr->a.v4.sin_port;
+			flowi4_update_output(fl4,
+					     asoc->base.sk->sk_bound_dev_if,
+					     RT_CONN_FLAGS(asoc->base.sk),
+					     daddr->v4.sin_addr.s_addr,
+					     laddr->a.v4.sin_addr.s_addr);
+
 			rt = ip_route_output_key(sock_net(sk), fl4);
 			if (!IS_ERR(rt)) {
 				dst = &rt->dst;
@@ -578,10 +576,10 @@ out:
 	return newsk;
 }
 
-/* Map address, empty for v4 family */
-static void sctp_v4_addr_v4map(struct sctp_sock *sp, union sctp_addr *addr)
+static int sctp_v4_addr_to_user(struct sctp_sock *sp, union sctp_addr *addr)
 {
-	/* Empty */
+	/* No address mapping for V4 sockets */
+	return sizeof(struct sockaddr_in);
 }
 
 /* Dump the v4 addr to the seq file. */
@@ -641,10 +639,10 @@ static void sctp_addr_wq_timeout_handler(unsigned long arg)
 			/* ignore bound-specific endpoints */
 			if (!sctp_is_ep_boundall(sk))
 				continue;
-			sctp_bh_lock_sock(sk);
+			bh_lock_sock(sk);
 			if (sctp_asconf_mgmt(sp, addrw) < 0)
 				pr_debug("%s: sctp_asconf_mgmt failed\n", __func__);
-			sctp_bh_unlock_sock(sk);
+			bh_unlock_sock(sk);
 		}
 #if IS_ENABLED(CONFIG_IPV6)
 free_next:
@@ -964,7 +962,7 @@ static inline int sctp_v4_xmit(struct sk_buff *skb,
 
 	SCTP_INC_STATS(sock_net(&inet->sk), SCTP_MIB_OUTSCTPPACKS);
 
-	return ip_queue_xmit(skb, &transport->fl);
+	return ip_queue_xmit(&inet->sk, skb, &transport->fl);
 }
 
 static struct sctp_af sctp_af_inet;
@@ -978,7 +976,9 @@ static struct sctp_pf sctp_pf_inet = {
 	.send_verify   = sctp_inet_send_verify,
 	.supported_addrs = sctp_inet_supported_addrs,
 	.create_accept_sk = sctp_v4_create_accept_sk,
-	.addr_v4map	= sctp_v4_addr_v4map,
+	.addr_to_user  = sctp_v4_addr_to_user,
+	.to_sk_saddr   = sctp_v4_to_sk_saddr,
+	.to_sk_daddr   = sctp_v4_to_sk_daddr,
 	.af            = &sctp_af_inet
 };
 
@@ -1019,7 +1019,6 @@ static struct inet_protosw sctp_seqpacket_protosw = {
 	.protocol   = IPPROTO_SCTP,
 	.prot       = &sctp_prot,
 	.ops        = &inet_seqpacket_ops,
-	.no_check   = 0,
 	.flags      = SCTP_PROTOSW_FLAG
 };
 static struct inet_protosw sctp_stream_protosw = {
@@ -1027,7 +1026,6 @@ static struct inet_protosw sctp_stream_protosw = {
 	.protocol   = IPPROTO_SCTP,
 	.prot       = &sctp_prot,
 	.ops        = &inet_seqpacket_ops,
-	.no_check   = 0,
 	.flags      = SCTP_PROTOSW_FLAG
 };
 
@@ -1037,6 +1035,7 @@ static const struct net_protocol sctp_protocol = {
 	.err_handler = sctp_v4_err,
 	.no_policy   = 1,
 	.netns_ok    = 1,
+	.icmp_strict_tag_validation = 1,
 };
 
 /* IPv4 address related functions.  */
@@ -1050,8 +1049,6 @@ static struct sctp_af sctp_af_inet = {
 	.copy_addrlist	   = sctp_v4_copy_addrlist,
 	.from_skb	   = sctp_v4_from_skb,
 	.from_sk	   = sctp_v4_from_sk,
-	.to_sk_saddr	   = sctp_v4_to_sk_saddr,
-	.to_sk_daddr	   = sctp_v4_to_sk_daddr,
 	.from_addr_param   = sctp_v4_from_addr_param,
 	.to_addr_param	   = sctp_v4_to_addr_param,
 	.cmp_addr	   = sctp_v4_cmp_addr,
@@ -1072,8 +1069,8 @@ static struct sctp_af sctp_af_inet = {
 #endif
 };
 
-struct sctp_pf *sctp_get_pf_specific(sa_family_t family) {
-
+struct sctp_pf *sctp_get_pf_specific(sa_family_t family)
+{
 	switch (family) {
 	case PF_INET:
 		return sctp_pf_inet_specific;
@@ -1106,14 +1103,15 @@ int sctp_register_pf(struct sctp_pf *pf, sa_family_t family)
 
 static inline int init_sctp_mibs(struct net *net)
 {
-	return snmp_mib_init((void __percpu **)net->sctp.sctp_statistics,
-			     sizeof(struct sctp_mib),
-			     __alignof__(struct sctp_mib));
+	net->sctp.sctp_statistics = alloc_percpu(struct sctp_mib);
+	if (!net->sctp.sctp_statistics)
+		return -ENOMEM;
+	return 0;
 }
 
 static inline void cleanup_sctp_mibs(struct net *net)
 {
-	snmp_mib_free((void __percpu **)net->sctp.sctp_statistics);
+	free_percpu(net->sctp.sctp_statistics);
 }
 
 static void sctp_v4_pf_init(void)
@@ -1168,7 +1166,7 @@ static void sctp_v4_del_protocol(void)
 	unregister_inetaddr_notifier(&sctp_inetaddr_notifier);
 }
 
-static int __net_init sctp_net_init(struct net *net)
+static int __net_init sctp_defaults_init(struct net *net)
 {
 	int status;
 
@@ -1261,12 +1259,6 @@ static int __net_init sctp_net_init(struct net *net)
 
 	sctp_dbg_objcnt_init(net);
 
-	/* Initialize the control inode/socket for handling OOTB packets.  */
-	if ((status = sctp_ctl_sock_init(net))) {
-		pr_err("Failed to initialize the SCTP control sock\n");
-		goto err_ctl_sock_init;
-	}
-
 	/* Initialize the local address list. */
 	INIT_LIST_HEAD(&net->sctp.local_addr_list);
 	spin_lock_init(&net->sctp.local_addr_lock);
@@ -1282,9 +1274,6 @@ static int __net_init sctp_net_init(struct net *net)
 
 	return 0;
 
-err_ctl_sock_init:
-	sctp_dbg_objcnt_exit(net);
-	sctp_proc_exit(net);
 err_init_proc:
 	cleanup_sctp_mibs(net);
 err_init_mibs:
@@ -1293,14 +1282,11 @@ err_sysctl_register:
 	return status;
 }
 
-static void __net_exit sctp_net_exit(struct net *net)
+static void __net_exit sctp_defaults_exit(struct net *net)
 {
 	/* Free the local address list */
 	sctp_free_addr_wq(net);
 	sctp_free_local_addr_list(net);
-
-	/* Free the control endpoint.  */
-	inet_ctl_sock_destroy(net->sctp.ctl_sock);
 
 	sctp_dbg_objcnt_exit(net);
 
@@ -1309,9 +1295,32 @@ static void __net_exit sctp_net_exit(struct net *net)
 	sctp_sysctl_net_unregister(net);
 }
 
-static struct pernet_operations sctp_net_ops = {
-	.init = sctp_net_init,
-	.exit = sctp_net_exit,
+static struct pernet_operations sctp_defaults_ops = {
+	.init = sctp_defaults_init,
+	.exit = sctp_defaults_exit,
+};
+
+static int __net_init sctp_ctrlsock_init(struct net *net)
+{
+	int status;
+
+	/* Initialize the control inode/socket for handling OOTB packets.  */
+	status = sctp_ctl_sock_init(net);
+	if (status)
+		pr_err("Failed to initialize the SCTP control sock\n");
+
+	return status;
+}
+
+static void __net_init sctp_ctrlsock_exit(struct net *net)
+{
+	/* Free the control endpoint.  */
+	inet_ctl_sock_destroy(net->sctp.ctl_sock);
+}
+
+static struct pernet_operations sctp_ctrlsock_ops = {
+	.init = sctp_ctrlsock_init,
+	.exit = sctp_ctrlsock_exit,
 };
 
 /* Initialize the universe into something sensible.  */
@@ -1324,8 +1333,7 @@ static __init int sctp_init(void)
 	int max_share;
 	int order;
 
-	BUILD_BUG_ON(sizeof(struct sctp_ulpevent) >
-		     sizeof(((struct sk_buff *) 0)->cb));
+	sock_skb_cb_check_size(sizeof(struct sctp_ulpevent));
 
 	/* Allocate bind_bucket and chunk caches. */
 	status = -ENOBUFS;
@@ -1343,7 +1351,7 @@ static __init int sctp_init(void)
 	if (!sctp_chunk_cachep)
 		goto err_chunk_cachep;
 
-	status = percpu_counter_init(&sctp_sockets_allocated, 0);
+	status = percpu_counter_init(&sctp_sockets_allocated, 0, GFP_KERNEL);
 	if (status)
 		goto err_percpu_counter_init;
 
@@ -1445,8 +1453,11 @@ static __init int sctp_init(void)
 	sctp_v4_pf_init();
 	sctp_v6_pf_init();
 
-	status = sctp_v4_protosw_init();
+	status = register_pernet_subsys(&sctp_defaults_ops);
+	if (status)
+		goto err_register_defaults;
 
+	status = sctp_v4_protosw_init();
 	if (status)
 		goto err_protosw_init;
 
@@ -1454,9 +1465,9 @@ static __init int sctp_init(void)
 	if (status)
 		goto err_v6_protosw_init;
 
-	status = register_pernet_subsys(&sctp_net_ops);
+	status = register_pernet_subsys(&sctp_ctrlsock_ops);
 	if (status)
-		goto err_register_pernet_subsys;
+		goto err_register_ctrlsock;
 
 	status = sctp_v4_add_protocol();
 	if (status)
@@ -1467,18 +1478,19 @@ static __init int sctp_init(void)
 	if (status)
 		goto err_v6_add_protocol;
 
-	status = 0;
 out:
 	return status;
 err_v6_add_protocol:
 	sctp_v4_del_protocol();
 err_add_protocol:
-	unregister_pernet_subsys(&sctp_net_ops);
-err_register_pernet_subsys:
+	unregister_pernet_subsys(&sctp_ctrlsock_ops);
+err_register_ctrlsock:
 	sctp_v6_protosw_exit();
 err_v6_protosw_init:
 	sctp_v4_protosw_exit();
 err_protosw_init:
+	unregister_pernet_subsys(&sctp_defaults_ops);
+err_register_defaults:
 	sctp_v4_pf_exit();
 	sctp_v6_pf_exit();
 	sctp_sysctl_unregister();
@@ -1511,11 +1523,13 @@ static __exit void sctp_exit(void)
 	sctp_v6_del_protocol();
 	sctp_v4_del_protocol();
 
-	unregister_pernet_subsys(&sctp_net_ops);
+	unregister_pernet_subsys(&sctp_ctrlsock_ops);
 
 	/* Free protosw registrations */
 	sctp_v6_protosw_exit();
 	sctp_v4_protosw_exit();
+
+	unregister_pernet_subsys(&sctp_defaults_ops);
 
 	/* Unregister with socket layer. */
 	sctp_v6_pf_exit();
@@ -1547,7 +1561,7 @@ module_exit(sctp_exit);
  */
 MODULE_ALIAS("net-pf-" __stringify(PF_INET) "-proto-132");
 MODULE_ALIAS("net-pf-" __stringify(PF_INET6) "-proto-132");
-MODULE_AUTHOR("Linux Kernel SCTP developers <lksctp-developers@lists.sourceforge.net>");
+MODULE_AUTHOR("Linux Kernel SCTP developers <linux-sctp@vger.kernel.org>");
 MODULE_DESCRIPTION("Support for the SCTP protocol (RFC2960)");
 module_param_named(no_checksums, sctp_checksum_disable, bool, 0644);
 MODULE_PARM_DESC(no_checksums, "Disable checksums computing and verification");

@@ -89,7 +89,6 @@ struct qlogic_ib_stats {
 
 extern struct qlogic_ib_stats qib_stats;
 extern const struct pci_error_handlers qib_pci_err_handler;
-extern struct pci_driver qib_driver;
 
 #define QIB_CHIP_SWVERSION QIB_CHIP_VERS_MAJ
 /*
@@ -576,11 +575,13 @@ struct qib_pportdata {
 	/* read/write using lock */
 	spinlock_t            sdma_lock ____cacheline_aligned_in_smp;
 	struct list_head      sdma_activelist;
+	struct list_head      sdma_userpending;
 	u64                   sdma_descq_added;
 	u64                   sdma_descq_removed;
 	u16                   sdma_descq_tail;
 	u16                   sdma_descq_head;
 	u8                    sdma_generation;
+	u8                    sdma_intrequest;
 
 	struct tasklet_struct sdma_sw_clean_up_task
 		____cacheline_aligned_in_smp;
@@ -867,8 +868,10 @@ struct qib_devdata {
 	/* last buffer for user use */
 	u32 lastctxt_piobuf;
 
-	/* saturating counter of (non-port-specific) device interrupts */
-	u32 int_counter;
+	/* reset value */
+	u64 z_int_counter;
+	/* percpu intcounter */
+	u64 __percpu *int_counter;
 
 	/* pio bufs allocated per ctxt */
 	u32 pbufsctxt;
@@ -900,7 +903,7 @@ struct qib_devdata {
 	/* PCI Device ID (here for NodeInfo) */
 	u16 deviceid;
 	/* for write combining settings */
-	unsigned long wc_cookie;
+	int wc_cookie;
 	unsigned long wc_base;
 	unsigned long wc_len;
 
@@ -1079,12 +1082,6 @@ struct qib_devdata {
 	/* control high-level access to EEPROM */
 	struct mutex eep_lock;
 	uint64_t traffic_wds;
-	/* active time is kept in seconds, but logged in hours */
-	atomic_t active_time;
-	/* Below are nominal shadow of EEPROM, new since last EEPROM update */
-	uint8_t eep_st_errs[QIB_EEP_LOG_CNT];
-	uint8_t eep_st_new_errs[QIB_EEP_LOG_CNT];
-	uint16_t eep_hrs;
 	/*
 	 * masks for which bits of errs, hwerrs that cause
 	 * each of the counters to increment.
@@ -1139,7 +1136,6 @@ extern struct qib_devdata *qib_lookup(int unit);
 extern u32 qib_cpulist_count;
 extern unsigned long *qib_cpulist;
 
-extern unsigned qib_wc_pat;
 extern unsigned qib_cc_table_size;
 int qib_init(struct qib_devdata *, int);
 int init_chip_wc_pat(struct qib_devdata *dd, u32);
@@ -1183,7 +1179,7 @@ int qib_setup_eagerbufs(struct qib_ctxtdata *);
 void qib_set_ctxtcnt(struct qib_devdata *);
 int qib_create_ctxts(struct qib_devdata *dd);
 struct qib_ctxtdata *qib_create_ctxtdata(struct qib_pportdata *, u32, int);
-void qib_init_pportdata(struct qib_pportdata *, struct qib_devdata *, u8, u8);
+int qib_init_pportdata(struct qib_pportdata *, struct qib_devdata *, u8, u8);
 void qib_free_ctxtdata(struct qib_devdata *, struct qib_ctxtdata *);
 
 u32 qib_kreceive(struct qib_ctxtdata *, u32 *, u32 *);
@@ -1306,8 +1302,7 @@ int qib_twsi_blk_rd(struct qib_devdata *dd, int dev, int addr, void *buffer,
 int qib_twsi_blk_wr(struct qib_devdata *dd, int dev, int addr,
 		    const void *buffer, int len);
 void qib_get_eeprom_info(struct qib_devdata *);
-int qib_update_eeprom_log(struct qib_devdata *dd);
-void qib_inc_eeprom_err(struct qib_devdata *dd, u32 eidx, u32 incr);
+#define qib_inc_eeprom_err(dd, eidx, incr)
 void qib_dump_lookup_output_queue(struct qib_devdata *);
 void qib_force_pio_avail_update(struct qib_devdata *);
 void qib_clear_symerror_on_linkup(unsigned long opaque);
@@ -1326,6 +1321,8 @@ int qib_setup_sdma(struct qib_pportdata *);
 void qib_teardown_sdma(struct qib_pportdata *);
 void __qib_sdma_intr(struct qib_pportdata *);
 void qib_sdma_intr(struct qib_pportdata *);
+void qib_user_sdma_send_desc(struct qib_pportdata *dd,
+			struct list_head *pktlist);
 int qib_sdma_verbs_send(struct qib_pportdata *, struct qib_sge_state *,
 			u32, struct qib_verbs_txreq *);
 /* ppd->sdma_lock should be locked before calling this. */
@@ -1446,6 +1443,10 @@ void qib_nomsi(struct qib_devdata *);
 void qib_nomsix(struct qib_devdata *);
 void qib_pcie_getcmd(struct qib_devdata *, u16 *, u8 *, u8 *);
 void qib_pcie_reenable(struct qib_devdata *, u16, u8, u8);
+/* interrupts for device */
+u64 qib_int_counter(struct qib_devdata *);
+/* interrupt for all devices */
+u64 qib_sps_ints(void);
 
 /*
  * dma_addr wrappers - all 0's invalid for hw
@@ -1458,11 +1459,14 @@ const char *qib_get_unit_name(int unit);
  * Flush write combining store buffers (if present) and perform a write
  * barrier.
  */
+static inline void qib_flush_wc(void)
+{
 #if defined(CONFIG_X86_64)
-#define qib_flush_wc() asm volatile("sfence" : : : "memory")
+	asm volatile("sfence" : : : "memory");
 #else
-#define qib_flush_wc() wmb() /* no reorder around wc flush */
+	wmb(); /* no reorder around wc flush */
 #endif
+}
 
 /* global module parameter variables */
 extern unsigned qib_ibmtu;

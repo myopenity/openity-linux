@@ -1,7 +1,7 @@
 /*
  * CAAM/SEC 4.x functions for using scatterlists in caam driver
  *
- * Copyright 2008-2011 Freescale Semiconductor, Inc.
+ * Copyright 2008-2016 Freescale Semiconductor, Inc.
  *
  */
 
@@ -37,7 +37,7 @@ sg_to_sec4_sg(struct scatterlist *sg, int sg_count,
 		dma_to_sec4_sg_one(sec4_sg_ptr, sg_dma_address(sg),
 				   sg_dma_len(sg), offset);
 		sec4_sg_ptr++;
-		sg = scatterwalk_sg_next(sg);
+		sg = sg_next(sg);
 		sg_count--;
 	}
 	return sec4_sg_ptr - 1;
@@ -67,7 +67,7 @@ static inline int __sg_count(struct scatterlist *sg_list, int nbytes,
 		nbytes -= sg->length;
 		if (!sg_is_last(sg) && (sg + 1)->length == 0)
 			*chained = true;
-		sg = scatterwalk_sg_next(sg);
+		sg = sg_next(sg);
 	}
 
 	return sg_nents;
@@ -91,13 +91,22 @@ static int dma_map_sg_chained(struct device *dev, struct scatterlist *sg,
 {
 	if (unlikely(chained)) {
 		int i;
+		struct scatterlist *tsg = sg;
+
+	/* We use a local copy of the sg pointer to avoid moving the
+	 * head of the list pointed to by sg as we wall the list.
+	 */
 		for (i = 0; i < nents; i++) {
-			dma_map_sg(dev, sg, 1, dir);
-			sg = scatterwalk_sg_next(sg);
+			dma_map_sg(dev, tsg, 1, dir);
+			tsg = sg_next(tsg);
 		}
 	} else {
 		dma_map_sg(dev, sg, nents, dir);
 	}
+
+	if ((dir == DMA_TO_DEVICE) || (dir == DMA_BIDIRECTIONAL))
+		dma_sync_sg_for_device(dev, sg, nents, dir);
+
 	return nents;
 }
 
@@ -105,52 +114,17 @@ static int dma_unmap_sg_chained(struct device *dev, struct scatterlist *sg,
 				unsigned int nents, enum dma_data_direction dir,
 				bool chained)
 {
+	if ((dir == DMA_FROM_DEVICE) || (dir == DMA_BIDIRECTIONAL))
+		dma_sync_sg_for_cpu(dev, sg, nents, dir);
+
 	if (unlikely(chained)) {
 		int i;
 		for (i = 0; i < nents; i++) {
 			dma_unmap_sg(dev, sg, 1, dir);
-			sg = scatterwalk_sg_next(sg);
+			sg = sg_next(sg);
 		}
 	} else {
 		dma_unmap_sg(dev, sg, nents, dir);
 	}
 	return nents;
-}
-
-/* Copy from len bytes of sg to dest, starting from beginning */
-static inline void sg_copy(u8 *dest, struct scatterlist *sg, unsigned int len)
-{
-	struct scatterlist *current_sg = sg;
-	int cpy_index = 0, next_cpy_index = current_sg->length;
-
-	while (next_cpy_index < len) {
-		memcpy(dest + cpy_index, (u8 *) sg_virt(current_sg),
-		       current_sg->length);
-		current_sg = scatterwalk_sg_next(current_sg);
-		cpy_index = next_cpy_index;
-		next_cpy_index += current_sg->length;
-	}
-	if (cpy_index < len)
-		memcpy(dest + cpy_index, (u8 *) sg_virt(current_sg),
-		       len - cpy_index);
-}
-
-/* Copy sg data, from to_skip to end, to dest */
-static inline void sg_copy_part(u8 *dest, struct scatterlist *sg,
-				      int to_skip, unsigned int end)
-{
-	struct scatterlist *current_sg = sg;
-	int sg_index, cpy_index;
-
-	sg_index = current_sg->length;
-	while (sg_index <= to_skip) {
-		current_sg = scatterwalk_sg_next(current_sg);
-		sg_index += current_sg->length;
-	}
-	cpy_index = sg_index - to_skip;
-	memcpy(dest, (u8 *) sg_virt(current_sg) +
-	       current_sg->length - cpy_index, cpy_index);
-	current_sg = scatterwalk_sg_next(current_sg);
-	if (end - sg_index)
-		sg_copy(dest + cpy_index, current_sg, end - sg_index);
 }

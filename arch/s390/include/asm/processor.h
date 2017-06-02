@@ -11,6 +11,14 @@
 #ifndef __ASM_S390_PROCESSOR_H
 #define __ASM_S390_PROCESSOR_H
 
+#define CIF_MCCK_PENDING	0	/* machine check handling is pending */
+#define CIF_ASCE		1	/* user asce needs fixup / uaccess */
+#define CIF_NOHZ_DELAY		2	/* delay HZ disable for a tick */
+
+#define _CIF_MCCK_PENDING	(1<<CIF_MCCK_PENDING)
+#define _CIF_ASCE		(1<<CIF_ASCE)
+#define _CIF_NOHZ_DELAY		(1<<CIF_NOHZ_DELAY)
+
 #ifndef __ASSEMBLY__
 
 #include <linux/linkage.h>
@@ -20,6 +28,23 @@
 #include <asm/ptrace.h>
 #include <asm/setup.h>
 #include <asm/runtime_instr.h>
+
+static inline void set_cpu_flag(int flag)
+{
+	S390_lowcore.cpu_flags |= (1U << flag);
+}
+
+static inline void clear_cpu_flag(int flag)
+{
+	S390_lowcore.cpu_flags &= ~(1U << flag);
+}
+
+static inline int test_cpu_flag(int flag)
+{
+	return !!(S390_lowcore.cpu_flags & (1U << flag));
+}
+
+#define arch_needs_cpu() test_cpu_flag(CIF_NOHZ_DELAY)
 
 /*
  * Default implementation of macro that returns current
@@ -40,27 +65,15 @@ extern void execve_tail(void);
 /*
  * User space process size: 2GB for 31 bit, 4TB or 8PT for 64 bit.
  */
-#ifndef CONFIG_64BIT
-
-#define TASK_SIZE		(1UL << 31)
-#define TASK_UNMAPPED_BASE	(1UL << 30)
-
-#else /* CONFIG_64BIT */
 
 #define TASK_SIZE_OF(tsk)	((tsk)->mm->context.asce_limit)
 #define TASK_UNMAPPED_BASE	(test_thread_flag(TIF_31BIT) ? \
 					(1UL << 30) : (1UL << 41))
 #define TASK_SIZE		TASK_SIZE_OF(current)
+#define TASK_MAX_SIZE		(1UL << 53)
 
-#endif /* CONFIG_64BIT */
-
-#ifndef CONFIG_64BIT
-#define STACK_TOP		(1UL << 31)
-#define STACK_TOP_MAX		(1UL << 31)
-#else /* CONFIG_64BIT */
 #define STACK_TOP		(1UL << (test_thread_flag(TIF_31BIT) ? 31:42))
 #define STACK_TOP_MAX		(1UL << 42)
-#endif /* CONFIG_64BIT */
 
 #define HAVE_ARCH_PICK_MMAP_LAYOUT
 
@@ -77,6 +90,7 @@ struct thread_struct {
         unsigned long ksp;              /* kernel stack pointer             */
 	mm_segment_t mm_segment;
 	unsigned long gmap_addr;	/* address of last gmap fault. */
+	unsigned int gmap_pfault;	/* signal of a pending guest pfault */
 	struct per_regs per_user;	/* User specified PER registers */
 	struct per_event per_event;	/* Cause of the last PER trap */
 	unsigned long per_flags;	/* Flags to control debug behavior */
@@ -86,9 +100,8 @@ struct thread_struct {
 	/* cpu runtime instrumentation */
 	struct runtime_instr_cb *ri_cb;
 	int ri_signum;
-#ifdef CONFIG_64BIT
 	unsigned char trap_tdb[256];	/* Transaction abort diagnose block */
-#endif
+	__vector128 *vxrs;		/* Vector register save area */
 };
 
 /* Flag to disable transactions. */
@@ -132,19 +145,17 @@ struct stack_frame {
  * Do necessary setup to start up a new thread.
  */
 #define start_thread(regs, new_psw, new_stackp) do {			\
-	regs->psw.mask	= psw_user_bits | PSW_MASK_EA | PSW_MASK_BA;	\
+	regs->psw.mask	= PSW_USER_BITS | PSW_MASK_EA | PSW_MASK_BA;	\
 	regs->psw.addr	= new_psw | PSW_ADDR_AMODE;			\
 	regs->gprs[15]	= new_stackp;					\
 	execve_tail();							\
 } while (0)
 
 #define start_thread31(regs, new_psw, new_stackp) do {			\
-	regs->psw.mask	= psw_user_bits | PSW_MASK_BA;			\
+	regs->psw.mask	= PSW_USER_BITS | PSW_MASK_BA;			\
 	regs->psw.addr	= new_psw | PSW_ADDR_AMODE;			\
 	regs->gprs[15]	= new_stackp;					\
-	__tlb_flush_mm(current->mm);					\
 	crst_table_downgrade(current->mm, 1UL << 31);			\
-	update_mm(current->mm, current);				\
 	execve_tail();							\
 } while (0)
 
@@ -153,11 +164,7 @@ struct task_struct;
 struct mm_struct;
 struct seq_file;
 
-#ifdef CONFIG_64BIT
-extern void show_cacheinfo(struct seq_file *m);
-#else
-static inline void show_cacheinfo(struct seq_file *m) { }
-#endif
+void show_cacheinfo(struct seq_file *m);
 
 /* Free all resources held by a thread. */
 extern void release_thread(struct task_struct *);
@@ -167,16 +174,14 @@ extern void release_thread(struct task_struct *);
  */
 extern unsigned long thread_saved_pc(struct task_struct *t);
 
-extern void show_code(struct pt_regs *regs);
-extern void print_fn_code(unsigned char *code, unsigned long len);
-extern int insn_to_mnemonic(unsigned char *instruction, char *buf,
-			    unsigned int len);
-
 unsigned long get_wchan(struct task_struct *p);
 #define task_pt_regs(tsk) ((struct pt_regs *) \
         (task_stack_page(tsk) + THREAD_SIZE) - 1)
 #define KSTK_EIP(tsk)	(task_pt_regs(tsk)->psw.addr)
 #define KSTK_ESP(tsk)	(task_pt_regs(tsk)->gprs[15])
+
+/* Has task runtime instrumentation enabled ? */
+#define is_ri_task(tsk) (!!(tsk)->thread.ri_cb)
 
 static inline unsigned short stap(void)
 {
@@ -189,12 +194,9 @@ static inline unsigned short stap(void)
 /*
  * Give up the time slice of the virtual PU.
  */
-static inline void cpu_relax(void)
-{
-	if (MACHINE_HAS_DIAG44)
-		asm volatile("diag 0,0,68");
-	barrier();
-}
+void cpu_relax(void);
+
+#define cpu_relax_lowlatency()  barrier()
 
 static inline void psw_set_key(unsigned int key)
 {
@@ -206,11 +208,7 @@ static inline void psw_set_key(unsigned int key)
  */
 static inline void __load_psw(psw_t psw)
 {
-#ifndef CONFIG_64BIT
-	asm volatile("lpsw  %0" : : "Q" (psw) : "cc");
-#else
 	asm volatile("lpswe %0" : : "Q" (psw) : "cc");
-#endif
 }
 
 /*
@@ -224,22 +222,12 @@ static inline void __load_psw_mask (unsigned long mask)
 
 	psw.mask = mask;
 
-#ifndef CONFIG_64BIT
-	asm volatile(
-		"	basr	%0,0\n"
-		"0:	ahi	%0,1f-0b\n"
-		"	st	%0,%O1+4(%R1)\n"
-		"	lpsw	%1\n"
-		"1:"
-		: "=&d" (addr), "=Q" (psw) : "Q" (psw) : "memory", "cc");
-#else /* CONFIG_64BIT */
 	asm volatile(
 		"	larl	%0,1f\n"
 		"	stg	%0,%O1+8(%R1)\n"
 		"	lpswe	%1\n"
 		"1:"
 		: "=&d" (addr), "=Q" (psw) : "Q" (psw) : "memory", "cc");
-#endif /* CONFIG_64BIT */
 }
 
 /*
@@ -247,22 +235,19 @@ static inline void __load_psw_mask (unsigned long mask)
  */
 static inline unsigned long __rewind_psw(psw_t psw, unsigned long ilc)
 {
-#ifndef CONFIG_64BIT
-	if (psw.addr & PSW_ADDR_AMODE)
-		/* 31 bit mode */
-		return (psw.addr - ilc) | PSW_ADDR_AMODE;
-	/* 24 bit mode */
-	return (psw.addr - ilc) & ((1UL << 24) - 1);
-#else
 	unsigned long mask;
 
 	mask = (psw.mask & PSW_MASK_EA) ? -1UL :
 	       (psw.mask & PSW_MASK_BA) ? (1UL << 31) - 1 :
 					  (1UL << 24) - 1;
 	return (psw.addr - ilc) & mask;
-#endif
 }
- 
+
+/*
+ * Function to stop a processor until the next interrupt occurs
+ */
+void enabled_wait(void);
+
 /*
  * Function to drop a processor into disabled wait state
  */
@@ -277,26 +262,6 @@ static inline void __noreturn disabled_wait(unsigned long code)
          * Store status and then load disabled wait psw,
          * the processor is dead afterwards
          */
-#ifndef CONFIG_64BIT
-	asm volatile(
-		"	stctl	0,0,0(%2)\n"
-		"	ni	0(%2),0xef\n"	/* switch off protection */
-		"	lctl	0,0,0(%2)\n"
-		"	stpt	0xd8\n"		/* store timer */
-		"	stckc	0xe0\n"		/* store clock comparator */
-		"	stpx	0x108\n"	/* store prefix register */
-		"	stam	0,15,0x120\n"	/* store access registers */
-		"	std	0,0x160\n"	/* store f0 */
-		"	std	2,0x168\n"	/* store f2 */
-		"	std	4,0x170\n"	/* store f4 */
-		"	std	6,0x178\n"	/* store f6 */
-		"	stm	0,15,0x180\n"	/* store general registers */
-		"	stctl	0,15,0x1c0\n"	/* store control registers */
-		"	oi	0x1c0,0x10\n"	/* fake protection bit */
-		"	lpsw	0(%1)"
-		: "=m" (ctl_buf)
-		: "a" (&dw_psw), "a" (&ctl_buf), "m" (dw_psw) : "cc");
-#else /* CONFIG_64BIT */
 	asm volatile(
 		"	stctg	0,0,0(%2)\n"
 		"	ni	4(%2),0xef\n"	/* switch off protection */
@@ -329,7 +294,6 @@ static inline void __noreturn disabled_wait(unsigned long code)
 		"	lpswe	0(%1)"
 		: "=m" (ctl_buf)
 		: "a" (&dw_psw), "a" (&ctl_buf), "m" (dw_psw) : "cc", "0", "1");
-#endif /* CONFIG_64BIT */
 	while (1);
 }
 
@@ -344,9 +308,9 @@ __set_psw_mask(unsigned long mask)
 }
 
 #define local_mcck_enable() \
-	__set_psw_mask(psw_kernel_bits | PSW_MASK_DAT | PSW_MASK_MCHECK)
+	__set_psw_mask(PSW_KERNEL_BITS | PSW_MASK_DAT | PSW_MASK_MCHECK)
 #define local_mcck_disable() \
-	__set_psw_mask(psw_kernel_bits | PSW_MASK_DAT)
+	__set_psw_mask(PSW_KERNEL_BITS | PSW_MASK_DAT)
 
 /*
  * Basic Machine Check/Program Check Handler.

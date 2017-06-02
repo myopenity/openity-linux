@@ -22,7 +22,6 @@ const struct inode_operations jffs2_symlink_inode_operations =
 {
 	.readlink =	generic_readlink,
 	.follow_link =	jffs2_follow_link,
-	.get_acl =	jffs2_get_acl,
 	.setattr =	jffs2_setattr,
 	.setxattr =	jffs2_setxattr,
 	.getxattr =	jffs2_getxattr,
@@ -32,7 +31,7 @@ const struct inode_operations jffs2_symlink_inode_operations =
 
 static void *jffs2_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
-	struct jffs2_inode_info *f = JFFS2_INODE_INFO(dentry->d_inode);
+	struct jffs2_inode_info *f = JFFS2_INODE_INFO(d_inode(dentry));
 	char *p = (char *)f->target;
 
 	/*

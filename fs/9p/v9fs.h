@@ -64,6 +64,7 @@ enum p9_session_flags {
 
 enum p9_cache_modes {
 	CACHE_NONE,
+	CACHE_MMAP,
 	CACHE_LOOSE,
 	CACHE_FSCACHE,
 };
@@ -77,7 +78,6 @@ enum p9_cache_modes {
  * @cache: cache mode of type &p9_cache_modes
  * @cachetag: the tag of the cache associated with this session
  * @fscache: session cookie associated with FS-Cache
- * @options: copy of options string given by user
  * @uname: string user name to mount hierarchy as
  * @aname: mount specifier for remote hierarchy
  * @maxdata: maximum data to be sent/recvd per protocol message

@@ -1,5 +1,5 @@
 /*
- * Linux network driver for Brocade Converged Network Adapter.
+ * Linux network driver for QLogic BR-series Converged Network Adapter.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License (GPL) Version 2 as
@@ -11,9 +11,10 @@
  * General Public License for more details.
  */
 /*
- * Copyright (c) 2005-2011 Brocade Communications Systems, Inc.
+ * Copyright (c) 2005-2014 Brocade Communications Systems, Inc.
+ * Copyright (c) 2014-2015 QLogic Corporation
  * All rights reserved
- * www.brocade.com
+ * www.qlogic.com
  */
 
 /* File for interrupt macros and functions */
@@ -322,6 +323,10 @@ do {									\
 #define	BNA_CQ_EF_REMOTE	(1 << 19)
 
 #define	BNA_CQ_EF_LOCAL		(1 << 20)
+/* CAT2 ASIC does not use bit 21 as per the SPEC.
+ * Bit 31 is set in every end of frame completion
+ */
+#define BNA_CQ_EF_EOP		(1 << 31)
 
 /* Data structures */
 
@@ -358,7 +363,7 @@ struct bna_txq_wi_vector {
 
 /*  TxQ Entry Structure
  *
- *  BEWARE:  Load values into this structure with correct endianess.
+ *  BEWARE:  Load values into this structure with correct endianness.
  */
 struct bna_txq_entry {
 	union {

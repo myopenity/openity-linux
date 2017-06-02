@@ -1,12 +1,27 @@
 * Freescale Smart Direct Memory Access (SDMA) Controller for i.MX
 
 Required properties:
-- compatible : Should be "fsl,<chip>-sdma"
+- compatible : Should be one of
+      "fsl,imx25-sdma"
+      "fsl,imx31-sdma", "fsl,imx31-to1-sdma", "fsl,imx31-to2-sdma"
+      "fsl,imx35-sdma", "fsl,imx35-to1-sdma", "fsl,imx35-to2-sdma"
+      "fsl,imx51-sdma"
+      "fsl,imx53-sdma"
+      "fsl,imx6q-sdma"
+  The -to variants should be preferred since they allow to determine the
+  correct ROM script addresses needed for the driver to work without additional
+  firmware.
 - reg : Should contain SDMA registers location and length
 - interrupts : Should contain SDMA interrupt
 - #dma-cells : Must be <3>.
   The first cell specifies the DMA request/event ID.  See details below
   about the second and third cell.
+- gpr : The phandle to general purpose register node.
+- fsl,sdma-event-remap : Register bits of sdma event remap, the format is
+  <reg shift val>.
+    reg is the gpr register offset.
+    shift is the bit offset of event remap.
+    val is the value of the bit to be set.
 - fsl,sdma-ram-script-name : Should contain the full path of SDMA RAM
   scripts firmware
 
@@ -37,6 +52,10 @@ The full ID of peripheral types can be found below.
 	19	IPU Memory
 	20	ASRC
 	21	ESAI
+	22	SSI Dual FIFO	(needs firmware ver >= 2)
+	23	Shared ASRC
+	24	SAI
+	25	HDMI Audio
 
 The third cell specifies the transfer priority as below.
 
