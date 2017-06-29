@@ -298,19 +298,6 @@
 	};
 };
 
-&i2c3 {
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c3_3>;
-	status = "okay";
-
-	/* DS1307 RTC module */
-	rtc@0x68 {
-		compatible = "dallas,ds1307";
-		reg = <0x68>;
-	};
-};
-
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
@@ -342,6 +329,88 @@
 				MX6QDL_PAD_DISP0_DAT4__GPIO4_IO25	0x178b0
 			>;
 		};
+
+        /******************************************************
+         *
+         * Openity Snapcap INPUT GPIOs
+         *
+         ******************************************************/
+        pinctrl_snapcap_gpio_input: snapcap_gpio_input {
+            fsl,pins = <
+            /* System Power Status */
+            MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x80000000  /* Active Low - SHUTDOWN_REQUEST */
+            MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x80000000  /* ON_BATTERY */
+            MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x80000000  /* RES_BUTTON_ACTIVE */
+
+            /* Satellite Modem Data Port */
+            MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x80000000  /* SAT_DAT_DSR */
+            MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x80000000  /* SAT_DAT_DCD */
+            MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x80000000  /* SAT_DAT_RI */
+
+            /* Satellite Modem Data Port */
+            MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x80000000  /* SAT_CTL_DSR */
+            >;
+        };
+
+        /******************************************************
+         *
+         * Openity Snapcap OUTPUT GPIOs
+         *
+         ******************************************************/
+        pinctrl_snapcap_gpio_output: snapcap_gpio_output {
+            fsl,pins = <
+                /* System Power Control */
+                MX6QDL_PAD_SD4_DAT6__GPIO2_IO14     0x1B0B0  /* (100K Pull-Up) Active Low - SHUTDOWN */
+
+                /* USB Power Control */
+                MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x1B0B0  /* (100K Pull-Up) HOST_USB_EN */
+                MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x1B0B0  /* (100K Pull-Up) OTG_USB_EN */
+
+                /* Fan Power Control */
+                MX6QDL_PAD_SD4_DAT1__GPIO2_IO09     0x130B0  /* (100K Pull-down) FAN_CTL */
+
+                /* Satellite Modem Power Control */
+                MX6QDL_PAD_GPIO_2__GPIO1_IO02       0x1B0B0  /* (100K Pull-Up) SAT_VEXT_ON */
+
+                /* Satellite Modem Data Port */
+                MX6QDL_PAD_CSI0_VSYNC__GPIO5_IO21   0x130B0  /* (100K Pull-down) SAT_DAT_DTR */
+
+                /* Satellite Modem Control Port */
+                MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02   0x130B0  /* (100K Pull-down) SAT_CTL_DTR */
+
+                /* Status LEDs */
+                MX6QDL_PAD_CSI0_DAT18__GPIO6_IO04   0x130B0  /* (100K Pull-down) STATUS_GREEN_1 */
+                MX6QDL_PAD_CSI0_DAT19__GPIO6_IO05   0x130B0  /* (100K Pull-down) STATUS_GREEN_2 */
+
+                /* Test Points */
+                MX6QDL_PAD_GPIO_5__GPIO1_IO05       0x130B0  /* (100K Pull-down) TP1 */
+                MX6QDL_PAD_GPIO_16__GPIO7_IO11      0x130B0  /* (100K Pull-down) TP2 */
+            >;
+        };
+
+        /******************************************************
+         *
+         * Openity Snapcap PWM OUTPUT - Button LED
+         *
+         ******************************************************/
+        pinctrl_snapcap_pwm: snapcap_pwm {
+            fsl,pins = <
+            MX6QDL_PAD_DISP0_DAT9__PWM2_OUT   0x1B0B1 /* (100K Pull-up) BUTTON_LED*/
+            >;
+        };
+
+        /******************************************************
+         *
+         * Openity Snapcap UART4 - Satellite Control Port
+         * ttymxc3 UART
+         *
+         ******************************************************/
+        pinctrl_snapcap_uart4: snapcap_uart4 {   /* RX/TX */
+            fsl,pins = <
+            MX6QDL_PAD_CSI0_DAT13__UART4_RX_DATA   0x1b0b1
+            MX6QDL_PAD_CSI0_DAT12__UART4_TX_DATA   0x1b0b1
+            >;
+        };
 
 		pinctrl_audmux_2: audmux {
 			fsl,pins = <
@@ -405,69 +474,6 @@
 			>;
 		};
 
-		pinctrl_i2c3_3: i2c3grp {
-			fsl,pins = <
-				MX6QDL_PAD_GPIO_5__I2C3_SCL		0x4001b8b1
-				MX6QDL_PAD_GPIO_16__I2C3_SDA		0x4001b8b1
-			>;
-		};
-
-		pinctrl_ipu1: ipu1grp {
-			fsl,pins = <
-				MX6QDL_PAD_DI0_DISP_CLK__IPU1_DI0_DISP_CLK	0x10
-				MX6QDL_PAD_DI0_PIN15__IPU1_DI0_PIN15		0x10
-				MX6QDL_PAD_DI0_PIN2__IPU1_DI0_PIN02		0x10
-				MX6QDL_PAD_DI0_PIN3__IPU1_DI0_PIN03		0x10
-				MX6QDL_PAD_DI0_PIN4__IPU1_DI0_PIN04		0x80000000
-				MX6QDL_PAD_DISP0_DAT0__IPU1_DISP0_DATA00	0x10
-				MX6QDL_PAD_DISP0_DAT1__IPU1_DISP0_DATA01	0x10
-				MX6QDL_PAD_DISP0_DAT2__IPU1_DISP0_DATA02	0x10
-				MX6QDL_PAD_DISP0_DAT3__IPU1_DISP0_DATA03	0x10
-				MX6QDL_PAD_DISP0_DAT4__IPU1_DISP0_DATA04	0x10
-				MX6QDL_PAD_DISP0_DAT5__IPU1_DISP0_DATA05	0x10
-				MX6QDL_PAD_DISP0_DAT6__IPU1_DISP0_DATA06	0x10
-				MX6QDL_PAD_DISP0_DAT7__IPU1_DISP0_DATA07	0x10
-				MX6QDL_PAD_DISP0_DAT8__IPU1_DISP0_DATA08	0x10
-				MX6QDL_PAD_DISP0_DAT9__IPU1_DISP0_DATA09	0x10
-				MX6QDL_PAD_DISP0_DAT10__IPU1_DISP0_DATA10	0x10
-				MX6QDL_PAD_DISP0_DAT11__IPU1_DISP0_DATA11	0x10
-				MX6QDL_PAD_DISP0_DAT12__IPU1_DISP0_DATA12	0x10
-				MX6QDL_PAD_DISP0_DAT13__IPU1_DISP0_DATA13	0x10
-				MX6QDL_PAD_DISP0_DAT14__IPU1_DISP0_DATA14	0x10
-				MX6QDL_PAD_DISP0_DAT15__IPU1_DISP0_DATA15	0x10
-				MX6QDL_PAD_DISP0_DAT16__IPU1_DISP0_DATA16	0x10
-				MX6QDL_PAD_DISP0_DAT17__IPU1_DISP0_DATA17	0x10
-				MX6QDL_PAD_DISP0_DAT18__IPU1_DISP0_DATA18	0x10
-				MX6QDL_PAD_DISP0_DAT19__IPU1_DISP0_DATA19	0x10
-				MX6QDL_PAD_DISP0_DAT20__IPU1_DISP0_DATA20	0x10
-				MX6QDL_PAD_DISP0_DAT21__IPU1_DISP0_DATA21	0x10
-				MX6QDL_PAD_DISP0_DAT22__IPU1_DISP0_DATA22	0x10
-				MX6QDL_PAD_DISP0_DAT23__IPU1_DISP0_DATA23	0x10
-			>;
-		};
-
-		pinctrl_ipu1_2: ipu1grp-2 { /* parallel camera */
-			fsl,pins = <
-				MX6QDL_PAD_CSI0_DAT12__IPU1_CSI0_DATA12		0x80000000
-				MX6QDL_PAD_CSI0_DAT13__IPU1_CSI0_DATA13		0x80000000
-				MX6QDL_PAD_CSI0_DAT14__IPU1_CSI0_DATA14		0x80000000
-				MX6QDL_PAD_CSI0_DAT15__IPU1_CSI0_DATA15		0x80000000
-				MX6QDL_PAD_CSI0_DAT16__IPU1_CSI0_DATA16		0x80000000
-				MX6QDL_PAD_CSI0_DAT17__IPU1_CSI0_DATA17		0x80000000
-				MX6QDL_PAD_CSI0_DAT18__IPU1_CSI0_DATA18		0x80000000
-				MX6QDL_PAD_CSI0_DAT19__IPU1_CSI0_DATA19		0x80000000
-				MX6QDL_PAD_CSI0_DATA_EN__IPU1_CSI0_DATA_EN	0x80000000
-				MX6QDL_PAD_CSI0_PIXCLK__IPU1_CSI0_PIXCLK	0x80000000
-				MX6QDL_PAD_CSI0_MCLK__IPU1_CSI0_HSYNC		0x80000000
-				MX6QDL_PAD_CSI0_VSYNC__IPU1_CSI0_VSYNC		0x80000000
-			>;
-		};
-
-		pinctrl_pwm2_1: pwm2grp {
-			fsl,pins = <
-				MX6QDL_PAD_DISP0_DAT9__PWM2_OUT		0x1b0b1
-			>;
-		};
 		/* Linux Console */
 		pinctrl_uart1_1: uart1grp-1 { /* RX/TX only */
 			fsl,pins = <
@@ -628,7 +634,7 @@
 
 &pwm2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm2_1>;
+    pinctrl-0 = <&pinctrl_snapcap_pwm>;
 	status = "okay";
 };
 
@@ -663,6 +669,18 @@
 	pinctrl-0 = <&pinctrl_uart3_2>;
 	fsl,uart-has-rtscts;
 	status = "okay";
+};
+
+/******************************************************
+ *
+ * Openity Snapcap UART4 - Satellite Control Port
+ * ttymxc3 UART
+ *
+ ******************************************************/
+&uart4 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_snapcap_uart4>;
+    status = "okay";
 };
 
 &can1 {
