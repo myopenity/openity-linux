@@ -338,17 +338,17 @@
         pinctrl_snapcap_gpio_input: snapcap_gpio_input {
             fsl,pins = <
             /* System Power Status */
-            MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x80000000  /* Active Low - SHUTDOWN_REQUEST */
-            MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x80000000  /* ON_BATTERY */
-            MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x80000000  /* RES_BUTTON_ACTIVE */
+            MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x1B0B0  /* Active Low - SHUTDOWN_REQUEST */
+            MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x1B0B0  /* ON_BATTERY */
+            MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x1B0B0  /* RES_BUTTON_ACTIVE */
 
             /* Satellite Modem Data Port */
-            MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x80000000  /* SAT_DAT_DSR */
-            MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x80000000  /* SAT_DAT_DCD */
-            MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x80000000  /* SAT_DAT_RI */
+            MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x1B0B0  /* SAT_DAT_DSR */
+            MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x1B0B0  /* SAT_DAT_DCD */
+            MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x1B0B0  /* SAT_DAT_RI */
 
             /* Satellite Modem Data Port */
-            MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x80000000  /* SAT_CTL_DSR */
+            MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x1B0B0  /* SAT_CTL_DSR */
             >;
         };
 
