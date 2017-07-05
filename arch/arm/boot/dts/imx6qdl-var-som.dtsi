@@ -327,7 +327,6 @@
 				MX6QDL_PAD_GPIO_3__CCM_CLKO2		0x130b0
 				/* Resistive touch irq */
 				MX6QDL_PAD_DISP0_DAT4__GPIO4_IO25	0x178b0
-				
 			>;
 		};
 
