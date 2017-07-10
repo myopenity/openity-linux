@@ -627,7 +627,7 @@
 					anatop-min-bit-val = <8>;
 					anatop-min-voltage = <800000>;
 					anatop-max-voltage = <1200000>;
-					anatop-enable-bit = <31>;
+					anatop-enable-bit = <0>;
 				};
 
 				reg_1p2: regulator-vdd1p2@220 {
@@ -831,6 +831,12 @@
 				reg = <0x306c0000 0x10000>;
 				interrupts = <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
+				status = "disabled";
+			};
+
+			pcie_phy: pcie-phy@306d0000 {
+				compatible = "fsl,imx-pcie-phy";
+				reg = <0x306d0000 0x10000>;
 				status = "disabled";
 			};
 

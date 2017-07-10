@@ -51,7 +51,6 @@ struct imx6_pcie {
 	int			dis_gpio;
 	int			power_on_gpio;
 	int			reset_gpio;
-	u32			phy_refclk;
 	struct clk		*pcie_bus;
 	struct clk		*pcie_inbound_axi;
 	struct clk		*pcie_phy;
@@ -61,7 +60,7 @@ struct imx6_pcie {
 	struct pcie_port	pp;
 	struct regmap		*iomuxc_gpr;
 	struct regmap		*reg_src;
-	void __iomem		*mem_base;
+	void __iomem		*phy_base;
 	struct regulator	*pcie_phy_regulator;
 	struct regulator	*pcie_bus_regulator;
 };
@@ -120,6 +119,12 @@ struct imx6_pcie {
  * FIELD: ref_usb2_en [1:1]
  * FIELD: ref_clkdiv2 [0:0]
  */
+
+/* iMX7 PCIe PHY registers */
+#define PCIE_PHY_CMN_REG15	0x54
+#define PCIE_PHY_CMN_REG15_DLY_4	(1 << 2)
+#define PCIE_PHY_CMN_REG15_PLL_PD	(1 << 5)
+#define PCIE_PHY_CMN_REG15_OVRD_PLL_PD	(1 << 7)
 
 static inline bool is_imx7d_pcie(struct imx6_pcie *imx6_pcie)
 {
@@ -372,22 +377,19 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 		goto err_pcie;
 	}
 
-	if (!IS_ENABLED(CONFIG_EP_MODE_IN_EP_RC_SYS)
-			&& !IS_ENABLED(CONFIG_RC_MODE_IN_EP_RC_SYS)) {
-		if (imx6_pcie->ext_osc) {
-			clk_set_parent(imx6_pcie->pcie_ext,
-					imx6_pcie->pcie_ext_src);
-			ret = clk_prepare_enable(imx6_pcie->pcie_ext);
-			if (ret) {
-				dev_err(pp->dev, "unable to enable pcie_ext clock\n");
-				goto err_pcie_bus;
-			}
-		} else {
-			ret = clk_prepare_enable(imx6_pcie->pcie_bus);
-			if (ret) {
-				dev_err(pp->dev, "unable to enable pcie_bus clock\n");
-				goto err_pcie_bus;
-			}
+	if (imx6_pcie->ext_osc) {
+		clk_set_parent(imx6_pcie->pcie_ext,
+				imx6_pcie->pcie_ext_src);
+		ret = clk_prepare_enable(imx6_pcie->pcie_ext);
+		if (ret) {
+			dev_err(pp->dev, "unable to enable pcie_ext clock\n");
+			goto err_pcie_bus;
+		}
+	} else {
+		ret = clk_prepare_enable(imx6_pcie->pcie_bus);
+		if (ret) {
+			dev_err(pp->dev, "unable to enable pcie_bus clock\n");
+			goto err_pcie_bus;
 		}
 	}
 
@@ -440,6 +442,21 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 		udelay(10);
 		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(6), 0);
 		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(1), 0);
+
+		/* Add the workaround for ERR010728 */
+		if (unlikely(imx6_pcie->phy_base == NULL)) {
+			pr_err("phy base shouldn't be null.\n");
+		} else {
+			writel(PCIE_PHY_CMN_REG15_DLY_4,
+			       imx6_pcie->phy_base + PCIE_PHY_CMN_REG15);
+			writel(PCIE_PHY_CMN_REG15_DLY_4
+			       | PCIE_PHY_CMN_REG15_PLL_PD
+			       | PCIE_PHY_CMN_REG15_OVRD_PLL_PD,
+			       imx6_pcie->phy_base + PCIE_PHY_CMN_REG15);
+			writel(PCIE_PHY_CMN_REG15_DLY_4,
+			       imx6_pcie->phy_base + PCIE_PHY_CMN_REG15);
+		}
+
 		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(2), 0);
 
 		/* wait for phy pll lock firstly. */
@@ -483,9 +500,7 @@ static int imx6_pcie_deassert_core_reset(struct pcie_port *pp)
 err_inbound_axi:
 	clk_disable_unprepare(imx6_pcie->pcie);
 err_pcie_phy:
-	if (!IS_ENABLED(CONFIG_EP_MODE_IN_EP_RC_SYS)
-			&& !IS_ENABLED(CONFIG_RC_MODE_IN_EP_RC_SYS)
-			&& !imx6_pcie->ext_osc)
+	if (!imx6_pcie->ext_osc)
 		clk_disable_unprepare(imx6_pcie->pcie_bus);
 err_pcie_bus:
 	clk_disable_unprepare(imx6_pcie->pcie);
@@ -502,18 +517,14 @@ static void imx6_pcie_init_phy(struct pcie_port *pp)
 	if (is_imx7d_pcie(imx6_pcie)) {
 		/* Enable PCIe PHY 1P0D */
 		regulator_set_voltage(imx6_pcie->pcie_phy_regulator,
-				1050000, 1050000);
+				1000000, 1000000);
 		ret = regulator_enable(imx6_pcie->pcie_phy_regulator);
 		if (ret)
 			dev_err(pp->dev, "failed to enable pcie regulator.\n");
 
 		/* pcie phy ref clock select; 1? internal pll : external osc */
 		regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR12,
-			BIT(5), imx6_pcie->phy_refclk ? BIT(5) : 0);
-		/* get pcie phy out of reset to get correct clock rate */
-		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(1), 0);
-		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(2), 0);
-		regmap_update_bits(imx6_pcie->reg_src, 0x2c, BIT(6), 0);
+				BIT(5), !imx6_pcie->ext_osc ? BIT(5) : 0);
 	} else if (is_imx6sx_pcie(imx6_pcie)) {
 		/* Force PCIe PHY reset */
 		regmap_update_bits(imx6_pcie->iomuxc_gpr, IOMUXC_GPR5,
@@ -583,8 +594,7 @@ static int imx6_pcie_wait_for_link(struct pcie_port *pp)
 
 		if (!IS_ENABLED(CONFIG_PCI_IMX6_COMPLIANCE_TEST)) {
 			clk_disable_unprepare(imx6_pcie->pcie);
-			if (!IS_ENABLED(CONFIG_EP_MODE_IN_EP_RC_SYS) &&
-			    !IS_ENABLED(CONFIG_RC_MODE_IN_EP_RC_SYS))
+			if (!imx6_pcie->ext_osc)
 				clk_disable_unprepare(imx6_pcie->pcie_bus);
 			clk_disable_unprepare(imx6_pcie->pcie_phy);
 			if (is_imx6sx_pcie(imx6_pcie))
@@ -1166,7 +1176,7 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 {
 	struct imx6_pcie *imx6_pcie;
 	struct pcie_port *pp;
-	struct device_node *np = pdev->dev.of_node;
+	struct device_node *np;
 	struct resource *dbi_base;
 	int ret;
 
@@ -1188,17 +1198,22 @@ static int __init imx6_pcie_probe(struct platform_device *pdev)
 	hook_fault_code(16 + 6, imx6q_pcie_abort_handler, SIGBUS, 0,
 		"imprecise external abort");
 
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx-pcie-phy");
+	if (np != NULL) {
+		imx6_pcie->phy_base = of_iomap(np, 0);
+		WARN_ON(!imx6_pcie->phy_base);
+	} else {
+		imx6_pcie->phy_base = NULL;
+	}
+
 	dbi_base = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	pp->dbi_base = devm_ioremap_resource(&pdev->dev, dbi_base);
 	if (IS_ERR(pp->dbi_base))
 		return PTR_ERR(pp->dbi_base);
 
-	/* Fetch PHY Reference Clock */
-	if (of_property_read_u32(np, "phy-ref-clk", &imx6_pcie->phy_refclk))
-		imx6_pcie->phy_refclk = 0;
-	pr_info("%s: phy_refclk = %d\n", __func__, imx6_pcie->phy_refclk);
-
 	/* Fetch GPIOs */
+	np = pdev->dev.of_node;
 	imx6_pcie->dis_gpio = of_get_named_gpio(np, "disable-gpio", 0);
 	if (gpio_is_valid(imx6_pcie->dis_gpio)) {
 		ret = devm_gpio_request_one(&pdev->dev, imx6_pcie->dis_gpio,
