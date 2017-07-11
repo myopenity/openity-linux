@@ -327,70 +327,70 @@
 				MX6QDL_PAD_GPIO_3__CCM_CLKO2		0x130b0
 				/* Resistive touch irq */
 				MX6QDL_PAD_DISP0_DAT4__GPIO4_IO25	0x178b0
+
+
+				/******************************************************
+                 *
+                 * Openity Snapcap INPUT GPIOs
+                 *
+                 * MUST BE IN HOG GROUP TO WORK SINCE NO PIN CONFIGURATION NODE IS USED
+                 *
+                 ******************************************************/
+				/* System Power Status */
+                MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x000100B0  /* SHUTDOWN_REQUEST **Active Low** - (Pull up/down disabled - Pad Control Register: 0x20E0664) */
+                MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x000100B0  /* ON_BATTERY (Pull up/down disabled - Pad Control Register: 0x20E0710) */
+                MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x000100B0  /* RES_BUTTON_ACTIVE (Pull up/down disabled - Pad Control Register: 0x20E0660) */
+
+                /* Satellite Modem Data Port */
+                MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x000100B0  /* SAT_DAT_DSR (Pull up/down disabled - Pad Control Register: 0x20E062C)  */
+                MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x000100B0  /* SAT_DAT_DCD (Pull up/down disabled - Pad Control Register: 0x20E0630)  */
+                MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x000100B0  /* SAT_DAT_RI (Pull up/down disabled - Pad Control Register: 0x20E0628)  */
+
+                /* Satellite Modem Data Port */
+                MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x000100B0  /* SAT_CTL_DSR (Pull up/down disabled - Pad Control Register: 0x20E066C)  */
 			>;
 		};
 
         /******************************************************
          *
-         * Openity Snapcap INPUT GPIOs
-         *
-         ******************************************************/
-        pinctrl_snapcap_gpio_input: snapcap_gpio_input {
-            fsl,pins = <
-            /* System Power Status */
-            MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x000100B0  /* (Pull up/down disabled) Active Low - SHUTDOWN_REQUEST */
-            MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x000100B0  /* (Pull up/down disabled) ON_BATTERY */
-            MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x000100B0  /* (Pull up/down disabled) RES_BUTTON_ACTIVE */
-
-            /* Satellite Modem Data Port */
-            MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x000100B0  /* (Pull up/down disabled) SAT_DAT_DSR */
-            MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x000100B0  /* (Pull up/down disabled) SAT_DAT_DCD */
-            MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x000100B0  /* (Pull up/down disabled) SAT_DAT_RI */
-
-            /* Satellite Modem Data Port */
-            MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x000100B0  /* (Pull up/down disabled) SAT_CTL_DSR */
-            >;
-        };
-
-        /******************************************************
-         *
-         * Openity Snapcap OUTPUT GPIOs
+         * Openity Snapcap OUTPUT GPIOs - Used by LEDs interface
          *
          ******************************************************/
         pinctrl_snapcap_gpio_output: snapcap_gpio_output {
             fsl,pins = <
                 /* System Power Control */
-                MX6QDL_PAD_SD4_DAT6__GPIO2_IO14     0x1B0B0  /* (100K Pull-Up) Active Low - SHUTDOWN */
+                MX6QDL_PAD_SD4_DAT6__GPIO2_IO14     0x1B0B0  /* SHUTDOWN **Active Low** - (100K Pull-Up) */
 
                 /* USB Power Control */
-                MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x1B0B0  /* (100K Pull-Up) HOST_USB_EN */
-                MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x1B0B0  /* (100K Pull-Up) OTG_USB_EN */
+                MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x1B0B0  /* HOST_USB_EN (100K Pull-Up) */
+                MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x1B0B0  /* OTG_USB_EN (100K Pull-Up) */
 
                 /* Fan Power Control */
-                MX6QDL_PAD_SD4_DAT1__GPIO2_IO09     0x130B0  /* (100K Pull-down) FAN_CTL */
+                MX6QDL_PAD_SD4_DAT1__GPIO2_IO09     0x130B0  /* FAN_CTL (100K Pull-down) */
 
                 /* Satellite Modem Power Control */
-                MX6QDL_PAD_GPIO_2__GPIO1_IO02       0x1B0B0  /* (100K Pull-Up) SAT_VEXT_ON */
+                MX6QDL_PAD_GPIO_2__GPIO1_IO02       0x1B0B0  /* SAT_VEXT_ON (100K Pull-Up) */
 
                 /* Satellite Modem Data Port */
-                MX6QDL_PAD_CSI0_VSYNC__GPIO5_IO21   0x130B0  /* (100K Pull-down) SAT_DAT_DTR */
+                MX6QDL_PAD_CSI0_VSYNC__GPIO5_IO21   0x130B0  /* SAT_DAT_DTR (100K Pull-down) */
 
                 /* Satellite Modem Control Port */
-                MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02   0x130B0  /* (100K Pull-down) SAT_CTL_DTR */
+                MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02   0x130B0  /* SAT_CTL_DTR (100K Pull-down) */
 
                 /* Status LEDs */
-                MX6QDL_PAD_CSI0_DAT18__GPIO6_IO04   0x130B0  /* (100K Pull-down) STATUS_GREEN_1 */
-                MX6QDL_PAD_CSI0_DAT19__GPIO6_IO05   0x130B0  /* (100K Pull-down) STATUS_GREEN_2 */
+                MX6QDL_PAD_CSI0_DAT18__GPIO6_IO04   0x130B0  /* STATUS_GREEN_1 (100K Pull-down) */
+                MX6QDL_PAD_CSI0_DAT19__GPIO6_IO05   0x130B0  /* STATUS_GREEN_2 (100K Pull-down) */
 
                 /* Test Points */
-                MX6QDL_PAD_GPIO_5__GPIO1_IO05       0x130B0  /* (100K Pull-down) TP1 */
-                MX6QDL_PAD_GPIO_16__GPIO7_IO11      0x130B0  /* (100K Pull-down) TP2 */
+                MX6QDL_PAD_GPIO_5__GPIO1_IO05       0x130B0  /* TP1 (100K Pull-down) */
+                MX6QDL_PAD_GPIO_16__GPIO7_IO11      0x130B0  /* TP2 (100K Pull-down) */
+
             >;
         };
 
         /******************************************************
          *
-         * Openity Snapcap PWM OUTPUT - Button LED
+         * Openity Snapcap PWM OUTPUT - Button LED - Used by pwm2
          *
          ******************************************************/
         pinctrl_snapcap_pwm: snapcap_pwm {
@@ -401,7 +401,7 @@
 
         /******************************************************
          *
-         * Openity Snapcap UART4 - Satellite Control Port
+         * Openity Snapcap UART4 - Satellite Control Port - Used by uart4
          * ttymxc3 UART
          *
          ******************************************************/
