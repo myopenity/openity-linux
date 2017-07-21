@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1996-2000 Russell King - Converted to ARM.
  *  Original Copyright (C) 1995  Linus Torvalds
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
@@ -9,6 +9,7 @@
 #include <linux/cpu.h>
 #include <linux/delay.h>
 #include <linux/reboot.h>
+#include <linux/gpio.h>
 
 #include <asm/cacheflush.h>
 #include <asm/idmap.h>
@@ -119,6 +120,11 @@ void machine_power_off(void)
 {
 	local_irq_disable();
 	smp_send_stop();
+
+    /* Need to pull down GPIO2[14] to shutdown snapcap and turn off the LTC
+     * power management chip */
+    printk("Disabling Snapcap LTC power management chip");
+    gpio_set_value(46, 0);
 
 	if (pm_power_off)
 		pm_power_off();
