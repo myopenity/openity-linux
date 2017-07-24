@@ -250,27 +250,14 @@
 };
 
 &i2c1 {
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c1_2>;
-	status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_i2c1_2>;
+    status = "okay";
 
-	ov564x_mipi: ov564x_mipi@3c {
-		compatible = "ovti,ov564x_mipi";
-		reg = <0x3c>;
-		clocks = <&clks 200>;
-		clock-names = "csi_mclk";
-#if 0
-		DOVDD-supply = <&vgen4_reg>; /* 1.8v */
-		AVDD-supply = <&vgen3_reg>;  /* 2.8v, rev C board is VGEN3 rev B board is VGEN5 */
-		DVDD-supply = <&vgen2_reg>;  /* 1.5v*/
-#endif
-		pwn-gpios = <&gpio3 13 1>;
-		rst-gpios = <&gpio4 10 0>;
-		csi_id = <1>;
-		mclk = <24000000>;
-		mclk_source = <0>;
-	};
+    rtc: rtc@68 {
+        compatible = "stm,m41t65";
+        reg = <0x68>;
+    };
 };
 
 &i2c2 {
@@ -463,6 +450,11 @@
 			>;
 		};
 
+        /******************************************************
+         *
+         * Openity Snapcap i2c1 - Used for RTC
+         *
+         ******************************************************/
 		pinctrl_i2c1_2: i2c1grp {
 			fsl,pins = <
 				MX6QDL_PAD_CSI0_DAT8__I2C1_SDA		0x4001b8b1
@@ -787,9 +779,3 @@
 	};
 
 };
-
-
-&snvs_rtc {
-       status = "disabled";
-};
-
