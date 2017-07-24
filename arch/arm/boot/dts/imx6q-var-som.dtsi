@@ -48,7 +48,7 @@
         fan-ctl {
             label = "fan-ctl";
             gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
-            default-state = "off";
+            default-state = "on";
         };
 
         sat-vext-on {
