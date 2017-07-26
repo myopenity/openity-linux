@@ -386,7 +386,7 @@
          ******************************************************/
         pinctrl_snapcap_pwm: snapcap_pwm {
             fsl,pins = <
-            MX6QDL_PAD_DISP0_DAT9__PWM2_OUT   0x1B0B1 /* (100K Pull-up) BUTTON_LED*/
+                MX6QDL_PAD_DISP0_DAT9__PWM2_OUT   0x1B0B1 /* (100K Pull-up) BUTTON_LED*/
             >;
         };
 
@@ -398,8 +398,8 @@
          ******************************************************/
         pinctrl_snapcap_uart4: snapcap_uart4 {   /* RX/TX */
             fsl,pins = <
-            MX6QDL_PAD_CSI0_DAT13__UART4_RX_DATA   0x1b0b1
-            MX6QDL_PAD_CSI0_DAT12__UART4_TX_DATA   0x1b0b1
+                MX6QDL_PAD_CSI0_DAT13__UART4_RX_DATA   0x1b0b1
+                MX6QDL_PAD_CSI0_DAT12__UART4_TX_DATA   0x1b0b1
             >;
         };
 
@@ -626,6 +626,12 @@
 	reset-gpio    = <&gpio5 13 0>;	/* gpio pin num of power good signal */
 	wake-up-gpio  = <&gpio3 22 1>;	/* gpio pin num of incoming wakeup signal */
 	status = "okay";
+};
+
+&pwm2 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_snapcap_pwm>;
+    status = "okay";
 };
 
 &ssi2 {
