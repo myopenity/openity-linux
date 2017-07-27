@@ -786,3 +786,7 @@
 	};
 
 };
+
+&snvs_rtc {
+    status = "disabled";
+};
