@@ -10,17 +10,17 @@ import (
 
 // flash in var-som-mx6
 // nand: device found, Manufacturer ID: 0x2c, Chip ID: 0xdc
-// nand: Micron MT29F4G08ABADAWP                    
+// nand: Micron MT29F4G08ABADAWP
 // nand: 512 MiB, SLC, erase size: 128 KiB, page size: 2048, OOB size: 64
 //
 // original setup
-// root@twc8009:~# cat /proc/mtd 
+// root@twc8009:~# cat /proc/mtd
 // dev:    size   erasesize  name
 // mtd0: 00200000 00020000 "spl"
 // mtd1: 00200000 00020000 "bootloader"
 // mtd2: 00800000 00020000 "kernel"
 // mtd3: 1f400000 00020000 "rootfs"
-// 
+//
 // new:
 // New Partitions
 // Device        Name       Start    Size(B)  Size(MiB)  Size(Blks)
@@ -130,12 +130,18 @@ func main() {
 	new := Partitions{
 		Partition{Name: "spl", Size: 0x200000},
 		Partition{Name: "bootloader", Size: 0x200000},
-		Partition{Name: "kernel1", Size: 150*MiB},
-		Partition{Name: "kernel2", Size: 150*MiB},
-		Partition{Name: "rootfs"},
+		Partition{Name: "kernel1", Size: 150 * MiB},
+		Partition{Name: "kernel2", Size: 150 * MiB},
+		Partition{Name: "data"},
 	}
 
 	new.FillIn(512*MiB, 4*MiB)
 
 	fmt.Printf("\n\nNew Partitions\n%v\n", new)
+
+	kernel_dtb_offset_chip := new[3].Start - nandBlockSize
+	kernel_dtb_offset_partition := new[2].Size - nandBlockSize
+
+	fmt.Printf("DTB offset in chip: 0x%x\n", kernel_dtb_offset_chip)
+	fmt.Printf("DTB offset in partition: 0x%x\n", kernel_dtb_offset_partition)
 }
