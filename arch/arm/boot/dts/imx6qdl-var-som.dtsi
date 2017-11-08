@@ -716,7 +716,7 @@
 
 	/* a 208 MiB partition */
 	partition@4 {
-		label = "rootfs";
+		label = "data";
 		reg = <0x13000000 0x0d000000>;
 	};
 };
