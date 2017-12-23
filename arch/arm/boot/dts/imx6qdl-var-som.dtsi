@@ -717,7 +717,7 @@
 	/* a 308 MiB partition */
 	partition@4 {
 		label = "data";
-		reg = <0xcc00000 0x0d000000>;
+		reg = <0xcc00000 0x13400000>;
 	};
 };
 
