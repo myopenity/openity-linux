@@ -23,13 +23,16 @@ import (
 //
 // new:
 // New Partitions
-// Device        Name       Start    Size(B)  Size(MiB)  Size(Blks)
-// mtd0         spl         0x0   0x200000          2          16
-// mtd1  bootloader    0x200000   0x200000          2          16
-// mtd2     kernel1    0x400000  0x9600000        150        1200
-// mtd3     kernel2   0x9a00000  0x9600000        150        1200
-// mtd4      rootfs  0x13000000  0xd000000        208        1664
+//   Device        Name      Start     Size(B)  Size(MiB)  Size(Blks)
+//     mtd0         spl        0x0    0x200000          2          16
+//     mtd1  bootloader   0x200000    0x200000          2          16
+//     mtd2     kernel1   0x400000   0x6400000        100         800
+//     mtd3     kernel2  0x6800000   0x6400000        100         800
+//     mtd4        data  0xcc00000  0x13400000        308        2464
 // total size = 0x20000000, 512MiB
+
+// DTB offset in chip: 0x67e0000
+// DTB offset in partition: 0x63e0000
 
 const (
 	nandBlockSize = 128 * 1024
@@ -130,8 +133,8 @@ func main() {
 	new := Partitions{
 		Partition{Name: "spl", Size: 0x200000},
 		Partition{Name: "bootloader", Size: 0x200000},
-		Partition{Name: "kernel1", Size: 150 * MiB},
-		Partition{Name: "kernel2", Size: 150 * MiB},
+		Partition{Name: "kernel1", Size: 100 * MiB},
+		Partition{Name: "kernel2", Size: 100 * MiB},
 		Partition{Name: "data"},
 	}
 
@@ -139,9 +142,14 @@ func main() {
 
 	fmt.Printf("\n\nNew Partitions\n%v\n", new)
 
-	kernel_dtb_offset_chip := new[3].Start - nandBlockSize
-	kernel_dtb_offset_partition := new[2].Size - nandBlockSize
+	kernel1_dtb_offset_chip := new[3].Start - nandBlockSize
+	kernel1_dtb_offset_partition := new[2].Size - nandBlockSize
 
-	fmt.Printf("DTB offset in chip: 0x%x\n", kernel_dtb_offset_chip)
-	fmt.Printf("DTB offset in partition: 0x%x\n", kernel_dtb_offset_partition)
+	kernel2_dtb_offset_chip := new[4].Start - nandBlockSize
+	kernel2_dtb_offset_partition := new[3].Size - nandBlockSize
+
+	fmt.Printf("Kernel 1 DTB offset in chip: 0x%x\n", kernel1_dtb_offset_chip)
+	fmt.Printf("Kernel 1 DTB offset in partition: 0x%x\n", kernel1_dtb_offset_partition)
+	fmt.Printf("Kernel 2 DTB offset in chip: 0x%x\n", kernel2_dtb_offset_chip)
+	fmt.Printf("Kernel 2 DTB offset in partition: 0x%x\n", kernel2_dtb_offset_partition)
 }
