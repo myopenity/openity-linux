@@ -705,19 +705,19 @@
 	/* an 100 MiB partition */
 	partition@2 {
 		label = "kernel1";
-		reg = <0x00400000 0x6400000>;
+		reg = <0x00400000 0x06400000>;
 	};
 
-	/* an 150 MiB partition */
+	/* an 100 MiB partition */
 	partition@3 {
 		label = "kernel2";
-		reg = <0x6800000 0x6400000>;
+		reg = <0x06800000 0x06400000>;
 	};
 
 	/* a 308 MiB partition */
 	partition@4 {
 		label = "data";
-		reg = <0xcc00000 0x13400000>;
+		reg = <0x0cc00000 0x13400000>;
 	};
 };
 
