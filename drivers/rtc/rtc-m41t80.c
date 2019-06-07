@@ -58,6 +58,7 @@
 #define M41T80_ALHOUR_HT	(1 << 6)	/* HT: Halt Update Bit */
 #define M41T80_FLAGS_AF		(1 << 6)	/* AF: Alarm Flag Bit */
 #define M41T80_FLAGS_BATT_LOW	(1 << 4)	/* BL: Battery Low Bit */
+#define M41T80_FLAGS_OF		(1 << 2)	/* OF: Oscillator Failure Bit */
 #define M41T80_WATCHDOG_RB2	(1 << 7)	/* RB: Watchdog resolution */
 #define M41T80_WATCHDOG_RB1	(1 << 1)	/* RB: Watchdog resolution */
 #define M41T80_WATCHDOG_RB0	(1 << 0)	/* RB: Watchdog resolution */
@@ -94,6 +95,16 @@ static int m41t80_get_datetime(struct i2c_client *client,
 			       struct rtc_time *tm)
 {
 	u8 buf[M41T80_DATETIME_REG_SIZE], dt_addr[1] = { M41T80_REG_SEC };
+	int flags;
+	flags = i2c_smbus_read_byte_data(client, M41T80_REG_FLAGS);
+	if (flags < 0)
+		return flags;
+
+	if (flags & M41T80_FLAGS_OF) {
+		dev_err(&client->dev, "Oscillator failure, data is invalid.\n");
+		return -EINVAL;
+	}
+
 	struct i2c_msg msgs[] = {
 		{
 			.addr	= client->addr,
@@ -146,6 +157,7 @@ static int m41t80_get_datetime(struct i2c_client *client,
 /* Sets the given date and time to the real time clock. */
 static int m41t80_set_datetime(struct i2c_client *client, struct rtc_time *tm)
 {
+	int err, flags;
 	u8 wbuf[1 + M41T80_DATETIME_REG_SIZE];
 	u8 *buf = &wbuf[1];
 	u8 dt_addr[1] = { M41T80_REG_SEC };
@@ -206,6 +218,19 @@ static int m41t80_set_datetime(struct i2c_client *client, struct rtc_time *tm)
 		dev_err(&client->dev, "write error\n");
 		return -EIO;
 	}
+
+	/* Clear the OF bit of Flags Register */
+	flags = i2c_smbus_read_byte_data(client, M41T80_REG_FLAGS);
+	if (flags < 0)
+		return flags;
+
+	err = i2c_smbus_write_byte_data(client, M41T80_REG_FLAGS,
+					flags & ~M41T80_FLAGS_OF);
+	if (err < 0) {
+		dev_err(&client->dev, "Unable to write flags register\n");
+		return err;
+	}
+
 	return 0;
 }
 
