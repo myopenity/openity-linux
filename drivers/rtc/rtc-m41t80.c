@@ -160,8 +160,25 @@ static int m41t80_get_datetime(struct i2c_client *client,
 	tm->tm_wday = buf[M41T80_REG_WDAY] & 0x07;
 	tm->tm_mon = bcd2bin(buf[M41T80_REG_MON] & 0x1f) - 1;
 
+
 	/* assume 20YY not 19YY, and ignore the Century Bit */
 	tm->tm_year = bcd2bin(buf[M41T80_REG_YEAR]) + 100;
+
+	printk("rtc sec: 0x%x\n", buf[M41T80_REG_SEC]);
+	printk("rtc min: 0x%x\n", buf[M41T80_REG_MIN]);
+	printk("rtc hour: 0x%x\n", buf[M41T80_REG_HOUR]);
+	printk("rtc day: 0x%x\n", buf[M41T80_REG_DAY]);
+	printk("rtc mon: 0x%x\n", buf[M41T80_REG_MON]);
+	printk("rtc year: 0x%x\n", buf[M41T80_REG_YEAR]);
+
+	printk("sec: %i\n", tm->tm_sec);
+	printk("min: %i\n", tm->tm_min);
+	printk("hour: %i\n", tm->tm_hour);
+	printk("mday: %i\n", tm->tm_mday);
+	printk("wday: %i\n", tm->tm_wday);
+	printk("mon: %i\n", tm->tm_mon);
+	printk("year: %i\n", tm->tm_year);
+
 	return rtc_valid_tm(tm);
 }
 
