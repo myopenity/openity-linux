@@ -353,8 +353,8 @@
                 MX6QDL_PAD_SD4_DAT6__GPIO2_IO14     0x1B0B0  /* SHUTDOWN **Active Low** - (100K Pull-Up) */
 
                 /* USB Power Control */
-                MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x1B0B0  /* HOST_USB_EN (100K Pull-Up) */
-                MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x1B0B0  /* OTG_USB_EN (100K Pull-Up) */
+                MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x130B0  /* HOST_USB_SDR1_EN (100K Pull-down) */
+                MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x130B0  /* OTG_USB_SDR2_EN (100K Pull-down) */
 
                 /* Fan Power Control */
                 MX6QDL_PAD_SD4_DAT1__GPIO2_IO09     0x130B0  /* FAN_CTL (100K Pull-down) */

@@ -33,16 +33,16 @@
             default-state = "on";
         };
 
-        host-usb-en {
-            label = "host-usb-en";
+        host-usb-sdr1-en {
+            label = "host-usb-sdr1-en";
             gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-            default-state = "on";
+            default-state = "off";
         };
 
-        otg-usb-en {
-            label = "otg-usb-en";
+        otg-usb-sdr2-en {
+            label = "otg-usb-sdr2-en";
             gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
-            default-state = "on";
+            default-state = "off";
         };
 
         fan-ctl {
