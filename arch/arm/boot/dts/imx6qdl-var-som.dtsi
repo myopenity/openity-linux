@@ -147,12 +147,16 @@
 		status = "disabled";
 	};
 
-	backlight {
-		compatible = "pwm-backlight";
-		pwms = <&pwm2 0 50000>;
-		brightness-levels = <0 4 8 16 32 64 128 248>;
-		default-brightness-level = <7>;
-		status = "okay";
+
+	pwmleds {
+		compatible = "pwm-leds";
+		button-led {
+			label = "button-led";
+			pwms = <&pwm2 0 50000>;
+			max-brightness = <255>;
+			linux,default-trigger = "default-on";
+			brightness = <255>;
+		};
 	};
 
 	v4l2_cap_0 {
@@ -258,6 +262,12 @@
 	pinctrl-0 = <&pinctrl_i2c1_2>;
 	status = "okay";
 
+	rtc: rtc@68 {
+	compatible = "stm,m41t65";
+	reg = <0x68>;
+	};
+
+	/* not sure if we should keep following -- cb */
 	ov564x_mipi: ov564x_mipi@3c {
 		compatible = "ovti,ov564x_mipi";
 		reg = <0x3c>;
@@ -445,11 +455,91 @@
 				MX6QDL_PAD_GPIO_3__CCM_CLKO2		0x130b0
 				/* Resistive touch irq */
 				MX6QDL_PAD_DISP0_DAT4__GPIO4_IO25	0x178b0
-			>;
-		};
+				/******************************************************
+				 *
+				 * Openity Snapcap INPUT GPIOs
+				 *
+				 * MUST BE IN HOG GROUP TO WORK SINCE NO PIN CONFIGURATION NODE IS USED
+				 *
+				 ******************************************************/
+				/* System Power Status */
+				MX6QDL_PAD_CSI0_DAT15__GPIO6_IO01   0x000100B0  /* SHUTDOWN_REQUEST **Active Low** - (Pull up/down disabled - Pad Control Register: 0x20E0664) */
+				MX6QDL_PAD_SD4_DAT3__GPIO2_IO11     0x000100B0  /* ON_BATTERY (Pull up/down disabled - Pad Control Register: 0x20E0710) */
+				MX6QDL_PAD_CSI0_DAT14__GPIO6_IO00   0x000100B0  /* RES_BUTTON_ACTIVE (Pull up/down disabled - Pad Control Register: 0x20E0660) */
 
-		pinctrl_audmux_2: audmux {
-			fsl,pins = <
+				/* Satellite Modem Data Port */
+				MX6QDL_PAD_CSI0_MCLK__GPIO5_IO19    0x000100B0  /* SAT_DAT_DSR (Pull up/down disabled - Pad Control Register: 0x20E062C)  */
+				MX6QDL_PAD_CSI0_DATA_EN__GPIO5_IO20 0x000100B0  /* SAT_DAT_DCD (Pull up/down disabled - Pad Control Register: 0x20E0630)  */
+				MX6QDL_PAD_CSI0_PIXCLK__GPIO5_IO18  0x000100B0  /* SAT_DAT_RI (Pull up/down disabled - Pad Control Register: 0x20E0628)  */
+
+				/* Satellite Modem Data Port */
+				MX6QDL_PAD_CSI0_DAT17__GPIO6_IO03   0x000100B0  /* SAT_CTL_DSR (Pull up/down disabled - Pad Control Register: 0x20E066C)  */
+
+				>;
+			     };
+			     /******************************************************
+			      *
+			      * Openity Snapcap OUTPUT GPIOs - Used by LEDs interface
+			      *
+			      ******************************************************/
+pinctrl_snapcap_gpio_output: snapcap_gpio_output {
+				     fsl,pins = <
+					     /* System Power Control */
+					     MX6QDL_PAD_SD4_DAT6__GPIO2_IO14     0x1B0B0  /* SHUTDOWN **Active Low** - (100K Pull-Up) */
+
+					     /* USB Power Control */
+					     MX6QDL_PAD_GPIO_9__GPIO1_IO09       0x130B0  /* HOST_USB_SDR1_EN (100K Pull-down) */
+					     MX6QDL_PAD_GPIO_1__GPIO1_IO01       0x130B0  /* OTG_USB_SDR2_EN (100K Pull-down) */
+
+					     /* Fan Power Control */
+					     MX6QDL_PAD_SD4_DAT1__GPIO2_IO09     0x130B0  /* FAN_CTL (100K Pull-down) */
+
+					     /* Satellite Modem Power Control */
+					     MX6QDL_PAD_GPIO_2__GPIO1_IO02       0x1B0B0  /* SAT_VEXT_ON (100K Pull-Up) */
+
+					     /* Satellite Modem Data Port */
+					     MX6QDL_PAD_CSI0_VSYNC__GPIO5_IO21   0x130B0  /* SAT_DAT_DTR (100K Pull-down) */
+
+					     /* Satellite Modem Control Port */
+					     MX6QDL_PAD_CSI0_DAT16__GPIO6_IO02   0x130B0  /* SAT_CTL_DTR (100K Pull-down) */
+
+					     /* Status LEDs */
+					     MX6QDL_PAD_CSI0_DAT18__GPIO6_IO04   0x130B0  /* STATUS_GREEN_1 (100K Pull-down) */
+					     MX6QDL_PAD_CSI0_DAT19__GPIO6_IO05   0x130B0  /* STATUS_GREEN_2 (100K Pull-down) */
+
+					     /* Test Points */
+					     MX6QDL_PAD_GPIO_5__GPIO1_IO05       0x130B0  /* TP1 (100K Pull-down) */
+					     MX6QDL_PAD_GPIO_16__GPIO7_IO11      0x130B0  /* TP2 (100K Pull-down) */
+
+					     >;
+			     };
+
+			     /******************************************************
+			      *
+			      * Openity Snapcap PWM OUTPUT - Button LED - Used by pwm2
+			      *
+			      ******************************************************/
+pinctrl_snapcap_pwm: snapcap_pwm {
+			     fsl,pins = <
+				     MX6QDL_PAD_DISP0_DAT9__PWM2_OUT   0x1B0B1 /* (100K Pull-up) BUTTON_LED*/
+				     >;
+		     };
+
+		     /******************************************************
+		      *
+		      * Openity Snapcap UART4 - Satellite Control Port - Used by uart4
+		      * ttymxc3 UART
+		      *
+		      ******************************************************/
+pinctrl_snapcap_uart4: snapcap_uart4 {   /* RX/TX */
+			       fsl,pins = <
+				       MX6QDL_PAD_CSI0_DAT13__UART4_RX_DATA   0x1b0b1
+				       MX6QDL_PAD_CSI0_DAT12__UART4_TX_DATA   0x1b0b1
+				       >;
+		       };
+
+pinctrl_audmux_2: audmux {
+			  fsl,pins = <
 				MX6QDL_PAD_CSI0_DAT7__AUD3_RXD		0x130b0
 				MX6QDL_PAD_CSI0_DAT4__AUD3_TXC		0x130b0
 				MX6QDL_PAD_CSI0_DAT5__AUD3_TXD		0x110b0
@@ -496,6 +586,11 @@
 			>;
 		};
 
+        /******************************************************
+         *
+         * Openity Snapcap i2c1 - Used for RTC
+         *
+         ******************************************************/
 		pinctrl_i2c1_2: i2c1grp {
 			fsl,pins = <
 				MX6QDL_PAD_CSI0_DAT8__I2C1_SDA		0x4001b8b1
@@ -700,7 +795,7 @@
 
 &pwm2 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_pwm2_1>;
+    pinctrl-0 = <&pinctrl_snapcap_pwm>;
 	status = "okay";
 };
 
@@ -736,6 +831,18 @@
 	status = "okay";
 };
 
+/******************************************************
+ *
+ * Openity Snapcap UART4 - Satellite Control Port
+ * ttymxc3 UART
+ *
+ ******************************************************/
+&uart4 {
+    pinctrl-names = "default";
+    pinctrl-0 = <&pinctrl_snapcap_uart4>;
+    status = "okay";
+};
+
 &can1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_flexcan1_3>;
@@ -760,16 +867,22 @@
 		reg = <0x00200000 0x00200000>;
 	};
 
-	/* an 8 MiB partition */
+	/* an 100 MiB partition */
 	partition@2 {
-		label = "kernel";
-		reg = <0x00400000 0x00800000>;
+		label = "kernel1";
+		reg = <0x00400000 0x06400000>;
 	};
 
-	/* a 1012 MiB partition */
+	/* an 100 MiB partition */
 	partition@3 {
-		label = "rootfs";
-		reg = <0x00c00000 0x3f400000>;
+		label = "kernel2";
+		reg = <0x06800000 0x06400000>;
+	};
+
+	/* a 308 MiB partition */
+	partition@4 {
+		label = "data";
+		reg = <0x0cc00000 0x13400000>;
 	};
 };
 
@@ -847,4 +960,3 @@
 &snvs_rtc {
 	status = "disabled";
 };
-
