@@ -12,8 +12,80 @@
 #include "imx6qdl-var-som.dtsi"
 
 / {
-	model = "Variscite i.MX6 QUAD/DUAL VAR-SOM-MX6";
+	model = "SnapCap Variscite i.MX6 QUAD/DUAL VAR-SOM-MX6";
 	compatible = "fsl,imx6q-var-som", "fsl,imx6q";
+
+    leds {
+        pinctrl-names = "default";
+        pinctrl-0 = <&pinctrl_snapcap_gpio_output>;
+        compatible = "gpio-leds";
+
+        shutdown {
+            label = "shutdown";
+            gpios = <&gpio2 14 GPIO_ACTIVE_HIGH>;
+            default-state = "on";
+        };
+
+        host-usb-sdr1-en {
+            label = "host-usb-sdr1-en";
+            gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        otg-usb-sdr2-en {
+            label = "otg-usb-sdr2-en";
+            gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        fan-ctl {
+            label = "fan-ctl";
+            gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+            default-state = "on";
+        };
+
+        sat-vext-on {
+            label = "sat-vext-on";
+            gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+            default-state = "on";
+        };
+
+        sat-dat-dtr {
+            label = "sat-dat-dtr";
+            gpios = <&gpio5 21 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        sat-ctl-dtr {
+            label = "sat-ctl-dtr";
+            gpios = <&gpio6 2 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        status-green-1 {
+            label = "status-green-1";
+            gpios = <&gpio6 4 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        status-green-2 {
+            label = "status-green-2";
+            gpios = <&gpio6 5 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        test-point-1 {
+            label = "test-point-1";
+            gpios = <&gpio1 5 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+
+        test-point-2 {
+            label = "test-point-2";
+            gpios = <&gpio7 11 GPIO_ACTIVE_HIGH>;
+            default-state = "off";
+        };
+    };
 };
 
 &cpu0 {
