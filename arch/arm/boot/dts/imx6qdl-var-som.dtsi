@@ -395,19 +395,6 @@
 	};
 };
 
-&i2c3 {
-	clock-frequency = <100000>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&pinctrl_i2c3_3>;
-	status = "okay";
-
-	/* DS1337 RTC module */
-	rtc@0x68 {
-		compatible = "dallas,ds1337";
-		reg = <0x68>;
-	};
-};
-
 &iomuxc {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_hog>;
