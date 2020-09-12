@@ -23,16 +23,19 @@ import (
 //
 // new:
 // New Partitions
-//   Device        Name      Start     Size(B)  Size(MiB)  Size(Blks)
-//     mtd0         spl        0x0    0x200000          2          16
-//     mtd1  bootloader   0x200000    0x200000          2          16
-//     mtd2     kernel1   0x400000   0x6400000        100         800
-//     mtd3     kernel2  0x6800000   0x6400000        100         800
-//     mtd4        data  0xcc00000  0x13400000        308        2464
+//   Device        Name       Start    Size(B)  Size(MiB)  Size(Blks)
+//     mtd0         spl         0x0   0x200000          2          16
+//     mtd1  bootloader    0x200000   0x200000          2          16
+//     mtd2     kernel1    0x400000  0xc800000        200        1600
+//     mtd3     kernel2   0xcc00000  0xc800000        200        1600
+//     mtd4        data  0x19400000  0x6c00000        108         864
 // total size = 0x20000000, 512MiB
 
-// DTB offset in chip: 0x67e0000
-// DTB offset in partition: 0x63e0000
+// Kernel 1 DTB offset in chip: 0xcbe0000
+// Kernel 1 DTB offset in partition: 0xc7e0000
+// Kernel 2 DTB offset in chip: 0x193e0000
+// Kernel 2 DTB offset in partition: 0xc7e0000
+
 
 const (
 	nandBlockSize = 128 * 1024
@@ -133,8 +136,8 @@ func main() {
 	new := Partitions{
 		Partition{Name: "spl", Size: 0x200000},
 		Partition{Name: "bootloader", Size: 0x200000},
-		Partition{Name: "kernel1", Size: 100 * MiB},
-		Partition{Name: "kernel2", Size: 100 * MiB},
+		Partition{Name: "kernel1", Size: 200 * MiB},
+		Partition{Name: "kernel2", Size: 200 * MiB},
 		Partition{Name: "data"},
 	}
 

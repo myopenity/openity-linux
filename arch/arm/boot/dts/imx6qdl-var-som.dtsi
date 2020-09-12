@@ -806,22 +806,22 @@ pinctrl_audmux_2: audmux {
 		reg = <0x00200000 0x00200000>;
 	};
 
-	/* an 100 MiB partition */
+	/* an 200 MiB partition */
 	partition@2 {
 		label = "kernel1";
-		reg = <0x00400000 0x06400000>;
+		reg = <0x00400000 0x0c800000>;
 	};
 
-	/* an 100 MiB partition */
+	/* an 200 MiB partition */
 	partition@3 {
 		label = "kernel2";
-		reg = <0x06800000 0x06400000>;
+		reg = <0x0cc00000 0x0c800000>;
 	};
 
-	/* a 308 MiB partition */
+	/* a 108 MiB partition */
 	partition@4 {
 		label = "data";
-		reg = <0x0cc00000 0x13400000>;
+		reg = <0x19400000 0x06c00000>;
 	};
 };
 
